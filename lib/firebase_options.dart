@@ -31,27 +31,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: 'YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
+    apiKey: 'AIzaSyBsFeY6o32f8MR7ySlWnStn7XHXtUB2fGU',
+    appId: '1:397385781864:android:a509f4945bd2c8904e61dd',
+    messagingSenderId: '397385781864',
     projectId: 'ignivo-ai',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    storageBucket: 'ignivo-ai.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: 'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
+    apiKey: 'AIzaSyDgbRY85Cjrfb00bh56BVgD4cfyUt6odZk',
+    appId: '1:397385781864:ios:175daa2c269722c44e61dd',
+    messagingSenderId: '397385781864',
     projectId: 'ignivo-ai',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    storageBucket: 'ignivo-ai.firebasestorage.app',
+    iosClientId: '397385781864-bjvremu5e0rlf6cc01vg0f2hdosvebj1.apps.googleusercontent.com',
     iosBundleId: 'com.ignivo.ignivoApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'YOUR_WINDOWS_API_KEY',
-    appId: 'YOUR_WINDOWS_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
+    apiKey: 'AIzaSyAMlOCoXjj0LbGXUlmPGe_Qh_bPW8p72Es',
+    appId: '1:397385781864:web:5ae248521f132b374e61dd',
+    messagingSenderId: '397385781864',
     projectId: 'ignivo-ai',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    authDomain: 'ignivo-ai.firebaseapp.com',
+    storageBucket: 'ignivo-ai.firebasestorage.app',
   );
 }

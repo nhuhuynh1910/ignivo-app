@@ -12,7 +12,12 @@
           "package_name": "com.ignivo.ignivo_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "397385781864-emqak19g5e6dpl0pdc8vtto0cs93nlt1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBsFeY6o32f8MR7ySlWnStn7XHXtUB2fGU"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "397385781864-emqak19g5e6dpl0pdc8vtto0cs93nlt1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "397385781864-bjvremu5e0rlf6cc01vg0f2hdosvebj1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.ignivo.ignivoApp"
+              }
+            }
+          ]
         }
       }
     }

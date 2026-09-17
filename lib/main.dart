@@ -1,16 +1,21 @@
+import 'dart:io';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
-// import 'features/auth/auth_wrapper.dart';
+import 'navigation/main_navigation.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Khởi tạo Firebase cho đúng platform hiện tại.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Android hiện tại dùng Firebase native config.
+  // Không initialize Firebase lại trên Android.
+  if (!Platform.isAndroid) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   runApp(const IgnivoApp());
 }
@@ -43,10 +48,7 @@ class IgnivoApp extends StatelessWidget {
         ),
       ),
 
-      // Kiểm tra Firebase Auth:
-      // Chưa đăng nhập -> Login
-      // Đã đăng nhập -> MainNavigation
-      // home: const AuthWrapper(),
+      home: const MainNavigation(),
     );
   }
 }
