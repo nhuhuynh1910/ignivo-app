@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "397385781864",
+    "project_id": "ignivo-ai",
+    "storage_bucket": "ignivo-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397385781864:android:a509f4945bd2c8904e61dd",
+        "android_client_info": {
+          "package_name": "com.ignivo.ignivo_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsFeY6o32f8MR7ySlWnStn7XHXtUB2fGU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
