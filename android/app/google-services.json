@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "397385781864-6mk4o2m6h8i7uaskkckvdiphrrr6ikcp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ignivo.ignivo_app",
+            "certificate_hash": "5c5cedfc573186c02a4334b22dda5c80f134d1e5"
+          }
+        },
+        {
           "client_id": "397385781864-emqak19g5e6dpl0pdc8vtto0cs93nlt1.apps.googleusercontent.com",
           "client_type": 3
         }

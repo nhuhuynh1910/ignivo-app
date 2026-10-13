@@ -1,405 +1,443 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/services/auth_service.dart';
+import '../../core/services/firestore_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/alert_model.dart';
+import '../../models/system_model.dart';
+import '../../widgets/alert_card.dart';
 import 'alert_detail_page.dart';
 
+class AlertPage extends StatefulWidget {
+  const AlertPage({
+    super.key,
+  });
 
-class AlertPage extends StatelessWidget {
-  const AlertPage({super.key});
+  @override
+  State<AlertPage> createState() => _AlertPageState();
+}
+
+class _AlertPageState extends State<AlertPage> {
+  final AuthService _authService = AuthService();
+
+  final FirestoreService _firestoreService =
+  FirestoreService();
+
+  String? _selectedSystemId;
 
   @override
   Widget build(BuildContext context) {
+    final uid = _authService.currentUserId;
+
+    if (uid == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: AppColors.backgroundSoft,
       appBar: AppBar(
         title: const Text(
           'Cảnh báo',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
           ),
         ),
-
-
       ),
+      body: StreamBuilder<
+          QuerySnapshot<Map<String, dynamic>>>(
+        stream: _firestoreService.watchUserSystems(
+          uid,
+        ),
+        builder: (
+            context,
+            systemSnapshot,
+            ) {
+          if (systemSnapshot.connectionState ==
+              ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // =========================
-          // TỔNG QUAN CẢNH BÁO
-          // =========================
-
-          Container(
-            padding: const EdgeInsets.all(20),
-
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.green.shade100,
+          if (systemSnapshot.hasError) {
+            return const Center(
+              child: Text(
+                'Không thể tải hệ thống.',
               ),
-            ),
+            );
+          }
 
-            child: Row(
-              children: [
-                Icon(
-                  Icons.shield,
-                  size: 42,
-                  color: Colors.green.shade700,
+          final systems =
+              systemSnapshot.data?.docs
+                  .map(
+                IgnivoSystem.fromFirestore,
+              )
+                  .toList() ??
+                  [];
+
+          if (systems.isEmpty) {
+            return const _NoSystemState();
+          }
+
+          final selectedIndex =
+          systems.indexWhere(
+                (system) =>
+            system.id == _selectedSystemId,
+          );
+
+          final selectedSystem =
+          selectedIndex >= 0
+              ? systems[selectedIndex]
+              : systems.first;
+
+          return Column(
+            children: [
+              // ============================================================
+              // SYSTEM FILTER
+              // ============================================================
+
+              _SystemFilter(
+                systems: systems,
+                selectedSystemId:
+                selectedSystem.id,
+                onSelected: (
+                    systemId,
+                    ) {
+                  setState(() {
+                    _selectedSystemId =
+                        systemId;
+                  });
+                },
+              ),
+
+              // ============================================================
+              // ALERT LIST
+              // ============================================================
+
+              Expanded(
+                child: _AlertList(
+                  systemId:
+                  selectedSystem.id,
+                  firestoreService:
+                  _firestoreService,
                 ),
-
-                const SizedBox(width: 16),
-
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hệ thống an toàn',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      SizedBox(height: 5),
-
-                      Text(
-                        'Không có cảnh báo nghiêm trọng',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // =========================
-          // CẢNH BÁO HIỆN TẠI
-          // =========================
-
-          const Text(
-            'Cảnh báo hiện tại',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          _alertCard(
-            context: context,
-            severity: 'LOW',
-            title: 'Nhiệt độ tăng',
-            description:
-            'Nhiệt độ tại khu vực bếp đang cao hơn mức thông thường.',
-            zone: 'Khu vực bếp',
-            time: 'Vừa xong',
-            icon: Icons.thermostat,
-          ),
-
-          const SizedBox(height: 12),
-
-          _alertCard(
-            context: context,
-            severity: 'MEDIUM',
-            title: 'Phát hiện khói',
-            description:
-            'Camera AI phát hiện dấu hiệu khói trong khu vực.',
-            zone: 'Phòng khách',
-            time: '5 phút trước',
-            icon: Icons.cloud,
-          ),
-
-          const SizedBox(height: 12),
-
-          _alertCard(
-            context: context,
-            severity: 'HIGH',
-            title: 'Nguy cơ cháy',
-            description:
-            'Hệ thống phát hiện đồng thời nhiều dấu hiệu bất thường.',
-            zone: 'Khu vực bếp',
-            time: '10 phút trước',
-            icon: Icons.local_fire_department,
-          ),
-
-          const SizedBox(height: 24),
-
-          // =========================
-          // SỰ KIỆN GẦN ĐÂY
-          // =========================
-
-          const Text(
-            'Sự kiện gần đây',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          _eventItem(
-            icon: Icons.check_circle,
-            title: 'Kiểm tra hệ thống',
-            description: 'Hệ thống hoạt động bình thường',
-            time: 'Hôm nay, 08:30',
-          ),
-
-          _eventItem(
-            icon: Icons.videocam,
-            title: 'Camera hoạt động',
-            description: 'Camera phòng khách đã kết nối',
-            time: 'Hôm nay, 08:15',
-          ),
-
-          _eventItem(
-            icon: Icons.sensors,
-            title: 'Cảm biến cập nhật',
-            description: 'Dữ liệu cảm biến đã được đồng bộ',
-            time: 'Hôm nay, 08:00',
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+}
 
-  // ============================================================
-  // CARD CẢNH BÁO
-  // ============================================================
+// ============================================================================
+// SYSTEM FILTER
+// ============================================================================
 
-  Widget _alertCard({
-    required BuildContext context,
-    required String severity,
-    required String title,
-    required String description,
-    required String zone,
-    required String time,
-    required IconData icon,
-  }) {
-    final Color color;
-    final Color backgroundColor;
+class _SystemFilter extends StatelessWidget {
+  const _SystemFilter({
+    required this.systems,
+    required this.selectedSystemId,
+    required this.onSelected,
+  });
 
-    switch (severity) {
-      case 'HIGH':
-        color = Colors.red;
-        backgroundColor = Colors.red.shade50;
-        break;
+  final List<IgnivoSystem> systems;
+  final String selectedSystemId;
+  final ValueChanged<String> onSelected;
 
-      case 'MEDIUM':
-        color = Colors.orange;
-        backgroundColor = Colors.orange.shade50;
-        break;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        10,
+        16,
+        14,
+      ),
+      child: SizedBox(
+        height: 42,
+        child: ListView.separated(
+          scrollDirection:
+          Axis.horizontal,
+          itemCount: systems.length,
+          separatorBuilder: (_, index) => const SizedBox(width: 8),
+          itemBuilder: (
+              context,
+              index,
+              ) {
+            final system =
+            systems[index];
 
-      default:
-        color = Colors.blue;
-        backgroundColor = Colors.blue.shade50;
-    }
+            final selected =
+                system.id ==
+                    selectedSystemId;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-
-
-      child: Container(
-        padding: const EdgeInsets.all(16),
-
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-          ),
+            return InkWell(
+              onTap: () {
+                onSelected(
+                  system.id,
+                );
+              },
+              borderRadius:
+              BorderRadius.circular(
+                14,
+              ),
+              child: AnimatedContainer(
+                duration: const Duration(
+                  milliseconds: 180,
+                ),
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 18,
+                ),
+                alignment:
+                Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.primary
+                      : AppColors.backgroundSoft,
+                  borderRadius:
+                  BorderRadius.circular(
+                    14,
+                  ),
+                  border: Border.all(
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors
+                        .backgroundBlueSoft,
+                  ),
+                ),
+                child: Text(
+                  system.name,
+                  style: TextStyle(
+                    fontWeight:
+                    FontWeight.w600,
+                    color: selected
+                        ? Colors.white
+                        : AppColors
+                        .textPrimary,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
+      ),
+    );
+  }
+}
 
-        child: Row(
+// ============================================================================
+// ALERT LIST
+// ============================================================================
+
+class _AlertList extends StatelessWidget {
+  const _AlertList({
+    required this.systemId,
+    required this.firestoreService,
+  });
+
+  final String systemId;
+  final FirestoreService firestoreService;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<
+        QuerySnapshot<Map<String, dynamic>>>(
+      stream:
+      firestoreService.watchAlerts(
+        systemId,
+      ),
+      builder: (
+          context,
+          snapshot,
+          ) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text(
+              'Không thể tải cảnh báo.',
+            ),
+          );
+        }
+
+        final alerts =
+            snapshot.data?.docs
+                .map(
+                  (
+                  document,
+                  ) =>
+                  AlertModel.fromFirestore(
+                    document,
+                    systemId:
+                    systemId,
+                  ),
+            )
+                .toList() ??
+                [];
+
+        if (alerts.isEmpty) {
+          return const _EmptyAlerts();
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(
+            16,
+          ),
+          itemCount: alerts.length,
+          separatorBuilder: (_, index) => const SizedBox(height: 12),
+          itemBuilder: (
+              context,
+              index,
+              ) {
+            final alert =
+            alerts[index];
+
+            return AlertCard(
+              alert: alert,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        AlertDetailPage(
+                          alert: alert,
+                        ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ============================================================================
+// EMPTY ALERT
+// ============================================================================
+
+class _EmptyAlerts extends StatelessWidget {
+  const _EmptyAlerts();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize:
+          MainAxisSize.min,
           children: [
-            // Icon cảnh báo
-            Container(
-              width: 50,
-              height: 50,
+            Icon(
+              Icons.notifications_none_rounded,
+              size: 54,
+              color:
+              AppColors.textTertiary,
+            ),
 
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
+            SizedBox(
+              height: 14,
+            ),
 
-              child: Icon(
-                icon,
-                color: color,
-                size: 27,
+            Text(
+              'Không có cảnh báo',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight:
+                FontWeight.w700,
+                color:
+                AppColors.textPrimary,
               ),
             ),
 
-            const SizedBox(width: 14),
-
-            // Nội dung
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                      _severityBadge(
-                        severity,
-                        color,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 15,
-                        color: Colors.grey.shade600,
-                      ),
-
-                      const SizedBox(width: 4),
-
-                      Text(
-                        zone,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      Icon(
-                        Icons.access_time,
-                        size: 15,
-                        color: Colors.grey.shade600,
-                      ),
-
-                      const SizedBox(width: 4),
-
-                      Text(
-                        time,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            SizedBox(
+              height: 7,
             ),
 
-            const SizedBox(width: 8),
-
-            const Icon(
-              Icons.chevron_right,
-              color: Colors.grey,
+            Text(
+              'Hệ thống hiện không có cảnh báo.',
+              textAlign:
+              TextAlign.center,
+              style: TextStyle(
+                color:
+                AppColors.textTertiary,
+              ),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  // ============================================================
-  // BADGE MỨC ĐỘ
-  // ============================================================
+// ============================================================================
+// NO SYSTEM
+// ============================================================================
 
-  Widget _severityBadge(
-      String severity,
-      Color color,
-      ) {
-    String text;
+class _NoSystemState extends StatelessWidget {
+  const _NoSystemState();
 
-    switch (severity) {
-      case 'HIGH':
-        text = 'CAO';
-        break;
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize:
+          MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.home_outlined,
+              size: 54,
+              color:
+              AppColors.textTertiary,
+            ),
 
-      case 'MEDIUM':
-        text = 'TRUNG BÌNH';
-        break;
+            SizedBox(
+              height: 14,
+            ),
 
-      default:
-        text = 'THẤP';
-    }
+            Text(
+              'Chưa có hệ thống IGNIVO',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight:
+                FontWeight.w700,
+                color:
+                AppColors.textPrimary,
+              ),
+            ),
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
+            SizedBox(
+              height: 7,
+            ),
 
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: color,
+            Text(
+              'Hãy thêm hệ thống để theo dõi cảnh báo.',
+              textAlign:
+              TextAlign.center,
+              style: TextStyle(
+                color:
+                AppColors.textTertiary,
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  // ============================================================
-  // EVENT ITEM
-  // ============================================================
-
-  Widget _eventItem({
-    required IconData icon,
-    required String title,
-    required String description,
-    required String time,
-  }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 4,
-      ),
-
-      leading: CircleAvatar(
-        child: Icon(icon),
-      ),
-
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-
-      subtitle: Text(
-        '$description\n$time',
-      ),
-
-      isThreeLine: true,
     );
   }
 }
