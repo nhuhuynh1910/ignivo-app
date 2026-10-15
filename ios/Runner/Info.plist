@@ -2,6 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Chụp ảnh đăng ký khuôn mặt khi người tham gia đã đồng ý.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Chọn ảnh đăng ký khuôn mặt khi người tham gia đã đồng ý.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>IGNIVO kết nối FireGuard trên mạng nội bộ để xem camera và sự cố.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

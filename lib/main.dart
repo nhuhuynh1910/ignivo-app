@@ -1,17 +1,10 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/auth/auth_wrapper.dart';
-import 'firebase_options.dart';
+import 'features/settings/edge_connection_page.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
   runApp(const IgnivoApp());
 }
 
@@ -24,7 +17,7 @@ class IgnivoApp extends StatelessWidget {
       title: 'IGNIVO',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const AuthWrapper(),
+      home: const EdgeConnectionPage(),
     );
   }
 }

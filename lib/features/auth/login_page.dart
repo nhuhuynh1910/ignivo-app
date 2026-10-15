@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'register_page.dart';
+import '../settings/edge_connection_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -74,11 +75,9 @@ class _LoginPageState extends State<LoginPage> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _login() async {
@@ -137,13 +136,9 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     try {
-      await _authService.sendPasswordResetEmail(
-        email: email,
-      );
+      await _authService.sendPasswordResetEmail(email: email);
 
-      _showMessage(
-        'Email đặt lại mật khẩu đã được gửi.',
-      );
+      _showMessage('Email đặt lại mật khẩu đã được gửi.');
     } on FirebaseAuthException catch (e) {
       _showMessage(_firebaseErrorMessage(e));
     }
@@ -156,10 +151,7 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 32,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Form(
               key: _formKey,
               child: Column(
@@ -252,20 +244,20 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _loading ? null : _login,
                       child: _loading
                           ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
                           : const Text(
-                        'Đăng nhập',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                              'Đăng nhập',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
 
@@ -278,9 +270,7 @@ class _LoginPageState extends State<LoginPage> {
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           'hoặc',
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
+                          style: TextStyle(color: AppColors.textTertiary),
                         ),
                       ),
                       Expanded(child: Divider()),
@@ -321,31 +311,38 @@ class _LoginPageState extends State<LoginPage> {
 
                   const SizedBox(height: 24),
 
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.sensors),
+                    label: const Text('Kết nối hệ thống Pi'),
+                    onPressed: _loading
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EdgeConnectionPage(),
+                            ),
+                          ),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
                         'Chưa có tài khoản? ',
-                        style: TextStyle(
-                          color: AppColors.textTertiary,
-                        ),
+                        style: TextStyle(color: AppColors.textTertiary),
                       ),
                       TextButton(
                         onPressed: _loading
                             ? null
                             : () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                              const RegisterPage(),
-                            ),
-                          );
-                        },
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const RegisterPage(),
+                                  ),
+                                );
+                              },
                         child: const Text(
                           'Tạo tài khoản',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],

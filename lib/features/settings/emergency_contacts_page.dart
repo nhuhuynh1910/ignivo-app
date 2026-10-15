@@ -1,0 +1,465 @@
+import 'package:flutter/material.dart';
+import '../../core/services/fireguard_api_service.dart';
+import '../../core/theme/app_theme.dart';
+
+class EmergencyContactsPage extends StatefulWidget {
+  const EmergencyContactsPage({super.key, this.api});
+  final FireguardApiService? api;
+
+  @override
+  State<EmergencyContactsPage> createState() => _EmergencyContactsPageState();
+}
+
+class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
+  late final _api = widget.api ?? FireguardApiService.instance;
+
+  bool _loading = false;
+  List<Map<String, dynamic>> _contacts = [];
+  String? _errorMessage;
+  bool _calling = false;
+
+  void _showError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_api.lastError ?? 'Thao tác không thành công.')),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchContacts();
+  }
+
+  Future<void> _fetchContacts() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final list = await _api.getContacts();
+      if (!mounted) return;
+      setState(() {
+        _contacts = list;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Không thể tải danh bạ từ FireGuard: $e';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleContact(Map<String, dynamic> contact) async {
+    final id = contact['id'] as int;
+    final currentEnabled =
+        contact['enabled'] == true || contact['enabled'] == 1;
+    final ok = await _api.updateContact(id, {'enabled': !currentEnabled});
+    if (ok) {
+      _fetchContacts();
+    } else {
+      _showError();
+    }
+  }
+
+  Future<void> _deleteContact(int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xoá'),
+        content: const Text(
+          'Bạn có chắc muốn xoá liên hệ khẩn cấp này khỏi danh sách gọi Stringee?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final ok = await _api.deleteContact(id);
+      if (ok) {
+        _fetchContacts();
+      } else {
+        _showError();
+      }
+    }
+  }
+
+  Future<void> _testCall(int id, String name) async {
+    if (_calling) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận gọi thử'),
+        content: Text(
+          'Gửi lệnh gọi thử tới $name. Có thể phát sinh cuộc gọi thật nếu Pi dùng Stringee.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Gọi thử'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _calling) return;
+    setState(() => _calling = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Đang gửi lệnh gọi thử nghiệm tới $name...')),
+    );
+    final ok = await _api.testCall(id);
+    if (!mounted) return;
+    setState(() => _calling = false);
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _api.lastCallProvider == 'mock'
+                ? 'Đã gọi giả lập (mock), không có cuộc gọi thật.'
+                : 'Nhà cung cấp đã nhận yêu cầu gọi thử.',
+          ),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_api.lastError ?? 'Không thể thực hiện cuộc gọi.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
+
+  void _showAddDialog() {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final relationCtrl = TextEditingController();
+    String kind = 'family';
+    int priority = 1;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          title: const Text(
+            'Thêm liên hệ khẩn cấp',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên người nhận (ví dụ: Mẹ, Bảo vệ)',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Số điện thoại (0912345678)',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: relationCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Quan hệ (bố, mẹ, bảo vệ toà nhà...)',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: kind,
+                  decoration: const InputDecoration(
+                    labelText: 'Nhóm người nhận',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'family',
+                      child: Text('Người thân (family)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'fire_dept',
+                      child: Text('PCCC / Bảo vệ toà nhà (fire_dept)'),
+                    ),
+                  ],
+                  onChanged: (v) => setDlgState(() => kind = v ?? 'family'),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<int>(
+                  initialValue: priority,
+                  decoration: const InputDecoration(
+                    labelText: 'Thứ tự ưu tiên gọi',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text('Ưu tiên 1 (Gọi trước)'),
+                    ),
+                    DropdownMenuItem(value: 2, child: Text('Ưu tiên 2')),
+                    DropdownMenuItem(value: 3, child: Text('Ưu tiên 3')),
+                  ],
+                  onChanged: (v) => setDlgState(() => priority = v ?? 1),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty ||
+                    phoneCtrl.text.trim().isEmpty) {
+                  return;
+                }
+                Navigator.pop(ctx);
+                final res = await _api.createContact(
+                  name: nameCtrl.text.trim(),
+                  phone: phoneCtrl.text.trim(),
+                  relation: relationCtrl.text.trim(),
+                  kind: kind,
+                  priority: priority,
+                );
+                if (res != null) {
+                  _fetchContacts();
+                } else {
+                  _showError();
+                }
+              },
+              child: const Text('Thêm'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundSoft,
+      appBar: AppBar(
+        title: const Text(
+          'Danh bạ khẩn cấp (Stringee)',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchContacts,
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        onPressed: _api.canConfigure ? _showAddDialog : null,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Thêm liên hệ',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_rounded,
+                      size: 48,
+                      color: AppColors.danger,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _fetchContacts,
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : _contacts.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.contacts_outlined,
+                    size: 54,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Chưa có số điện thoại khẩn cấp nào.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Bấm nút bên dưới để thêm người thân hoặc số cứu hoả.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+              itemCount: _contacts.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final c = _contacts[index];
+                final id = c['id'] as int;
+                final name = c['name']?.toString() ?? '';
+                final phone = c['phone']?.toString() ?? '';
+                final kind = c['kind']?.toString() ?? 'family';
+                final isEnabled = c['enabled'] == true || c['enabled'] == 1;
+
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.backgroundBlueSoft),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: kind == 'family'
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : AppColors.danger.withValues(alpha: 0.12),
+                        child: Icon(
+                          kind == 'family'
+                              ? Icons.family_restroom_rounded
+                              : Icons.local_fire_department_rounded,
+                          color: kind == 'family'
+                              ? AppColors.primary
+                              : AppColors.danger,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: kind == 'family'
+                                        ? Colors.blue.shade50
+                                        : Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    kind == 'family'
+                                        ? 'Người thân'
+                                        : 'PCCC/Bảo vệ',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: kind == 'family'
+                                          ? Colors.blue.shade700
+                                          : Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$phone ${c['relation'] != null && c['relation'].toString().isNotEmpty ? "• ${c['relation']}" : ""}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.phone_forwarded_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        tooltip: 'Gọi thử nghiệm',
+                        onPressed: _api.canConfigure && !_calling
+                            ? () => _testCall(id, name)
+                            : null,
+                      ),
+                      Switch(
+                        value: isEnabled,
+                        activeThumbColor: AppColors.primary,
+                        onChanged: _api.canConfigure
+                            ? (_) => _toggleContact(c)
+                            : null,
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                        onPressed: _api.canConfigure
+                            ? () => _deleteContact(id)
+                            : null,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}

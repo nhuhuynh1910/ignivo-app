@@ -19,6 +19,7 @@ class AppColors {
   // Backwards compatibility aliases
   static const Color primaryDark = deepBlue;
   static const Color primaryLight = Color(0xFF4DA6FF);
+  static const Color background = backgroundSoft;
 }
 
 class AppTheme {
@@ -30,14 +31,12 @@ class AppTheme {
         seedColor: AppColors.primary,
         primary: AppColors.primary,
         surface: Colors.white,
-        background: AppColors.backgroundSoft,
       ),
       scaffoldBackgroundColor: AppColors.backgroundSoft,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        scaffoldColorScheme: null,
         iconTheme: IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: TextStyle(
           color: AppColors.textPrimary,

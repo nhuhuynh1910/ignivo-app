@@ -2,19 +2,31 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/camera_stream_service.dart';
 import '../../core/theme/app_theme.dart';
+import 'mjpeg_stream_view.dart';
 
 class LiveViewWidget extends StatelessWidget {
   const LiveViewWidget({
     super.key,
     required this.state,
     this.snapshotUrl,
+    this.mjpegStreamUrl,
   });
 
   final StreamState state;
   final String? snapshotUrl;
+  final String? mjpegStreamUrl;
 
   @override
   Widget build(BuildContext context) {
+    // Nếu có luồng MJPEG trực tiếp từ FireGuard và camera online, phát MJPEG trực tiếp
+    if (mjpegStreamUrl != null && mjpegStreamUrl!.isNotEmpty && state == StreamState.live) {
+      return MjpegStreamView(
+        streamUrl: mjpegStreamUrl!,
+        width: double.infinity,
+        height: 220,
+      );
+    }
+
     return Container(
       width: double.infinity,
       height: 220,
@@ -33,20 +45,20 @@ class LiveViewWidget extends StatelessWidget {
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
               ),
 
             // State Overlay
             switch (state) {
               StreamState.connecting => Container(
-                color: Colors.black70,
+                color: Colors.black87,
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(color: Colors.white),
                     SizedBox(height: 12),
                     Text(
-                      'Đang kết nối WebRTC tới Raspberry Pi 5...',
+                      'Đang kết nối luồng camera tới FireGuard...',
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
@@ -54,14 +66,14 @@ class LiveViewWidget extends StatelessWidget {
               ),
 
               StreamState.reconnecting => Container(
-                color: Colors.black70,
+                color: Colors.black87,
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(color: AppColors.warning),
                     SizedBox(height: 12),
                     Text(
-                      'Đang kết nối lại luồng WebRTC...',
+                      'Đang kết nối lại luồng video...',
                       style: TextStyle(color: AppColors.warning, fontSize: 12),
                     ),
                   ],

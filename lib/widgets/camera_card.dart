@@ -53,7 +53,7 @@ class CameraCard extends StatelessWidget {
                           width: double.infinity,
                           height: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const _CardPlaceholder(),
+                          errorBuilder: (_, _, _) => const _CardPlaceholder(),
                         )
                       else
                         const _CardPlaceholder(),

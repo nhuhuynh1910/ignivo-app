@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../settings/edge_connection_page.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/alert_model.dart';
 
 class AlertDetailPage extends StatefulWidget {
-  const AlertDetailPage({
-    super.key,
-    required this.alert,
-  });
+  const AlertDetailPage({super.key, required this.alert});
 
   final AlertModel alert;
 
@@ -34,15 +32,18 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
       );
 
       if (!mounted) return;
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã xác nhận cảnh báo trên Firebase.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
       Navigator.of(context).pop();
     } catch (_) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể xác nhận cảnh báo.'),
-        ),
+        const SnackBar(content: Text('Không thể xác nhận cảnh báo.')),
       );
     } finally {
       if (mounted) {
@@ -91,11 +92,18 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.broken_image_rounded, color: Colors.white38, size: 40),
+                          Icon(
+                            Icons.broken_image_rounded,
+                            color: Colors.white38,
+                            size: 40,
+                          ),
                           SizedBox(height: 8),
                           Text(
                             'Không thể tải hình ảnh bằng chứng',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -121,9 +129,14 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _severityColor(alert.severity).withValues(alpha: 0.1),
+                        color: _severityColor(
+                          alert.severity,
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -137,7 +150,9 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
                     ),
                     if (alert.createdAt != null)
                       Text(
-                        DateFormat('dd/MM/yyyy HH:mm:ss').format(alert.createdAt!),
+                        DateFormat(
+                          'dd/MM/yyyy HH:mm:ss',
+                        ).format(alert.createdAt!),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textTertiary,
@@ -160,25 +175,13 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
 
                 const Divider(height: 28),
 
-                _InfoRow(
-                  title: 'Edge Box',
-                  value: alert.systemName,
-                ),
+                _InfoRow(title: 'Edge Box', value: alert.systemName),
 
-                _InfoRow(
-                  title: 'Khu vực phát hiện',
-                  value: alert.zoneName,
-                ),
+                _InfoRow(title: 'Khu vực phát hiện', value: alert.zoneName),
 
-                _InfoRow(
-                  title: 'Camera ghi nhận',
-                  value: alert.cameraName,
-                ),
+                _InfoRow(title: 'Camera ghi nhận', value: alert.cameraName),
 
-                _InfoRow(
-                  title: 'Loại sự kiện',
-                  value: alert.type,
-                ),
+                _InfoRow(title: 'Loại sự kiện', value: alert.type),
 
                 const SizedBox(height: 16),
 
@@ -201,7 +204,9 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    alert.message.isEmpty ? 'Hệ thống AI local trên Raspberry Pi 5 phát hiện nguy cơ bất thường.' : alert.message,
+                    alert.message.isEmpty
+                        ? 'Hệ thống AI local trên Raspberry Pi 5 phát hiện nguy cơ bất thường.'
+                        : alert.message,
                     style: const TextStyle(
                       fontSize: 13,
                       height: 1.5,
@@ -215,18 +220,47 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
 
           const SizedBox(height: 20),
 
-          if (!alert.acknowledged)
+          if (!alert.acknowledged) ...[
             SizedBox(
               height: 52,
               child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
                 onPressed: _loading ? null : _acknowledge,
                 icon: const Icon(Icons.check_circle_outline_rounded),
                 label: Text(
-                  _loading ? 'Đang xác nhận...' : 'Xác nhận đã xử lý sự cố',
+                  _loading ? 'Đang xử lý...' : 'Xác nhận cảnh báo Firebase',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _loading
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EdgeConnectionPage(),
+                        ),
+                      ),
+                icon: const Icon(
+                  Icons.cancel_outlined,
+                  color: AppColors.textSecondary,
+                ),
+                label: const Text(
+                  'Mở FireGuard để xử lý sự cố thiết bị',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -263,10 +297,7 @@ class _AlertDetailPageState extends State<AlertDetailPage> {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.title,
-    required this.value,
-  });
+  const _InfoRow({required this.title, required this.value});
 
   final String title;
   final String value;

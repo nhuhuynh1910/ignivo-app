@@ -1,0 +1,544 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import '../../core/services/fireguard_api_service.dart';
+import '../../core/services/fireguard_realtime_service.dart';
+import '../../core/services/incident_alert_coordinator.dart';
+import 'monitor_widgets.dart';
+
+String callStatusLabel(dynamic value) =>
+    const {
+      'requesting': 'Đang gửi yêu cầu',
+      'requested': 'Nhà cung cấp đã nhận yêu cầu',
+      'failed': 'Gọi thất bại',
+      'ringing': 'Đang đổ chuông',
+      'answered': 'Đã nghe máy',
+      'busy': 'Máy bận',
+      'completed': 'Cuộc gọi đã kết thúc',
+      'no_answer': 'Không trả lời',
+    }[value] ??
+    '$value';
+
+String incidentStatusLabel(dynamic status) =>
+    const {
+      'analyzing': 'Đang phân tích',
+      'ai_dismissed': 'AI nhận định không phải cháy',
+      'notifying': 'Đang gọi điện',
+      'notified': 'Đã kết thúc lượt gọi',
+      'acknowledged': 'Đã nhận xử lý',
+      'resolved': 'Đã xử lý',
+      'false_alarm': 'Báo nhầm',
+      'error': 'Lỗi xử lý',
+    }[status] ??
+    '$status';
+
+class FireguardIncidentPage extends StatefulWidget {
+  const FireguardIncidentPage({
+    super.key,
+    required this.incidentId,
+    this.api,
+    this.realtime,
+    this.coordinator,
+  });
+  final int incidentId;
+  final FireguardApiService? api;
+  final FireguardRealtimeService? realtime;
+  final IncidentAlertCoordinator? coordinator;
+  @override
+  State<FireguardIncidentPage> createState() => _FireguardIncidentPageState();
+}
+
+class _FireguardIncidentPageState extends State<FireguardIncidentPage>
+    with WidgetsBindingObserver {
+  late final _api = widget.api ?? FireguardApiService.instance;
+  StreamSubscription<FireguardEvent>? _events;
+  bool _loadQueued = false;
+  int _eventRevision = 0;
+  Map<String, dynamic>? _incident;
+  String? _error;
+  bool _busy = false, _fetching = false, _active = true;
+  Timer? _timer;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _events = widget.realtime?.events.listen((event) {
+      if (_active && event.incidentId == widget.incidentId) {
+        _eventRevision++;
+        _load();
+      }
+    });
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_active && !_busy && _api.authToken != null) _load();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _events?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _active = state == AppLifecycleState.resumed;
+    if (_active) _load();
+  }
+
+  Future<void> _load() async {
+    if (_fetching) {
+      _loadQueued = true;
+      return;
+    }
+    _fetching = true;
+    _loadQueued = false;
+    final revision = _eventRevision;
+    try {
+      final value = await _api.getIncidentDetail(widget.incidentId);
+      if (mounted && revision == _eventRevision) {
+        setState(() {
+          _incident = value;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      _fetching = false;
+      if (_loadQueued && mounted && _active && _api.authToken != null) {
+        _loadQueued = false;
+        unawaited(_load());
+      }
+    }
+  }
+
+  Future<void> _act(String action) async {
+    if (action != 'ack') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            action == 'resolve' ? 'Đóng sự cố?' : 'Xác nhận báo nhầm?',
+          ),
+          content: const Text(
+            'Sự cố sẽ được đóng và FireGuard dừng các cuộc gọi tiếp theo.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Quay lại'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    setState(() => _busy = true);
+    final id = widget.incidentId;
+    final ok = switch (action) {
+      'ack' => await _api.acknowledgeIncident(id),
+      'resolve' => await _api.resolveIncident(id),
+      _ => await _api.falseAlarmIncident(id),
+    };
+    if (ok) {
+      widget.coordinator?.stopAlert(incidentId: id);
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'FireGuard đã cập nhật sự cố. Các cuộc gọi tiếp theo sẽ dừng.'
+              : _api.lastError ?? 'Không thể cập nhật sự cố.',
+        ),
+      ),
+    );
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final incident = _incident;
+    final analysis = incident?['analysis'] as Map?;
+    final closed = ['resolved', 'false_alarm'].contains(incident?['status']);
+    final images = List<String>.from(incident?['images'] ?? []);
+    final analysisUrl = incident?['analysis_image_url'] as String?;
+    final imageName = analysisUrl != null
+        ? Uri.parse(analysisUrl).pathSegments.last
+        : (images.isEmpty ? null : images.first);
+    final coordinator = widget.coordinator;
+    final isAlarmActive = coordinator?.level == AlertLevel.urgent;
+    return Scaffold(
+      bottomNavigationBar: incident == null || closed
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isAlarmActive) ...[
+                      if (!coordinator!.isSilenced)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.tonalIcon(
+                              key: const Key('silence-alarm-button'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.amber.shade100,
+                                foregroundColor: Colors.brown.shade900,
+                              ),
+                              onPressed: () => setState(() => coordinator.silenceAlarm()),
+                              icon: const Icon(Icons.volume_off),
+                              label: const Text('Tắt còi trên điện thoại (Không nhận xử lý)'),
+                            ),
+                          ),
+                        )
+                      else
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.volume_mute, size: 16, color: Colors.black54),
+                              SizedBox(width: 4),
+                              Text(
+                                'Đã tắt chuông cảnh báo trên máy này',
+                                style: TextStyle(fontSize: 12, color: Colors.black54),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    FilledButton(
+                      onPressed:
+                          _busy ||
+                              _error != null ||
+                              incident['status'] == 'acknowledged'
+                          ? null
+                          : () => _act('ack'),
+                      child: const Text('Nhận xử lý • Dừng gọi tiếp'),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _busy || _error != null
+                                ? null
+                                : () => _act('resolve'),
+                            child: const Text('Đã xử lý xong'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: _busy || _error != null
+                              ? null
+                              : () => _act('false-alarm'),
+                          child: const Text('Báo nhầm'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      appBar: AppBar(
+        title: Text('Sự cố #${widget.incidentId}'),
+        actions: [
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (_error != null) Text('Không thể cập nhật. $_error'),
+          if (incident == null && _error == null)
+            const Center(child: CircularProgressIndicator()),
+          if (incident != null) ...[
+            Text(
+              incidentStatusLabel(incident['status']),
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            Text(
+              '${incident['trigger_type']} • ${incident['severity']} • ${incident['created_at']}',
+            ),
+            if (incident['is_simulation'] == true) const Text('SỰ CỐ GIẢ LẬP'),
+            const SizedBox(height: 16),
+            if (imageName != null)
+              GuardIncidentImage(
+                key: ValueKey(imageName),
+                incidentId: widget.incidentId,
+                name: imageName,
+                api: _api,
+              ),
+            const SizedBox(height: 16),
+            Text(
+              '${analysis?['summary_vi'] ?? incident['analysis_error'] ?? 'Chưa có phân tích AI.'}',
+            ),
+            if (analysis != null) ...[
+              const SizedBox(height: 12),
+              GuardBadge('Gemini · ${analysis['model'] ?? '—'}'),
+              if ((analysis['flammable_objects'] as List? ?? []).isNotEmpty)
+                GuardPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Vật dễ cháy',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      for (final object in analysis['flammable_objects'])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.local_fire_department_outlined,
+                          ),
+                          title: Text('${object['name']}'),
+                          subtitle: Text(
+                            '${object['distance'] ?? ''} · ${object['risk'] ?? ''}',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+            if (images.where((name) => name != imageName).isNotEmpty)
+              ExpansionTile(
+                key: const PageStorageKey('incident_evidence_images_tile'),
+                title: Text('Ảnh bằng chứng (${images.length})'),
+                children: [
+                  for (final name in images.where((name) => name != imageName))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: GuardIncidentImage(
+                        key: ValueKey(name),
+                        incidentId: widget.incidentId,
+                        name: name,
+                        api: _api,
+                      ),
+                    ),
+                ],
+              ),
+            if ('${incident['voice_message'] ?? ''}'.isNotEmpty)
+              ExpansionTile(
+                key: const PageStorageKey('incident_voice_message_tile'),
+                title: const Text('Nội dung cuộc gọi'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('${incident['voice_message']}'),
+                  ),
+                ],
+              ),
+            for (final action in analysis?['recommended_actions'] ?? [])
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text('$action'),
+              ),
+            const SizedBox(height: 16),
+            const Divider(),
+            Text(
+              'Lịch sử cuộc gọi',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            for (final call in incident['calls'] ?? [])
+              ListTile(
+                title: Text('${call['contact_name']} • ${call['phone']}'),
+                subtitle: Text(
+                  '${call['provider'] == 'mock' ? 'Giả lập — không gọi thật' : 'Cuộc gọi'} • ${callStatusLabel(call['status'])}${call['error'] == null ? '' : '\n${call['error']}'}',
+                ),
+              ),
+            if ((incident['calls'] as List? ?? []).isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('Chưa có cuộc gọi được ghi nhận.'),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class GuardIncidentImage extends StatefulWidget {
+  const GuardIncidentImage({
+    super.key,
+    required this.incidentId,
+    required this.name,
+    required this.api,
+  });
+
+  final int incidentId;
+  final String name;
+  final FireguardApiService api;
+
+  @override
+  State<GuardIncidentImage> createState() => _IncidentImageState();
+}
+
+class _IncidentImageState extends State<GuardIncidentImage> {
+  Uint8List? _bytes;
+  bool _loading = true;
+  String? _error;
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant GuardIncidentImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.incidentId != widget.incidentId ||
+        oldWidget.name != widget.name) {
+      _loadImage();
+    }
+  }
+
+  Future<void> _loadImage() async {
+    final gen = ++_generation;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final bytes = await widget.api.getIncidentImage(
+        widget.incidentId,
+        widget.name,
+      );
+      if (mounted && gen == _generation) {
+        setState(() {
+          _bytes = bytes;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted && gen == _generation) {
+        setState(() {
+          _error = '$e';
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  void _openFullscreen(BuildContext context) {
+    if (_bytes == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            title: Text('Ảnh bằng chứng: ${widget.name}'),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 5.0,
+              child: Image.memory(
+                _bytes!,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: Colors.black12,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('Đang tải ảnh bằng chứng...', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Card(
+        color: Colors.red.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.broken_image, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Không tải được ảnh: $_error',
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _loadImage,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Tải lại ảnh'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          GestureDetector(
+            onTap: () => _openFullscreen(context),
+            child: Image.memory(_bytes!, fit: BoxFit.contain),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.black.withValues(alpha: 0.65),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              ),
+              onPressed: () => _openFullscreen(context),
+              icon: const Icon(Icons.zoom_in, size: 16),
+              label: const Text('Xem phóng to', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

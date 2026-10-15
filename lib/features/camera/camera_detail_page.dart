@@ -7,10 +7,7 @@ import '../../widgets/ptz_control.dart';
 import 'live_view.dart';
 
 class CameraDetailPage extends StatefulWidget {
-  const CameraDetailPage({
-    super.key,
-    required this.camera,
-  });
+  const CameraDetailPage({super.key, required this.camera});
 
   final CameraModel camera;
 
@@ -37,7 +34,7 @@ class _CameraDetailPageState extends State<CameraDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // LIVE WEBRTC STREAMING VIEW
+          // LIVE AI STREAMING VIEW (FireGuard MJPEG)
           LiveViewWidget(
             state: camera.online ? _streamState : StreamState.offline,
             snapshotUrl: camera.snapshotUrl,
@@ -57,7 +54,9 @@ class _CameraDetailPageState extends State<CameraDetailPage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _ActionButton(
-                  icon: _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  icon: _isMuted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
                   label: _isMuted ? 'Âm thanh' : 'Bật',
                   enabled: camera.supportsMic,
                   onTap: () => setState(() => _isMuted = !_isMuted),
@@ -163,7 +162,9 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = enabled ? AppColors.textPrimary : AppColors.textTertiary.withValues(alpha: 0.4);
+    final color = enabled
+        ? AppColors.textPrimary
+        : AppColors.textTertiary.withValues(alpha: 0.4);
 
     return InkWell(
       onTap: enabled ? onTap : null,
@@ -176,7 +177,11 @@ class _ActionButton extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -196,8 +201,14 @@ class _DetailRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }

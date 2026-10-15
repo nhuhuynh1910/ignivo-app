@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../system/system_detail_page.dart';
+import 'edge_connection_page.dart';
+import 'emergency_contacts_page.dart';
+import 'emergency_location_page.dart';
 import 'personal_info_page.dart';
 import 'security_page.dart';
 
@@ -168,36 +172,53 @@ class SettingsPage extends StatelessWidget {
               _SettingsGroup(
                 children: [
                   _SettingsTile(
-                    icon:
-                    Icons.home_outlined,
-                    title:
-                    'Quản lý hệ thống',
-                    subtitle:
-                    'Nhà, cửa hàng và các hệ thống IGNIVO',
-                    onTap: () {},
+                    icon: Icons.memory_rounded,
+                    title: 'Quản lý thiết bị Edge Box',
+                    subtitle: 'Trạng thái Raspberry Pi 5 & Hailo-8L',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SystemDetailPage()),
+                      );
+                    },
                   ),
 
                   const _SettingsDivider(),
 
                   _SettingsTile(
-                    icon: Icons
-                        .contacts_outlined,
-                    title:
-                    'Liên hệ khẩn cấp',
-                    subtitle:
-                    'Quản lý người nhận cảnh báo khẩn cấp',
-                    onTap: () {},
+                    icon: Icons.lan_rounded,
+                    title: 'Kết nối hệ thống Pi',
+                    subtitle: 'FireEye, FireGuard và kết nối Tailscale',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EdgeConnectionPage()),
+                      );
+                    },
                   ),
 
                   const _SettingsDivider(),
 
                   _SettingsTile(
-                    icon: Icons
-                        .notifications_none_rounded,
-                    title: 'Thông báo',
-                    subtitle:
-                    'Thiết lập cảnh báo và thông báo',
-                    onTap: () {},
+                    icon: Icons.contacts_outlined,
+                    title: 'Liên hệ khẩn cấp (Stringee)',
+                    subtitle: 'Quản lý người thân & số PCCC gọi tự động',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EmergencyContactsPage()),
+                      );
+                    },
+                  ),
+
+                  const _SettingsDivider(),
+
+                  _SettingsTile(
+                    icon: Icons.location_on_outlined,
+                    title: 'Vị trí & Địa chỉ khẩn cấp',
+                    subtitle: 'Địa chỉ AI đọc qua điện thoại khi có cháy',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EmergencyLocationPage()),
+                      );
+                    },
                   ),
                 ],
               ),
