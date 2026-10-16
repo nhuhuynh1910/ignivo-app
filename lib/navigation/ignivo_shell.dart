@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/system_session_controller.dart';
+import '../features/activity/guard_activity_page.dart';
 import '../features/camera/camera_live_page.dart';
 import '../features/camera/guard_cameras_page.dart';
 import '../features/fireguard/guard_home_page.dart';
@@ -145,7 +146,11 @@ class _IgnivoShellState extends State<IgnivoShell>
           sessionController: widget.sessionController,
           onOpenLiveView: _openCameraLive,
         ),
-        2 => const Center(child: Text('Hoạt động')),
+        2 => GuardActivityPage(
+          monitoringController: _monitoring,
+          sessionController: widget.sessionController,
+          onOpenIncident: _openIncident,
+        ),
         3 => const Center(child: Text('Cài đặt')),
         _ => const SizedBox.shrink(),
       },
