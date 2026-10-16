@@ -69,8 +69,8 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
       await _eye.init();
       if (!mounted) return;
 
-      _eyeUrl.text = _profile.eyeUrl;
-      _guardUrl.text = _profile.guardUrl;
+      _eyeUrl.text = _profile.eyeUrl.isNotEmpty ? _profile.eyeUrl : PiConnectionProfile.defaultEyeUrl;
+      _guardUrl.text = _profile.guardUrl.isNotEmpty ? _profile.guardUrl : PiConnectionProfile.defaultGuardUrl;
 
       if (_eye.authenticated && _guard.currentUser != null) {
         _flowState = ConnectionFlowState.ready;

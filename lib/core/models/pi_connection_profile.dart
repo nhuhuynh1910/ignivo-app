@@ -8,11 +8,13 @@ class PiConnectionProfile {
     required this.piHost,
     required this.eyeUrl,
     required this.guardUrl,
+    this.isConfigured = false,
+    this.deviceId,
     this.isCustomAdvanced = false,
-    this.version = 2,
+    this.version = 3,
   });
 
-  static const defaultSystemName = 'Hệ thống IGNIVO Pi';
+  static const defaultSystemName = 'Hệ thống IGNIVO';
   static const defaultPiHost = '100.95.189.60';
   static const defaultEyeUrl = 'http://100.95.189.60:8000';
   static const defaultGuardUrl = 'http://100.95.189.60:8080';
@@ -24,16 +26,31 @@ class PiConnectionProfile {
   final String piHost;
   final String eyeUrl;
   final String guardUrl;
+  final bool isConfigured;
+  final String? deviceId;
   final bool isCustomAdvanced;
   final int version;
+
+  static PiConnectionProfile createUnconfigured() => const PiConnectionProfile(
+    systemName: defaultSystemName,
+    piHost: '',
+    eyeUrl: '',
+    guardUrl: '',
+    isConfigured: false,
+    deviceId: null,
+    isCustomAdvanced: false,
+    version: 3,
+  );
 
   static PiConnectionProfile createDefault() => const PiConnectionProfile(
     systemName: defaultSystemName,
     piHost: defaultPiHost,
     eyeUrl: defaultEyeUrl,
     guardUrl: defaultGuardUrl,
+    isConfigured: true,
+    deviceId: null,
     isCustomAdvanced: false,
-    version: 2,
+    version: 3,
   );
 
   static PiConnectionProfile fromHost(
@@ -43,7 +60,7 @@ class PiConnectionProfile {
   }) {
     var input = hostInput.trim();
     if (input.isEmpty) {
-      return createDefault();
+      return createUnconfigured();
     }
     String scheme = defaultScheme;
     if (input.contains('://')) {
@@ -71,7 +88,7 @@ class PiConnectionProfile {
       }
     }
     if (host.isEmpty) {
-      host = defaultPiHost;
+      return createUnconfigured();
     }
 
     final eye = Uri(scheme: scheme, host: host, port: 8000).toString();
@@ -84,8 +101,40 @@ class PiConnectionProfile {
       piHost: host,
       eyeUrl: eye,
       guardUrl: guard,
+      isConfigured: true,
+      deviceId: null,
       isCustomAdvanced: false,
-      version: 2,
+      version: 3,
+    );
+  }
+
+  static PiConnectionProfile fromGuardUrl(
+    String urlInput, {
+    String? systemName,
+    String? deviceId,
+  }) {
+    final normGuard = FireguardApiService.normalizeBaseUrl(urlInput);
+    final guardUri = Uri.parse(normGuard);
+    final scheme = guardUri.scheme;
+    final host = guardUri.host;
+    final eyePort = guardUri.port == 8080 ? 8000 : (guardUri.hasPort ? guardUri.port : 8000);
+    final eye = Uri(scheme: scheme, host: host, port: eyePort).toString();
+
+    final isStandard =
+        guardUri.port == 8080 &&
+        (scheme == 'http' || scheme == 'https');
+
+    return PiConnectionProfile(
+      systemName: (systemName?.trim().isNotEmpty ?? false)
+          ? systemName!.trim()
+          : defaultSystemName,
+      piHost: host,
+      eyeUrl: eye,
+      guardUrl: normGuard,
+      isConfigured: true,
+      deviceId: deviceId,
+      isCustomAdvanced: !isStandard,
+      version: 3,
     );
   }
 
@@ -93,6 +142,7 @@ class PiConnectionProfile {
     required String systemName,
     required String eyeUrl,
     required String guardUrl,
+    String? deviceId,
   }) {
     final normEye = FireguardApiService.normalizeBaseUrl(eyeUrl);
     final normGuard = FireguardApiService.normalizeBaseUrl(guardUrl);
@@ -110,32 +160,65 @@ class PiConnectionProfile {
       systemName: systemName.trim().isNotEmpty
           ? systemName.trim()
           : defaultSystemName,
-      piHost: eyeUri.host,
+      piHost: guardUri.host.isNotEmpty ? guardUri.host : eyeUri.host,
       eyeUrl: normEye,
       guardUrl: normGuard,
+      isConfigured: normGuard.isNotEmpty,
+      deviceId: deviceId,
       isCustomAdvanced: !isStandard,
-      version: 2,
+      version: 3,
     );
   }
+
+  PiConnectionProfile copyWith({
+    String? systemName,
+    String? piHost,
+    String? eyeUrl,
+    String? guardUrl,
+    bool? isConfigured,
+    String? deviceId,
+    bool? isCustomAdvanced,
+    int? version,
+  }) => PiConnectionProfile(
+    systemName: systemName ?? this.systemName,
+    piHost: piHost ?? this.piHost,
+    eyeUrl: eyeUrl ?? this.eyeUrl,
+    guardUrl: guardUrl ?? this.guardUrl,
+    isConfigured: isConfigured ?? this.isConfigured,
+    deviceId: deviceId ?? this.deviceId,
+    isCustomAdvanced: isCustomAdvanced ?? this.isCustomAdvanced,
+    version: version ?? this.version,
+  );
 
   Map<String, dynamic> toJson() => {
     'systemName': systemName,
     'piHost': piHost,
     'eyeUrl': eyeUrl,
     'guardUrl': guardUrl,
+    'isConfigured': isConfigured,
+    'deviceId': deviceId,
     'isCustomAdvanced': isCustomAdvanced,
     'version': version,
   };
 
-  factory PiConnectionProfile.fromJson(Map<String, dynamic> json) =>
-      PiConnectionProfile(
-        systemName: json['systemName']?.toString() ?? defaultSystemName,
-        piHost: json['piHost']?.toString() ?? defaultPiHost,
-        eyeUrl: json['eyeUrl']?.toString() ?? defaultEyeUrl,
-        guardUrl: json['guardUrl']?.toString() ?? defaultGuardUrl,
-        isCustomAdvanced: json['isCustomAdvanced'] == true,
-        version: json['version'] as int? ?? 2,
-      );
+  factory PiConnectionProfile.fromJson(Map<String, dynamic> json) {
+    final guardUrl = json['guardUrl']?.toString() ?? '';
+    final hasGuard = guardUrl.trim().isNotEmpty;
+    final isConfigured = json.containsKey('isConfigured')
+        ? json['isConfigured'] == true
+        : hasGuard;
+
+    return PiConnectionProfile(
+      systemName: json['systemName']?.toString() ?? defaultSystemName,
+      piHost: json['piHost']?.toString() ?? defaultPiHost,
+      eyeUrl: json['eyeUrl']?.toString() ?? defaultEyeUrl,
+      guardUrl: guardUrl.isNotEmpty ? guardUrl : defaultGuardUrl,
+      isConfigured: isConfigured,
+      deviceId: json['deviceId']?.toString(),
+      isCustomAdvanced: json['isCustomAdvanced'] == true,
+      version: json['version'] as int? ?? 3,
+    );
+  }
 
   static Future<PiConnectionProfile> load(SharedPreferences prefs) async {
     final rawJson = prefs.getString(prefProfileKey);
@@ -145,46 +228,28 @@ class PiConnectionProfile {
         if (decoded is Map<String, dynamic>) {
           return PiConnectionProfile.fromJson(decoded);
         }
-      } catch (_) {}
+      } catch (_) {
+        // Corrupt configuration requires setup, do not silently fallback to mock IP
+        return createUnconfigured();
+      }
     }
 
     // Migration from legacy single URL or base URL
     final legacyGuard = prefs.getString(prefLegacyGuardKey);
-    if (legacyGuard != null) {
+    if (legacyGuard != null && legacyGuard.trim().isNotEmpty) {
       try {
-        final normGuard = FireguardApiService.normalizeBaseUrl(legacyGuard);
-        final guardUri = Uri.parse(normGuard);
-        if (guardUri.port == 8080) {
-          final normEye = guardUri.replace(port: 8000).toString();
-          return PiConnectionProfile(
-            systemName: defaultSystemName,
-            piHost: guardUri.host,
-            eyeUrl: normEye,
-            guardUrl: normGuard,
-            isCustomAdvanced: false,
-            version: 2,
-          );
-        } else {
-          // Custom port
-          final normEye = guardUri.replace(port: 8000).toString();
-          return PiConnectionProfile(
-            systemName: defaultSystemName,
-            piHost: guardUri.host,
-            eyeUrl: normEye,
-            guardUrl: normGuard,
-            isCustomAdvanced: true,
-            version: 2,
-          );
-        }
+        return fromGuardUrl(legacyGuard, systemName: defaultSystemName);
       } catch (_) {}
     }
 
-    return createDefault();
+    // Fresh install: unconfigured
+    return createUnconfigured();
   }
 
   Future<void> save(SharedPreferences prefs) async {
     await prefs.setString(prefProfileKey, jsonEncode(toJson()));
-    // Keep legacy key synced for background services
-    await prefs.setString(prefLegacyGuardKey, guardUrl);
+    if (guardUrl.isNotEmpty) {
+      await prefs.setString(prefLegacyGuardKey, guardUrl);
+    }
   }
 }
