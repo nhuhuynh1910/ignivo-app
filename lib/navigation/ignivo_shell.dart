@@ -7,6 +7,7 @@ import '../features/camera/guard_cameras_page.dart';
 import '../features/fireguard/guard_home_page.dart';
 import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
+import '../features/settings/guard_settings_page.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
@@ -151,7 +152,11 @@ class _IgnivoShellState extends State<IgnivoShell>
           sessionController: widget.sessionController,
           onOpenIncident: _openIncident,
         ),
-        3 => const Center(child: Text('Cài đặt')),
+        3 => GuardSettingsPage(
+          sessionController: widget.sessionController,
+          monitoringController: _monitoring,
+          onOpenDiagnostics: _openDiagnostics,
+        ),
         _ => const SizedBox.shrink(),
       },
       bottomNavigationBar: NavigationBar(

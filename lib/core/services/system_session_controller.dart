@@ -159,6 +159,21 @@ class SystemSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> disconnect([SharedPreferences? prefs]) async {
+    _sessionRevision++;
+    try {
+      await api.logout();
+    } catch (_) {}
+    await api.setAuthToken(null);
+    _currentUser = null;
+    _profile = PiConnectionProfile.createUnconfigured();
+    final sp = prefs ?? await SharedPreferences.getInstance();
+    await _profile.save(sp);
+    _status = SessionStatus.unconfigured;
+    _lastError = null;
+    notifyListeners();
+  }
+
   Future<void> updateProfile(
     PiConnectionProfile newProfile,
     SharedPreferences prefs,
