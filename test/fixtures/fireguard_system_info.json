@@ -1,0 +1,7 @@
+{
+  "hostname": "ignivo-pi5",
+  "device_id": "pi5-edge-sn-7890",
+  "cpu_temp_c": 48.5,
+  "uptime_s": 128450,
+  "version": "1.0.0"
+}

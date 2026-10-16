@@ -1,43 +1,48 @@
-# Tương thích IGNIVO Mobile với Pi hiện hữu
+# Tương thích IGNIVO Mobile với FireGuard Pi
 
-Cập nhật: 15/10/2026. Chỉ thay đổi app; không sửa, deploy, restart hoặc thay cấu hình backend.
+Cập nhật: 16/10/2026. Áp dụng cho luồng phát hành FireGuard-First Mobile UX. Chỉ thay đổi app; không sửa, deploy, restart hoặc thay cấu hình backend Pi.
 
-## Bằng chứng và giới hạn
+## 1. Ranh giới và Nguồn nghiệp vụ Duy nhất
 
-Đã đọc qua HTTP từ Pi cấu hình `100.95.189.60`:
-- FireGuard `:8080/api/v1/emergency/health`: HTTP 200.
-- FireEye `:8000/openapi.json` và FireGuard `:8080/openapi.json`: HTTP 200.
-- Schema công khai không chứa token hoặc thông tin xác thực. Không đăng nhập, gọi thử, tạo sự cố, quay camera hay sửa dữ liệu Pi trong lần kiểm tra này.
-- Đây là kiểm chứng endpoint công khai, không phải nghiệm thu API có đăng nhập hoặc thiết bị thật end-to-end. Fixture/unit tests không thay thế kiểm tra Pi.
+- **FireGuard (`/api/v1/emergency`)** là nguồn nghiệp vụ và xác thực duy nhất mà app di động gọi trực tiếp.
+- **FireEye (`:8000`)** đóng vai trò hệ thống xác thực đứng sau proxy FireGuard. App di động không gọi trực tiếp cổng 8000 trong luồng phát hành.
+- **Chính sách phiên:** Token chỉ giữ trong RAM (bộ nhớ tạm), không lưu mật khẩu hoặc token vào `SharedPreferences`. Khi app khởi động lạnh (cold start) hoặc token bị từ chối, yêu cầu đăng nhập lại.
+- **Hợp đồng xác thực phiên:** Phiên chỉ được coi là hợp lệ (`isAuthenticated == true`) sau khi token được xác nhận thành công qua `GET /api/v1/emergency/auth/me`.
 
-## Hợp đồng được app sử dụng
+---
 
-| Chức năng | Bằng chứng / hợp đồng | Hành vi app |
-|---|---|---|
-| Login | Pi công bố POST `/api/auth/login`; backend local trả JSON token/refresh_token | Một phiên dùng chung, chưa nghiệm thu đăng nhập Pi bằng tài khoản thật |
-| Refresh | Pi công bố POST `/api/auth/refresh` không có schema body. Backend local đọc cookie `refresh_token`, trả cookie `access_token` và JSON success | Gửi cookie và JSON đến đúng auth origin, không follow redirect; đọc token từ JSON hoặc Set-Cookie; kiểm tra `/api/auth/me` trước khi thay token |
-| Refresh bị backend từ chối | Backend local tạo access token refresh với jti mới; cần nghiệm thu session được server chấp nhận | Nếu `/me` trả 401, xóa phiên và yêu cầu đăng nhập lại; không sửa hoặc giả lập JWT ở app |
-| Danh sách/chi tiết sự cố | Pi công bố GET `/incidents`, `/incidents/active`, `/incidents/{incident_id}` dưới `/api/v1/emergency` | Merge danh sách giới hạn; đọc chi tiết ID đang theo dõi nếu vắng mặt; không suy diễn vắng mặt = đã đóng |
-| ACK/resolve/false alarm | Pi công bố các POST tương ứng | Chỉ thực hiện khi người dùng thao tác; ACK khác với kết thúc và tắt âm |
-| Camera | Pi công bố cameras, snapshot, stream | Dùng MJPEG/ảnh API hiện có; không tuyên bố WebRTC hoặc event clip |
-| PTZ có xác minh binding | OpenAPI Pi **không công bố** `/api/integration/camera` hoặc `/api/integration/ptz` | 404/501 chuyển thành unsupported, khóa điều khiển; không fallback sang lệnh PTZ legacy |
-| PTZ legacy | Pi công bố `/api/camera/left`, right, up, down, stop... | Không dùng thay thế endpoint binding vì chưa xác minh camera đích và cơ chế bảo vệ |
-| Notification registration | OpenAPI Pi **không công bố** `/notification-devices` | Push chưa bật. Logout không tạo installation ID mới; đăng ký cũ nếu có được thử thu hồi có timeout, không hứa đã thu hồi khi lỗi |
-| Gọi điện | Pi có endpoint test/call, escalate và settings/escalation | Đã bỏ nút gọi thử và lối vào sửa quy tắc gọi PCCC khỏi luồng mobile chính. Các quy tắc tự động trên Pi không thay đổi |
-| Khuôn mặt | Pi công bố faces/register, register-camera, people; không công bố DELETE people/{id} | Luồng chỉnh sửa/xóa và dữ liệu consent còn cần đối chiếu phiên bản Pi; không ghi toàn bộ chức năng đã tương thích |
+## 2. Bảng Hợp đồng API FireGuard
 
-Prefix FireGuard: `/api/v1/emergency`. WebSocket, quyền từng endpoint, response có đăng nhập và ảnh/stream thật còn cần phiên kiểm thử phù hợp; OpenAPI không đủ chứng minh hành vi thực thi.
+| Chức năng | Endpoint FireGuard | Request Body / Params | Response & Hành vi App |
+|---|---|---|---|
+| **Health Check** | `GET /api/v1/emergency/health` | Không | HTTP 200 `{"status":"ok","service":"fireguard"}`. Dùng để kiểm tra kết nối Pi ở màn hình thiết lập. |
+| **System Info** | `GET /api/v1/emergency/system/info` | Bearer token | `{"hostname": "...", "device_id": "...", "cpu_temp_c": ...}`. Lấy và lưu `deviceId` vào connection profile. |
+| **System Status** | `GET /api/v1/emergency/status` | Bearer token | `{"vision": {"ready": true, "total_ai_fps": ...}, ...}`. Lấy trạng thái giám sát AI, Gemini, Stringee. |
+| **Đăng nhập Proxy** | `POST /api/v1/emergency/auth/login` | JSON `{phone_number, secret_key, system_secret_key, device_name}` | Trả về `{token, user}`. Lỗi 401 giữ nguyên message chi tiết ("Sai số điện thoại hoặc mật khẩu"), không kích hoạt renew callback. Lỗi 503 báo không kết nối được FireEye. |
+| **Xác thực Phiên** | `GET /api/v1/emergency/auth/me` | Header `Authorization: Bearer <token>` | Trả về thông tin `{id, username, phone_number, full_name, role}`. Nếu 401 $\rightarrow$ xóa token và yêu cầu đăng nhập lại. |
+| **Đăng xuất Proxy** | `POST /api/v1/emergency/auth/logout` | Header `Authorization: Bearer <token>` | Trả về `{ok: true}`. Luôn xóa token cục bộ và dừng toàn bộ kết nối WebSocket/stream/polling. |
+| **Danh sách Camera** | `GET /api/v1/emergency/cameras` | Bearer token | Danh sách camera `{id, name, area, enabled, detect_enabled, ...}`. |
+| **Cập nhật Camera** | `PUT /api/v1/emergency/cameras/{id}` | JSON `CameraUpdate` | Chỉ cho phép OWNER/ADMIN. Chỉ gửi các trường thay đổi (tên, khu vực, detect_enabled, ai_fps). |
+| **Live Stream** | `GET /api/v1/emergency/cameras/{id}/stream` | Header `Authorization: Bearer <token>` | Luồng MJPEG. Dừng ngay khi rời màn hình, đổi tab, route bị che hoặc app vào nền. |
+| **Snapshot Camera** | `GET /api/v1/emergency/cameras/{id}/snapshot` | Header `Authorization: Bearer <token>` | Ảnh JPEG gần nhất, dùng cho thumbnail Trang chủ và danh sách Camera. |
+| **Danh sách Sự cố** | `GET /api/v1/emergency/incidents` | Query `limit=50&status=...` | Danh sách sự cố gần nhất. App merge danh sách và không coi vắng mặt là sự cố đã đóng. |
+| **Chi tiết Sự cố** | `GET /api/v1/emergency/incidents/{id}` | Bearer token | Chi tiết sự cố, ảnh phân tích và lịch sử cuộc gọi. Đăng ký ID xem chi tiết vào polling chung. |
+| **Ảnh Sự cố** | `GET /api/v1/emergency/incidents/{id}/images/{name}` | Header `Authorization: Bearer <token>` | Ảnh JPEG bằng chứng. Không đưa token vào query string. |
+| **Tiếp nhận Xử lý (ACK)** | `POST /api/v1/emergency/incidents/{id}/ack` | JSON `{"note": "..."}` | Cho phép mọi role hợp lệ (USER, ADMIN, OWNER). Dừng các lượt gọi tự động tiếp theo, sự cố vẫn mở. |
+| **Đóng Sự cố (Resolve)** | `POST /api/v1/emergency/incidents/{id}/resolve` | JSON `{"note": "..."}` | Đã xử lý xong hỏa hoạn, đóng sự cố. Trả 409 nếu sự cố đã đóng trước đó. |
+| **Báo nhầm (False Alarm)**| `POST /api/v1/emergency/incidents/{id}/false-alarm` | JSON `{"note": "..."}` | Đóng sự cố và ghi nhận báo nhầm. |
+| **Danh bạ Khẩn cấp** | `GET /api/v1/emergency/contacts` | Bearer token | Danh sách người thân và PCCC. Mọi vai trò đều được xem. |
+| **Thêm Người liên hệ** | `POST /api/v1/emergency/contacts` | JSON `ContactIn` | Chỉ OWNER/ADMIN. USER bị chặn trên UI (tránh nhận lỗi 403). |
+| **Sửa/Xóa Liên hệ** | `PUT/DELETE /api/v1/emergency/contacts/{id}`| JSON / ID | Chỉ OWNER/ADMIN. |
+| **Địa chỉ Khẩn cấp** | `PUT /api/v1/emergency/settings/location` | JSON `LocationSettings` đầy đủ | Chỉ OWNER/ADMIN. Phải gửi đầy đủ object location. |
+| **WebSocket Realtime** | `GET /api/v1/emergency/ws?token=...` | Query `token` | Cập nhật sự cố thời gian thực (`incident.created`, `incident.updated`, `incident.closed`). URL WS không ghi log. |
 
-## Quy tắc cảnh báo mobile
+---
 
-- Giữ mốc `updated_at` kể cả khi ACK đã xóa sự cố khỏi tập đang phát còi. Bản cập nhật cũ không được mở lại âm thanh; tăng mức sau ACK cần mốc mới hơn.
-- Sự cố ưu tiên hiển thị và sự cố đang phát âm được chọn riêng. Tắt âm xử lý sự cố còn phát âm, không mắc ở sự cố critical đã im lặng.
-- Watchdog giới hạn toàn phiên âm thanh của các sự cố đồng thời; silence không gửi ACK.
-- Polling chỉ áp dụng sau khi kiểm tra generation sự kiện, phiên, origin và foreground. Resume giữ im lặng đến khi đồng bộ mới thành công.
-- Snapshot giới hạn được merge. Các ID đang theo dõi nhưng không có trong snapshot được đọc chi tiết; lỗi mạng không được coi là kết thúc.
-- `ai_dismissed` là nhận định bổ sung, có thể phân tích lại. App không thay đổi logic gọi của backend.
-- Không cam kết thứ tự tuyệt đối nếu backend không cung cấp timestamp/revision đáng tin cậy. Cần kiểm chứng timestamp và các trường hợp bằng nhau trên Pi.
+## 3. Danh mục Mã Legacy Cách ly khỏi Luồng Phát hành
 
-## Trạng thái bàn giao
+Các thành phần sau được giữ nguyên trong kho mã nguồn nhưng cách ly hoàn toàn khỏi luồng khởi động (`main.dart` $\rightarrow$ `AppEntryGate` $\rightarrow$ `IgnivoShell`):
 
-Xem `MOBILE_ONLY_VERIFICATION.md` để biết kết quả test/analyzer/build của lần sửa hiện tại. Chưa nghiệm thu âm thanh, rung, DND và thao tác xử lý sự cố trên điện thoại thật; chưa khẳng định toàn bộ kế hoạch mobile-only hoàn tất.
+1. **Firebase Services:** `auth_service.dart`, `firestore_service.dart`, `realtime_database_service.dart`, `main_navigation.dart`, `features/auth/auth_wrapper.dart`.
+2. **FireEye Services trực tiếp:** `fireeye_api_service.dart` (và cơ chế tự động cài refresh callback vào FireGuard cũ).
+3. **Tính năng không thuộc phạm vi FireGuard:** Điều khiển PTZ (`ptz_control.dart`), đăng ký khuôn mặt (`people_page.dart`), sự kiện FireEye (`eye_events_page.dart`), form tạo mới camera trực tiếp trên mobile (`camera_editor_page.dart` ở chế độ tạo mới).

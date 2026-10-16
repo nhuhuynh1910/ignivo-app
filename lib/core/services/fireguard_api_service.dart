@@ -151,24 +151,26 @@ class FireguardApiService {
           /* Preserve the HTTP status for non-JSON responses. */
         }
         if (response.statusCode == 401) {
-          if (!retried &&
-              (_authToken != token ||
-                  await (renewSession?.call() ?? Future.value(false)))) {
-            return _request(
-              method,
-              path,
-              body: body,
-              query: query,
-              retried: true,
-            );
+          if (path != '/auth/login') {
+            if (!retried &&
+                (_authToken != token ||
+                    await (renewSession?.call() ?? Future.value(false)))) {
+              return _request(
+                method,
+                path,
+                body: body,
+                query: query,
+                retried: true,
+              );
+            }
+            if (_authToken == token) {
+              _authToken = null;
+              currentUser = null;
+              _sessionChanges.add(null);
+            }
+            message =
+                'Phiên FireGuard hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại bằng tài khoản FireEye.';
           }
-          if (_authToken == token) {
-            _authToken = null;
-            currentUser = null;
-            _sessionChanges.add(null);
-          }
-          message =
-              'Phiên FireGuard hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại bằng tài khoản FireEye.';
         }
         throw FireguardException(message, response.statusCode);
       }
@@ -250,6 +252,14 @@ class FireguardApiService {
       return health['status'] == 'ok' && health['service'] == 'fireguard';
     } on FireguardException {
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getSystemInfo() async {
+    try {
+      return await _map('/system/info');
+    } on FireguardException {
+      return null;
     }
   }
 

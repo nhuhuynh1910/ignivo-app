@@ -121,5 +121,111 @@ void main() {
       expect(IncidentPresentationHelper.severityLabel(null), 'Đang đánh giá mức độ');
       expect(incidentStatusLabel(null), 'null');
     });
+
+    test('parses fireguard_auth_login and fireguard_auth_me fixtures correctly', () async {
+      final loginFile = File('test/fixtures/fireguard_auth_login.json');
+      final meFile = File('test/fixtures/fireguard_auth_me.json');
+      expect(loginFile.existsSync(), isTrue);
+      expect(meFile.existsSync(), isTrue);
+
+      final loginJson = jsonDecode(loginFile.readAsStringSync()) as Map<String, dynamic>;
+      final meJson = jsonDecode(meFile.readAsStringSync()) as Map<String, dynamic>;
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/login')) {
+            expect(r.method, 'POST');
+            final body = jsonDecode(r.body) as Map<String, dynamic>;
+            expect(body['phone_number'], '0912345678');
+            expect(body['secret_key'], 'secret123');
+            expect(body['system_secret_key'], 'syskey456');
+            return jsonResp(loginJson);
+          }
+          if (r.url.path.endsWith('/auth/me')) {
+            expect(r.headers['authorization'], 'Bearer mock-fireguard-jwt-token-xyz123');
+            return jsonResp(meJson);
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      final success = await api.login(
+        phoneNumber: '0912345678',
+        secretKey: 'secret123',
+        systemSecretKey: 'syskey456',
+      );
+
+      expect(success, isTrue);
+      expect(api.authToken, 'mock-fireguard-jwt-token-xyz123');
+      expect(api.currentUser, isNotNull);
+      expect(api.currentUser!['role'], 'OWNER');
+      expect(api.currentUser!['full_name'], 'Nguyễn Văn A');
+    });
+
+    test('parses fireguard_system_info fixture with device_id', () async {
+      final sysFile = File('test/fixtures/fireguard_system_info.json');
+      expect(sysFile.existsSync(), isTrue);
+      final sysJson = jsonDecode(sysFile.readAsStringSync()) as Map<String, dynamic>;
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/system/info')) {
+            return jsonResp(sysJson);
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+      await api.setAuthToken('mock-token');
+
+      final info = await api.getSystemInfo();
+      expect(info, isNotNull);
+      expect(info!['hostname'], 'ignivo-pi5');
+      expect(info['device_id'], 'pi5-edge-sn-7890');
+    });
+
+    test('handles 401, 403, and 503 error fixtures predictably', () async {
+      final err401 = jsonDecode(File('test/fixtures/fireguard_error_401.json').readAsStringSync());
+      final err403 = jsonDecode(File('test/fixtures/fireguard_error_403.json').readAsStringSync());
+      final err503 = jsonDecode(File('test/fixtures/fireguard_error_503.json').readAsStringSync());
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/login')) {
+            return jsonResp(err401, 401);
+          }
+          if (r.url.path.endsWith('/contacts') && r.method == 'POST') {
+            return jsonResp(err403, 403);
+          }
+          if (r.url.path.endsWith('/system/info')) {
+            return jsonResp({'hostname': 'pi'});
+          }
+          if (r.url.path.endsWith('/status')) {
+            return jsonResp(err503, 503);
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      // Login 401 returns false
+      final loginOk = await api.login(
+        phoneNumber: '0912345678',
+        secretKey: 'wrong',
+        systemSecretKey: 'wrong',
+      );
+      expect(loginOk, isFalse);
+      expect(api.lastError, contains('Sai số điện thoại'));
+
+      // Protected 403 returns null and sets lastError with backend detail
+      await api.setAuthToken('token');
+      final contact = await api.createContact(name: 'Test', phone: '0912345678');
+      expect(contact, isNull);
+      expect(api.lastError, contains('Không có quyền'));
+
+      // Status 503 returns null and sets lastError with 503 detail
+      final status = await api.getSystemStatus();
+      expect(status, isNull);
+      expect(api.lastError, contains('Không kết nối được FireEye'));
+    });
   });
 }
+
