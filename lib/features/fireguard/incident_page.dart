@@ -40,11 +40,13 @@ class FireguardIncidentPage extends StatefulWidget {
     this.api,
     this.realtime,
     this.coordinator,
+    this.controller,
   });
   final int incidentId;
   final FireguardApiService? api;
   final FireguardRealtimeService? realtime;
   final IncidentAlertCoordinator? coordinator;
+  final dynamic controller;
   @override
   State<FireguardIncidentPage> createState() => _FireguardIncidentPageState();
 }
@@ -63,6 +65,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.controller != null) {
+      try {
+        widget.controller.registerDetailedIncident(widget.incidentId);
+      } catch (_) {}
+    }
     _events = widget.realtime?.events.listen((event) {
       if (_active && event.incidentId == widget.incidentId) {
         _eventRevision++;
@@ -70,15 +77,24 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
       }
     });
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (_active && !_busy && _api.authToken != null) _load();
-    });
+
+    // Only create private timer if not managed by a parent MonitoringController
+    if (widget.controller == null) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (_active && !_busy && _api.authToken != null) _load();
+      });
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _events?.cancel();
+    if (widget.controller != null) {
+      try {
+        widget.controller.unregisterDetailedIncident(widget.incidentId);
+      } catch (_) {}
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

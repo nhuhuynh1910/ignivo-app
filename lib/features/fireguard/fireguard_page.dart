@@ -81,7 +81,9 @@ class _FireguardPageState extends State<FireguardPage>
       _coordinator.dispose();
     }
     _realtime.removeListener(_connectionChanged);
-    _realtime.dispose();
+    if (widget.realtime == null) {
+      _realtime.dispose();
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

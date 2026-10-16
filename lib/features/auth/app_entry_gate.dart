@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/system_session_controller.dart';
-import '../fireguard/fireguard_page.dart';
+import '../../navigation/ignivo_shell.dart';
 import '../settings/connection_setup_page.dart';
 import 'system_login_page.dart';
 
@@ -76,13 +76,13 @@ class _AppEntryGateState extends State<AppEntryGate> {
       );
     }
 
-    // Authenticated: bridge to FireguardPage for Package 1, transitioning to IgnivoShell in Package 2
+    // Authenticated: navigate to IgnivoShell
     if (widget.authenticatedBuilder != null) {
       return widget.authenticatedBuilder!(context, _controller);
     }
 
-    return FireguardPage(
-      api: _controller.api,
+    return IgnivoShell(
+      sessionController: _controller,
     );
   }
 }
