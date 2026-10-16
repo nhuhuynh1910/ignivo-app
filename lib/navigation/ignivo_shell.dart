@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/system_session_controller.dart';
-import '../features/fireguard/fireguard_page.dart';
+import '../features/camera/camera_live_page.dart';
+import '../features/camera/guard_cameras_page.dart';
 import '../features/fireguard/guard_home_page.dart';
 import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
@@ -112,7 +113,15 @@ class _IgnivoShellState extends State<IgnivoShell>
   }
 
   void _openCameraLive(int cameraId) {
-    setState(() => _selectedTab = 1);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CameraLivePage(
+          cameraId: cameraId,
+          api: _monitoring.api,
+          sessionController: widget.sessionController,
+        ),
+      ),
+    );
   }
 
   void _openDiagnostics() {
@@ -131,7 +140,11 @@ class _IgnivoShellState extends State<IgnivoShell>
           onOpenLiveView: _openCameraLive,
           onOpenDiagnostics: _openDiagnostics,
         ),
-        1 => const Center(child: Text('Camera')),
+        1 => GuardCamerasPage(
+          monitoringController: _monitoring,
+          sessionController: widget.sessionController,
+          onOpenLiveView: _openCameraLive,
+        ),
         2 => const Center(child: Text('Hoạt động')),
         3 => const Center(child: Text('Cài đặt')),
         _ => const SizedBox.shrink(),

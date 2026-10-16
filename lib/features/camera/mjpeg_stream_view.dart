@@ -30,13 +30,15 @@ class MjpegStreamView extends StatefulWidget {
   State<MjpegStreamView> createState() => _MjpegStreamViewState();
 }
 
-class _MjpegStreamViewState extends State<MjpegStreamView> {
+class _MjpegStreamViewState extends State<MjpegStreamView>
+    with WidgetsBindingObserver {
   http.Client? _client;
   StreamSubscription<List<int>>? _subscription;
 
   Uint8List? _currentFrame;
   bool _isLoading = true;
   bool _isPaused = false;
+  bool _pausedByLifecycle = false;
   String? _errorMessage;
   int _frameCount = 0;
   DateTime _lastFpsTime = DateTime.now();
@@ -46,7 +48,24 @@ class _MjpegStreamViewState extends State<MjpegStreamView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startStream();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      if (!_isPaused) {
+        _pausedByLifecycle = true;
+        _pauseStream();
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_pausedByLifecycle) {
+        _pausedByLifecycle = false;
+        _resumeStream();
+      }
+    }
   }
 
   @override
@@ -63,6 +82,7 @@ class _MjpegStreamViewState extends State<MjpegStreamView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopStream();
     super.dispose();
   }
