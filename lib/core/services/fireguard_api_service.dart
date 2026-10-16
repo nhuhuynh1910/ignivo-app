@@ -316,7 +316,9 @@ class FireguardApiService {
       _map('/incidents/$id');
   Future<Map<String, dynamic>?> getActiveIncident() async {
     final data = _decode(await _request('GET', '/incidents/active'));
-    return data == null ? null : Map<String, dynamic>.from(data as Map);
+    return (data == null || (data is Map && data.isEmpty))
+        ? null
+        : Map<String, dynamic>.from(data as Map);
   }
 
   Uri get websocketUri => Uri.parse('$apiPrefix/ws').replace(

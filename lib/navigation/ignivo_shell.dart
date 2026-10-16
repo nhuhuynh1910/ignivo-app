@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/system_session_controller.dart';
 import '../features/fireguard/fireguard_page.dart';
+import '../features/fireguard/guard_home_page.dart';
 import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
 
@@ -94,16 +95,72 @@ class _IgnivoShellState extends State<IgnivoShell>
     super.dispose();
   }
 
+  int _selectedTab = 0;
+
+  void _openIncident(int id) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FireguardIncidentPage(
+          incidentId: id,
+          api: _monitoring.api,
+          realtime: _monitoring.realtime,
+          coordinator: _monitoring.coordinator,
+          controller: _monitoring,
+        ),
+      ),
+    );
+  }
+
+  void _openCameraLive(int cameraId) {
+    setState(() => _selectedTab = 1);
+  }
+
+  void _openDiagnostics() {
+    setState(() => _selectedTab = 3);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // In Package 2, wrap FireguardPage to maintain full feature compatibility while
-    // delegating session & monitoring control to the unified Shell/Controllers.
-    // In Packages 3-6, each tab will be replaced with its dedicated page (GuardHomePage, etc.).
     return Scaffold(
-      body: FireguardPage(
-        api: _monitoring.api,
-        realtime: _monitoring.realtime,
-        coordinator: _monitoring.coordinator,
+      body: switch (_selectedTab) {
+        0 => GuardHomePage(
+          sessionController: widget.sessionController,
+          monitoringController: _monitoring,
+          onNavigateTab: (idx) => setState(() => _selectedTab = idx),
+          onOpenIncident: _openIncident,
+          onOpenLiveView: _openCameraLive,
+          onOpenDiagnostics: _openDiagnostics,
+        ),
+        1 => const Center(child: Text('Camera')),
+        2 => const Center(child: Text('Hoạt động')),
+        3 => const Center(child: Text('Cài đặt')),
+        _ => const SizedBox.shrink(),
+      },
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedTab,
+        onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.shield_outlined),
+            selectedIcon: Icon(Icons.shield),
+            label: 'Giám sát',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.videocam_outlined),
+            selectedIcon: Icon(Icons.videocam),
+            label: 'Camera',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: 'Hoạt động',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Cài đặt',
+          ),
+        ],
       ),
     );
   }
