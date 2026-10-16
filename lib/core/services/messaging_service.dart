@@ -1,14 +1,13 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'fireguard_api_service.dart';
 
 class MessagingService {
-  MessagingService({
-    FirebaseMessaging? messaging,
-    FireguardApiService? api,
-  })  : _messaging = messaging,
-        _api = api ?? FireguardApiService.instance;
+  MessagingService({FirebaseMessaging? messaging, FireguardApiService? api})
+    : _messaging = messaging,
+      _api = api ?? FireguardApiService.instance;
 
   final FirebaseMessaging? _messaging;
   final FireguardApiService _api;
@@ -26,7 +25,9 @@ class MessagingService {
     final prefs = await SharedPreferences.getInstance();
     var id = prefs.getString(_installationIdKey);
     if (id == null || id.isEmpty) {
-      id = DateTime.now().millisecondsSinceEpoch.toString();
+      final random = Random.secure();
+      final values = List<int>.generate(16, (i) => random.nextInt(256));
+      id = values.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
       await prefs.setString(_installationIdKey, id);
     }
     return id;
@@ -73,8 +74,21 @@ class MessagingService {
     );
   }
 
-  Future<bool> unregisterDevice() async {
-    final installId = await getInstallationId();
-    return _api.unregisterNotificationDevice(installId);
+  Future<bool> unregisterDevice({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final installId = prefs.getString(_installationIdKey);
+      // Push is not initialized on the current Pi. Logout must not create a
+      // registration ID or probe a missing endpoint for a never-registered app.
+      if (installId == null || installId.isEmpty) return true;
+      return await _api
+          .unregisterNotificationDevice(installId)
+          .timeout(timeout);
+    } catch (_) {
+      // Network outage or timeout does not block local logout
+      return false;
+    }
   }
 }

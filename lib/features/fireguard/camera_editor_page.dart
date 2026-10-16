@@ -14,42 +14,35 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.camera?['name'] ?? '');
   late final _area = TextEditingController(text: widget.camera?['area'] ?? '');
-  late final _source = TextEditingController(
-    text: widget.camera?['source'] ?? '',
-  );
   late final _fps = TextEditingController(
     text: '${widget.camera?['ai_fps'] ?? 8}',
   );
-  late String _type = widget.camera?['source_type'] ?? 'rtsp';
   late bool _enabled = widget.camera?['enabled'] ?? true;
   late bool _detect = widget.camera?['detect_enabled'] ?? true;
   bool _saving = false;
   String? _error;
+
   @override
   void dispose() {
-    for (final c in [_name, _area, _source, _fps]) {
+    for (final c in [_name, _area, _fps]) {
       c.dispose();
     }
     super.dispose();
   }
 
   Future<void> _save() async {
-    if (!_form.currentState!.validate() || !widget.api.canConfigure) return;
+    if (widget.camera == null || !_form.currentState!.validate() || !widget.api.canConfigure) return;
     setState(() {
       _saving = true;
       _error = null;
     });
+    // Partial update only sends fields configurable on mobile; no raw RTSP or credentials.
     final data = <String, dynamic>{
       'name': _name.text.trim(),
       'area': _area.text.trim(),
-      'source_type': _type,
       'enabled': _enabled,
       'detect_enabled': _detect,
       'ai_fps': double.parse(_fps.text.trim()),
-      // Do not echo a masked password if the source is unchanged.
-      if (widget.camera == null ||
-          _source.text.trim() != widget.camera!['source'])
-        'source': _source.text.trim(),
     };
     final ok = await widget.api.saveCamera(
       data,
@@ -76,13 +69,58 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text(
-            'Camera được kết nối và xử lý trên Pi. Thay đổi sẽ áp dụng ngay sau khi lưu.',
-          ),
-          const SizedBox(height: 20),
+          if (widget.camera == null) ...[
+            Card(
+              color: Colors.blue.shade50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.blue.shade300),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade800),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Việc thêm camera mới (RTSP/USB) được thiết lập trực tiếp trên Edge Box hoặc giao diện quản trị hệ thống để bảo đảm an toàn kết nối. Ứng dụng di động chỉ hỗ trợ cấu hình camera đã có.',
+                        style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else ...[
+            Card(
+              color: Colors.blueGrey.shade50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline, size: 20, color: Colors.black54),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Nguồn video và thông tin RTSP được bảo mật trực tiếp trên Edge Box.',
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           TextFormField(
             controller: _name,
-            enabled: !_saving,
+            enabled: !_saving && widget.camera != null,
             maxLength: 100,
             decoration: const InputDecoration(labelText: 'Tên camera'),
             validator: (v) =>
@@ -91,7 +129,7 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _area,
-            enabled: !_saving,
+            enabled: !_saving && widget.camera != null,
             maxLength: 100,
             decoration: const InputDecoration(
               labelText: 'Khu vực',
@@ -99,53 +137,9 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
             ),
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _type,
-            decoration: const InputDecoration(labelText: 'Loại nguồn'),
-            items: const [
-              DropdownMenuItem(value: 'rtsp', child: Text('Camera IP · RTSP')),
-              DropdownMenuItem(value: 'usb', child: Text('Camera USB trên Pi')),
-              DropdownMenuItem(value: 'mjpeg', child: Text('Luồng MJPEG')),
-              DropdownMenuItem(value: 'snapshot', child: Text('Ảnh HTTP')),
-            ],
-            onChanged: _saving ? null : (v) => setState(() => _type = v!),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _source,
-            enabled: !_saving,
-            autocorrect: false,
-            enableSuggestions: false,
-            maxLength: 500,
-            decoration: InputDecoration(
-              labelText: 'Đường dẫn nguồn',
-              hintText: _type == 'usb' ? '/dev/video0' : 'rtsp://...',
-              helperText: widget.camera == null
-                  ? null
-                  : 'Giữ nguyên đường dẫn để giữ mật khẩu đã lưu.',
-              helperMaxLines: 2,
-            ),
-            validator: (v) {
-              final value = v?.trim() ?? '';
-              if (value.isEmpty) return 'Nhập nguồn camera';
-              final prefixes = _type == 'usb'
-                  ? ['/dev/']
-                  : _type == 'rtsp'
-                  ? ['rtsp://', 'rtsps://']
-                  : ['http://', 'https://'];
-              if (!prefixes.any(value.startsWith)) {
-                return 'Nguồn phải bắt đầu bằng ${prefixes.join(' hoặc ')}';
-              }
-              if (value.contains('***') && value != widget.camera?['source']) {
-                return 'Nhập URL đầy đủ khi thay đổi nguồn';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
           TextFormField(
             controller: _fps,
-            enabled: !_saving,
+            enabled: !_saving && widget.camera != null,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'FPS mục tiêu của AI',
@@ -162,23 +156,26 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
             contentPadding: EdgeInsets.zero,
             title: const Text('Bật camera'),
             value: _enabled,
-            onChanged: _saving ? null : (v) => setState(() => _enabled = v),
+            onChanged: _saving || widget.camera == null ? null : (v) => setState(() => _enabled = v),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Chạy AI nhận diện'),
             subtitle: const Text('Tắt AI chỉ còn xem hình từ camera này.'),
             value: _detect,
-            onChanged: _saving ? null : (v) => setState(() => _detect = v),
+            onChanged: _saving || widget.camera == null ? null : (v) => setState(() => _detect = v),
           ),
           if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: _saving || !widget.api.canConfigure ? null : _save,
+            onPressed: _saving || !widget.api.canConfigure || widget.camera == null ? null : _save,
             child: Text(_saving ? 'Đang lưu…' : 'Lưu camera'),
           ),
         ],

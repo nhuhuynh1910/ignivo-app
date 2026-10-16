@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/services/fireeye_api_service.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../camera/mjpeg_stream_view.dart';
@@ -38,18 +39,63 @@ class _PiCameraPageState extends State<PiCameraPage>
     if (!_isSameCameraId) return false;
     final expectedRev = widget.camera['source_revision'];
     final boundRev = _capabilities?['binding']?['source_revision'];
-    return expectedRev != null && boundRev != null && expectedRev != boundRev;
+    if (expectedRev != null && boundRev != null && expectedRev != boundRev) {
+      return true;
+    }
+    final status = _capabilities?['status'];
+    return status == 'stale' || status == 'invalid';
   }
+
+  bool get _isUnsupported =>
+      _capabilities != null &&
+      (_capabilities?['status'] == 'unsupported' ||
+          _capabilities?['ptz'] == false ||
+          _capabilities?['supported'] == false);
+
+  bool get _isOffline =>
+      _capabilities != null &&
+      (_capabilities?['online'] != true ||
+          ['offline', 'unavailable'].contains(_capabilities?['status']));
+
+  bool get _isUnknown =>
+      _capabilities != null &&
+      ![
+        'valid',
+        'unbound',
+        'stale',
+        'invalid',
+        'offline',
+        'unavailable',
+        'unsupported',
+      ].contains(_capabilities?['status']);
 
   bool get _bound {
     if (!_isSameCameraId) return false;
+    if (_isStaleRevision) return false;
+    final status = _capabilities?['status'];
+    if (status != 'valid') return false;
     final expectedRev = widget.camera['source_revision'];
     final boundRev = _capabilities?['binding']?['source_revision'];
-    if (expectedRev != null && boundRev != null) {
+    if (expectedRev is String &&
+        expectedRev.isNotEmpty &&
+        boundRev is String &&
+        boundRev.isNotEmpty) {
       return expectedRev == boundRev;
     }
-    return true;
+    return false;
   }
+
+  bool get _canControl =>
+      _bound &&
+      !_isStaleRevision &&
+      !_isUnsupported &&
+      !_isOffline &&
+      !_isUnknown &&
+      _capabilities?['ptz'] == true &&
+      _capabilities?['online'] == true &&
+      widget.eye.canConfigure &&
+      _foreground &&
+      !_busy;
 
   @override
   void initState() {
@@ -118,14 +164,10 @@ class _PiCameraPageState extends State<PiCameraPage>
   }
 
   void _start(String direction) {
-    if (_direction != null ||
-        !_bound ||
-        !_foreground ||
-        _busy ||
-        !widget.eye.canConfigure ||
-        _capabilities?['online'] != true) {
+    if (_direction != null || !_canControl) {
       return;
     }
+    HapticFeedback.selectionClick();
     _direction = direction;
     _send(direction);
   }
@@ -274,7 +316,10 @@ class _PiCameraPageState extends State<PiCameraPage>
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.amber.shade900,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -315,9 +360,18 @@ class _PiCameraPageState extends State<PiCameraPage>
               ? 'Đã liên kết PTZ với camera này.'
               : _isStaleRevision
               ? 'Liên kết cũ không khớp cấu hình luồng mới.'
+              : _isUnsupported
+              ? 'Camera này không hỗ trợ điều khiển PTZ.'
+              : _isUnknown
+              ? 'Chưa xác định được trạng thái điều khiển PTZ của camera.'
               : 'Chưa liên kết PTZ. So sánh hình trước khi xác nhận.',
         ),
-        if (!_bound) ...[
+        if (!_bound &&
+            !_isStaleRevision &&
+            !_isUnsupported &&
+            !_isUnknown &&
+            _capabilities?['ptz'] == true &&
+            widget.camera['source_revision'] is String) ...[
           const SizedBox(height: 12),
           const Text('Ảnh từ camera Dahua của FireEye'),
           if (_foreground)
@@ -348,12 +402,10 @@ class _PiCameraPageState extends State<PiCameraPage>
             ],
           ],
         ],
-        if (_bound &&
-            widget.eye.canConfigure &&
-            _capabilities?['online'] == true) ...[
+        if (_canControl) ...[
           const SizedBox(height: 16),
           const Text(
-            'Giữ để di chuyển, thả để dừng. Mỗi lần giữ tự dừng sau tối đa 1,5 giây nếu camera phản hồi; nhấn lại để tiếp tục.',
+            'Giữ để di chuyển, thả để gửi lệnh dừng. Khi mất mạng, app không thể xác nhận camera đã dừng.',
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -404,6 +456,8 @@ class _PiCameraPageState extends State<PiCameraPage>
         ],
         if (_capabilities?['online'] == false)
           const Text('Camera FireEye đang mất kết nối. Chưa thể điều khiển.'),
+        if (_isUnsupported)
+          const Text('Camera này không hỗ trợ điều khiển xoay/zoom (PTZ).'),
         if (!widget.eye.canConfigure)
           const Text('Chỉ chủ sở hữu hoặc quản trị viên được điều khiển PTZ.'),
       ],

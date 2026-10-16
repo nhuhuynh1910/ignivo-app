@@ -16,11 +16,8 @@ void main() {
     await tester.enterText(find.byKey(const Key('phone')), '0912345678');
     await tester.enterText(find.byKey(const Key('secret')), 'secret');
     await tester.enterText(find.byKey(const Key('system-secret')), 'system');
-    await tester.scrollUntilVisible(
-      find.text('Đăng nhập hệ thống'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.ensureVisible(find.text('Đăng nhập hệ thống'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Đăng nhập hệ thống'));
     await tester.pumpAndSettle();
   }
@@ -81,6 +78,23 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Mở tổng quan hệ thống'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('expanding token tile does not throw type cast error', (tester) async {
+    final eye = FireeyeApiService(
+      fireguard: FireguardApiService(),
+      client: MockClient((_) async => json({'role': 'OWNER'})),
+    );
+    await tester.pumpWidget(MaterialApp(home: EdgeConnectionPage(api: eye)));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Đã có token FireEye'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Đã có token FireEye'));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }

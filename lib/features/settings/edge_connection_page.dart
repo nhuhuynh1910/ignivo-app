@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/pi_connection_profile.dart';
 import '../../core/services/fireeye_api_service.dart';
 import '../../core/services/fireguard_api_service.dart';
+import '../../core/services/messaging_service.dart';
 import '../fireguard/fireguard_page.dart';
 import 'pi_setup_page.dart';
 
@@ -281,6 +282,11 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
   Future<void> _logout() async {
     setState(() => _busy = true);
     try {
+      await MessagingService(api: _guard).unregisterDevice();
+    } catch (_) {
+      /* Outage or timeout does not block local session logout */
+    }
+    try {
       await _eye.logout();
     } catch (_) {
       /* Session cleared locally regardless */
@@ -354,21 +360,7 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
         const Text(
           'FireEye xác thực tài khoản. FireGuard phụ trách camera, phát hiện lửa/khói, phân tích Gemini, gọi Stringee và cảnh báo trực tiếp.',
         ),
-        TextButton.icon(
-          onPressed: _busy
-              ? null
-              : () {
-                  _eyeUrl.text = 'http://100.95.189.60:8000';
-                  _guardUrl.text = 'http://100.95.189.60:8080';
-                  setState(() {
-                    _flowState = ConnectionFlowState.signedOut;
-                    _message = null;
-                  });
-                },
-          icon: const Icon(Icons.lan),
-          label: const Text('Dùng Pi Tailscale 100.95.189.60'),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         TextField(
           key: const Key('fireeye-url'),
           controller: _eyeUrl,
@@ -445,7 +437,7 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
           label: const Text('Đăng nhập hệ thống'),
         ),
         ExpansionTile(
-          key: const PageStorageKey('edge_connection_token_tile'),
+          key: const ValueKey('edge_connection_token_tile'),
           title: const Text('Đã có token FireEye'),
           children: [
             TextField(

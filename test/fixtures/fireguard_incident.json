@@ -1,0 +1,49 @@
+{
+  "id": 101,
+  "status": "notifying",
+  "trigger_type": "FIRE",
+  "source": "camera",
+  "risk_level": "HIGH",
+  "confidence": 0.88,
+  "severity": "critical",
+  "camera_id": 1,
+  "camera_name": "Kho A - Tầng 1",
+  "area": "Kho nguyên liệu",
+  "is_simulation": false,
+  "analysis": {
+    "is_real_fire": true,
+    "severity": "critical",
+    "summary_vi": "Phát hiện ngọn lửa lớn đang lan rộng gần các kiện hàng dễ cháy.",
+    "model": "gemini-1.5-flash",
+    "flammable_objects": [
+      {
+        "name": "Thùng các-tông",
+        "distance": "near",
+        "risk": "high"
+      }
+    ],
+    "recommended_actions": [
+      "Ngắt cầu dao điện khu vực kho A",
+      "Sử dụng bình bột chữa cháy tại cửa ra vào",
+      "Sơ tán nhân viên theo lối thoát hiểm phía Nam"
+    ]
+  },
+  "analysis_image_url": "/api/v1/emergency/incidents/101/images/analysis_1.jpg",
+  "images": ["00.jpg", "01.jpg"],
+  "voice_message": "Cảnh báo cháy khẩn cấp tại Kho nguyên liệu. Ngọn lửa đang lan gần thùng các-tông.",
+  "created_at": "2026-10-15T10:00:00Z",
+  "updated_at": "2026-10-15T10:01:00Z",
+  "last_alert_at": "2026-10-15T10:01:00Z",
+  "calls": [
+    {
+      "id": 1,
+      "contact_name": "Bảo vệ ca trực",
+      "phone": "0901234567",
+      "kind": "family",
+      "round": 1,
+      "provider": "stringee",
+      "status": "answered",
+      "error": null
+    }
+  ]
+}

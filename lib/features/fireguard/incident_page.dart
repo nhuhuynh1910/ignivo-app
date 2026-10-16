@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/fireguard_realtime_service.dart';
 import '../../core/services/incident_alert_coordinator.dart';
+import '../camera/mjpeg_stream_view.dart';
 import 'monitor_widgets.dart';
 
 String callStatusLabel(dynamic value) =>
@@ -99,6 +100,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
     try {
       final value = await _api.getIncidentDetail(widget.incidentId);
       if (mounted && revision == _eventRevision) {
+        if (value != null) widget.coordinator?.syncActiveIncidents([value]);
         setState(() {
           _incident = value;
           _error = null;
@@ -148,7 +150,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
       _ => await _api.falseAlarmIncident(id),
     };
     if (ok) {
-      widget.coordinator?.stopAlert(incidentId: id);
+      if (action == 'ack') {
+        widget.coordinator?.acknowledgeLocally(id);
+      } else {
+        widget.coordinator?.stopAlert(incidentId: id);
+      }
     }
     if (!mounted) return;
     setState(() => _busy = false);
@@ -197,9 +203,14 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                                 backgroundColor: Colors.amber.shade100,
                                 foregroundColor: Colors.brown.shade900,
                               ),
-                              onPressed: () => setState(() => coordinator.silenceAlarm()),
+                              onPressed: () {
+                                HapticFeedback.mediumImpact();
+                                setState(() => coordinator.silenceAlarm());
+                              },
                               icon: const Icon(Icons.volume_off),
-                              label: const Text('Tắt còi trên điện thoại (Không nhận xử lý)'),
+                              label: const Text(
+                                'Tắt còi trên điện thoại (Không nhận xử lý)',
+                              ),
                             ),
                           ),
                         )
@@ -209,40 +220,84 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.volume_mute, size: 16, color: Colors.black54),
+                              Icon(
+                                Icons.volume_mute,
+                                size: 16,
+                                color: Colors.black54,
+                              ),
                               SizedBox(width: 4),
-                              Text(
-                                'Đã tắt chuông cảnh báo trên máy này',
-                                style: TextStyle(fontSize: 12, color: Colors.black54),
+                              Flexible(
+                                child: Text(
+                                  'Đã tắt chuông cảnh báo trên máy này',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
                         ),
                     ],
                     FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        backgroundColor: Colors.deepOrange.shade600,
+                        foregroundColor: Colors.white,
+                      ),
                       onPressed:
                           _busy ||
                               _error != null ||
                               incident['status'] == 'acknowledged'
                           ? null
-                          : () => _act('ack'),
-                      child: const Text('Nhận xử lý • Dừng gọi tiếp'),
+                          : () {
+                              HapticFeedback.heavyImpact();
+                              _act('ack');
+                            },
+                      child: const Text(
+                        'Nhận xử lý • Dừng gọi tiếp',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
                             onPressed: _busy || _error != null
                                 ? null
-                                : () => _act('resolve'),
+                                : () {
+                                    HapticFeedback.mediumImpact();
+                                    _act('resolve');
+                                  },
                             child: const Text('Đã xử lý xong'),
                           ),
                         ),
                         const SizedBox(width: 8),
                         TextButton(
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(80, 48),
+                            foregroundColor: Colors.red.shade400,
+                          ),
                           onPressed: _busy || _error != null
                               ? null
-                              : () => _act('false-alarm'),
+                              : () {
+                                  HapticFeedback.lightImpact();
+                                  _act('false-alarm');
+                                },
                           child: const Text('Báo nhầm'),
                         ),
                       ],
@@ -265,28 +320,129 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
             const Center(child: CircularProgressIndicator()),
           if (incident != null) ...[
             Text(
-              incidentStatusLabel(incident['status']),
-              style: Theme.of(context).textTheme.headlineSmall,
+              IncidentPresentationHelper.cameraName(incident),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 4),
             Text(
-              '${incident['trigger_type']} • ${incident['severity']} • ${incident['created_at']}',
+              '${IncidentPresentationHelper.areaText(incident)} · ${incident['created_at'] ?? ''}'
+                  .replaceAll('T', ' '),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.black87),
             ),
-            if (incident['is_simulation'] == true) const Text('SỰ CỐ GIẢ LẬP'),
-            const SizedBox(height: 16),
-            if (imageName != null)
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                GuardBadge(
+                  incidentStatusLabel(incident['status']),
+                  color:
+                      ['resolved', 'false_alarm'].contains(incident['status'])
+                      ? Colors.teal
+                      : Colors.deepOrange,
+                ),
+                GuardBadge(
+                  IncidentPresentationHelper.severityLabel(
+                    incident['severity'],
+                  ),
+                  color: Colors.red.shade700,
+                ),
+                GuardBadge(
+                  '${incident['trigger_type']}'.toUpperCase(),
+                  color: Colors.blueGrey,
+                ),
+                if (incident['is_simulation'] == true)
+                  const GuardBadge('Mô phỏng', color: Colors.amber),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (incident['status'] == 'ai_dismissed') ...[
+              Card(
+                color: Colors.amber.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.amber.shade400),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.amber.shade900),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'AI bổ sung nhận định không phải cháy; cần kiểm tra bằng chứng',
+                          style: TextStyle(
+                            color: Colors.amber.shade900,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (imageName != null) ...[
               GuardIncidentImage(
                 key: ValueKey(imageName),
                 incidentId: widget.incidentId,
                 name: imageName,
                 api: _api,
               ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 12),
+            ],
+            if (incident['camera_id'] != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => Scaffold(
+                          appBar: AppBar(
+                            title: Text(
+                              IncidentPresentationHelper.cameraName(incident),
+                            ),
+                          ),
+                          body: Center(
+                            child: AspectRatio(
+                              aspectRatio: 16 / 9,
+                              child: MjpegStreamView(
+                                streamUrl: _api.getMjpegStreamUrl(
+                                  incident['camera_id'],
+                                ),
+                                requestHeaders: _api.headersForUrl(
+                                  _api.getMjpegStreamUrl(incident['camera_id']),
+                                ),
+                                height: 300,
+                                showStats: false,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.videocam_outlined),
+                  label: Text(
+                    'Mở camera liên quan (${IncidentPresentationHelper.cameraName(incident)})',
+                  ),
+                ),
+              ),
             Text(
               '${analysis?['summary_vi'] ?? incident['analysis_error'] ?? 'Chưa có phân tích AI.'}',
             ),
             if (analysis != null) ...[
               const SizedBox(height: 12),
-              GuardBadge('Gemini · ${analysis['model'] ?? '—'}'),
+              GuardBadge('Gemini · ${analysis['model'] ?? '—'} (Bổ sung)'),
               if ((analysis['flammable_objects'] as List? ?? []).isNotEmpty)
                 GuardPanel(
                   child: Column(
@@ -450,10 +606,7 @@ class _IncidentImageState extends State<GuardIncidentImage> {
             child: InteractiveViewer(
               minScale: 0.8,
               maxScale: 5.0,
-              child: Image.memory(
-                _bytes!,
-                fit: BoxFit.contain,
-              ),
+              child: Image.memory(_bytes!, fit: BoxFit.contain),
             ),
           ),
         ),
@@ -476,7 +629,10 @@ class _IncidentImageState extends State<GuardIncidentImage> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),
-              Text('Đang tải ảnh bằng chứng...', style: TextStyle(fontSize: 12)),
+              Text(
+                'Đang tải ảnh bằng chứng...',
+                style: TextStyle(fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -493,12 +649,17 @@ class _IncidentImageState extends State<GuardIncidentImage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.broken_image, color: Theme.of(context).colorScheme.error),
+                  Icon(
+                    Icons.broken_image,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Không tải được ảnh: $_error',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ),
                 ],
@@ -530,7 +691,10 @@ class _IncidentImageState extends State<GuardIncidentImage> {
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.black.withValues(alpha: 0.65),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
               ),
               onPressed: () => _openFullscreen(context),
               icon: const Icon(Icons.zoom_in, size: 16),

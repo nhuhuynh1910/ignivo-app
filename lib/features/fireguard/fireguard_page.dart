@@ -4,6 +4,7 @@ import 'people_page.dart';
 import 'eye_events_page.dart';
 import 'pi_camera_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/fireguard_realtime_service.dart';
 import '../camera/mjpeg_stream_view.dart';
@@ -13,7 +14,6 @@ import 'incident_page.dart';
 import 'monitor_widgets.dart';
 import 'camera_editor_page.dart';
 import '../../core/services/incident_alert_coordinator.dart';
-import 'escalation_page.dart';
 
 /// Uses FireGuard data directly, without Firebase pairing or ID conversion.
 class FireguardPage extends StatefulWidget {
@@ -36,7 +36,8 @@ class _FireguardPageState extends State<FireguardPage>
     with WidgetsBindingObserver {
   late final _api = widget.api ?? FireguardApiService.instance;
   late final _realtime = widget.realtime ?? FireguardRealtimeService(_api);
-  late final _coordinator = widget.coordinator ??
+  late final _coordinator =
+      widget.coordinator ??
       IncidentAlertCoordinator(api: _api, realtime: _realtime);
   StreamSubscription<FireguardEvent>? _events;
   Map<String, dynamic>? _activeIncident;
@@ -52,6 +53,7 @@ class _FireguardPageState extends State<FireguardPage>
   int _tab = 0, _filter = 0;
   int? _cameraId;
   bool _covered = false, _fresh = false;
+  bool _resumeAfterRefresh = false;
   @override
   void initState() {
     super.initState();
@@ -88,9 +90,12 @@ class _FireguardPageState extends State<FireguardPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
     if (_foreground) {
+      _resumeAfterRefresh = true;
       _realtime.start();
       _refresh();
     } else {
+      _eventRevision++;
+      _coordinator.pauseFeedback();
       _fresh = false;
       _realtime.stop();
     }
@@ -111,6 +116,7 @@ class _FireguardPageState extends State<FireguardPage>
     if (!mounted || !_foreground) return;
     _eventRevision++;
     if (event.name == 'incident.created' && _announced.add(event.incidentId!)) {
+      HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -144,6 +150,8 @@ class _FireguardPageState extends State<FireguardPage>
     _fetching = true;
     _refreshQueued = false;
     final revision = _eventRevision;
+    final session = _api.sessionRevision;
+    final origin = _api.baseUrl;
     try {
       await _api.getCurrentUser();
       final status = await _api.getSystemStatus();
@@ -155,12 +163,26 @@ class _FireguardPageState extends State<FireguardPage>
       final cameras = await _api.getCameras();
       final incidents = await _api.getIncidents();
       final active = await _api.getActiveIncident();
-      if (active != null) {
-        _coordinator.syncActiveIncidents([active]);
-      } else {
-        _coordinator.syncActiveIncidents([]);
+      final syncList = <Map<String, dynamic>>[?active, ...incidents];
+      // Limited lists cannot confirm that a previously tracked incident ended.
+      // Fetch missing IDs explicitly to recover ACK/close events missed offline.
+      final listedIds = syncList.map((i) => i['id']).toSet();
+      for (final id in _coordinator.trackedIncidentIds) {
+        if (!listedIds.contains(id)) {
+          final detail = await _api.getIncidentDetail(id);
+          if (detail != null) syncList.add(detail);
+        }
       }
-      if (mounted && revision == _eventRevision) {
+      if (mounted &&
+          _foreground &&
+          revision == _eventRevision &&
+          session == _api.sessionRevision &&
+          origin == _api.baseUrl) {
+        _coordinator.syncActiveIncidents(syncList);
+        if (_resumeAfterRefresh) {
+          _resumeAfterRefresh = false;
+          _coordinator.resumeFeedback();
+        }
         setState(() {
           _status = status;
           _cameras = cameras;
@@ -233,7 +255,7 @@ class _FireguardPageState extends State<FireguardPage>
         color: Colors.deepOrange,
       ),
       title: Text(
-        '#${incident['id']} · ${incident['camera_name'] ?? incident['source'] ?? incident['trigger_type']}',
+        '#${incident['id']} · ${IncidentPresentationHelper.cameraName(incident)} · ${incident['trigger_type']}',
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
       subtitle: Column(
@@ -291,10 +313,7 @@ class _FireguardPageState extends State<FireguardPage>
               )
               .firstOrNull;
     return [
-      _heading(
-        'Giám sát trực tiếp',
-        'Camera và phân tích tại thiết bị FireGuard',
-      ),
+      _heading('Tổng quan', 'Giám sát trực tiếp và trạng thái hệ thống IGNIVO'),
       if (enabled.length > 1)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -422,14 +441,10 @@ class _FireguardPageState extends State<FireguardPage>
                 ),
                 api: _api,
                 incidentId: latest['id'] as int,
-                name: Uri.parse(
-                  latest['analysis_image_url'],
-                ).pathSegments.last,
+                name: Uri.parse(latest['analysis_image_url']).pathSegments.last,
               ),
               const SizedBox(height: 10),
-              Text(
-                '${latest['analysis']?['summary_vi'] ?? 'Đang phân tích…'}',
-              ),
+              Text('${latest['analysis']?['summary_vi'] ?? 'Đang phân tích…'}'),
               TextButton(
                 onPressed: () => _openIncident(latest['id'] as int),
                 child: const Text('Xem chi tiết sự cố'),
@@ -461,9 +476,7 @@ class _FireguardPageState extends State<FireguardPage>
               _stale
                   ? 'Camera: chưa cập nhật'
                   : '$onlineCount/${_cameras.length} camera online',
-              color: onlineCount > 0 && !_stale
-                  ? Colors.teal
-                  : Colors.orange,
+              color: onlineCount > 0 && !_stale ? Colors.teal : Colors.orange,
             ),
             GuardBadge(
               _stale
@@ -482,9 +495,7 @@ class _FireguardPageState extends State<FireguardPage>
             _status?['detection_source'] != 'local')
           const Padding(
             padding: EdgeInsets.only(top: 12),
-            child: Text(
-              'Camera trực tiếp cần FireGuard chạy chế độ local.',
-            ),
+            child: Text('Camera trực tiếp cần FireGuard chạy chế độ local.'),
           ),
       ],
     ),
@@ -508,7 +519,7 @@ class _FireguardPageState extends State<FireguardPage>
           label: const Text('Lịch sử khuôn mặt và sự kiện FireEye'),
         ),
       _heading(
-        'Sự cố',
+        'Sự kiện',
         'Lịch sử và tiến trình xử lý · tối đa 50 sự cố gần nhất',
       ),
       Padding(
@@ -526,7 +537,34 @@ class _FireguardPageState extends State<FireguardPage>
         ),
       ),
       if (list.isEmpty)
-        const GuardPanel(child: Text('Không có sự cố trong nhóm này.')),
+        GuardPanel(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.verified_user_outlined, color: Colors.teal, size: 26),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Hệ thống an toàn', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      SizedBox(height: 2),
+                      Text('Không có sự cố trong nhóm này.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ...list.map(_incidentCard),
     ];
   }
@@ -622,7 +660,7 @@ class _FireguardPageState extends State<FireguardPage>
     final vision = _status?['vision'] as Map? ?? {};
     return [
       _heading(
-        'Cấu hình',
+        'Cài đặt',
         '${_api.currentUser?['full_name'] ?? _api.currentUser?['username'] ?? 'Tài khoản'} · ${_api.currentUser?['role'] ?? ''}',
       ),
       if (widget.eye != null)
@@ -671,13 +709,13 @@ class _FireguardPageState extends State<FireguardPage>
               onTap: () => _open(EmergencyContactsPage(api: _api)),
             ),
             const Divider(),
-            ListTile(
+            const ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.phone_in_talk_outlined),
-              title: const Text('Quy tắc gọi điện'),
-              subtitle: const Text('Thời gian chờ, gọi lại và mức độ sự cố'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _open(GuardEscalationPage(api: _api)),
+              leading: Icon(Icons.info_outline),
+              title: Text('Cuộc gọi do Edge Box quản lý'),
+              subtitle: Text(
+                'App không cung cấp gọi thử hoặc chỉnh quy tắc gọi PCCC. Cấu hình tự động hiện có trên Pi vẫn áp dụng.',
+              ),
             ),
           ],
         ),
@@ -780,7 +818,9 @@ class _FireguardPageState extends State<FireguardPage>
           tilePadding: EdgeInsets.zero,
           initiallyExpanded: false,
           leading: Icon(
-            hasIssues ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+            hasIssues
+                ? Icons.warning_amber_rounded
+                : Icons.check_circle_outline,
             color: hasIssues ? Colors.orange.shade800 : Colors.teal,
           ),
           title: Text(
@@ -855,43 +895,60 @@ class _FireguardPageState extends State<FireguardPage>
       onDestinationSelected: (v) => setState(() => _tab = v),
       destinations: const [
         NavigationDestination(
-          icon: Icon(Icons.live_tv_outlined),
-          selectedIcon: Icon(Icons.live_tv),
-          label: 'Trực tiếp',
+          icon: Icon(Icons.dashboard_outlined),
+          selectedIcon: Icon(Icons.dashboard),
+          label: 'Tổng quan',
         ),
         NavigationDestination(
           icon: Icon(Icons.notifications_none),
           selectedIcon: Icon(Icons.notifications_active),
-          label: 'Sự cố',
+          label: 'Sự kiện',
         ),
         NavigationDestination(
           icon: Icon(Icons.videocam_outlined),
           selectedIcon: Icon(Icons.videocam),
           label: 'Camera',
         ),
-        NavigationDestination(icon: Icon(Icons.tune), label: 'Cấu hình'),
+        NavigationDestination(
+          icon: Icon(Icons.settings_outlined),
+          selectedIcon: Icon(Icons.settings),
+          label: 'Cài đặt',
+        ),
       ],
     ),
     body: SafeArea(
       top: false,
       child: Column(
         children: [
+          if (_coordinator.feedbackError != null)
+            MaterialBanner(
+              content: Text(_coordinator.feedbackError!),
+              actions: [
+                TextButton(
+                  onPressed: _refresh,
+                  child: const Text('Kiểm tra lại'),
+                ),
+              ],
+            ),
           if (_activeIncident != null)
-            Material(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+            PulsingAlertWrapper(
+              active: _coordinator.level == AlertLevel.urgent && !_coordinator.isSilenced,
+              child: Material(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   ListTile(
                     leading: Icon(
-                      _coordinator.level == AlertLevel.urgent && !_coordinator.isSilenced
+                      _coordinator.level == AlertLevel.urgent &&
+                              !_coordinator.isSilenced
                           ? Icons.warning_rounded
                           : Icons.warning_amber_rounded,
                       color: Theme.of(context).colorScheme.error,
                     ),
                     title: Text('Sự cố đang mở #${_activeIncident!['id']}'),
                     subtitle: Text(
-                      '${IncidentPresentationHelper.cameraName(_activeIncident!)} · ${IncidentPresentationHelper.areaText(_activeIncident!)} · ${incidentStatusLabel(_activeIncident!['status'])}${_stale ? ' · Dữ liệu cũ' : ''}',
+                      '${IncidentPresentationHelper.cameraName(_activeIncident!)} · ${IncidentPresentationHelper.areaText(_activeIncident!)} · ${_activeIncident!['status'] == 'ai_dismissed' ? 'AI bổ sung nhận định không phải cháy; cần kiểm tra bằng chứng' : incidentStatusLabel(_activeIncident!['status'])}${_stale ? ' · Dữ liệu cũ' : ''}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _openIncident(_activeIncident!['id'] as int),
@@ -904,24 +961,38 @@ class _FireguardPageState extends State<FireguardPage>
                           if (!_coordinator.isSilenced)
                             Expanded(
                               child: FilledButton.tonalIcon(
-                                key: const Key('dashboard-silence-alarm-button'),
+                                key: const Key(
+                                  'dashboard-silence-alarm-button',
+                                ),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: Colors.amber.shade200,
                                   foregroundColor: Colors.brown.shade900,
                                 ),
-                                onPressed: _coordinator.silenceAlarm,
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  _coordinator.silenceAlarm();
+                                },
                                 icon: const Icon(Icons.volume_off, size: 18),
                                 label: const Text('Tắt còi trên máy'),
                               ),
                             )
                           else ...[
-                            const Icon(Icons.volume_mute, size: 16, color: Colors.black54),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Đã tắt chuông trên máy này',
-                              style: TextStyle(fontSize: 12, color: Colors.black54),
+                            const Icon(
+                              Icons.volume_mute,
+                              size: 16,
+                              color: Colors.black54,
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 6),
+                            const Expanded(
+                              child: Text(
+                                'Đã tắt chuông trên máy này',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                             TextButton(
                               onPressed: _coordinator.resumeAlarm,
                               child: const Text('Bật lại'),
@@ -933,6 +1004,7 @@ class _FireguardPageState extends State<FireguardPage>
                 ],
               ),
             ),
+          ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -968,9 +1040,13 @@ class _FireguardPageState extends State<FireguardPage>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _updated == null
-                              ? 'Chưa tải được dữ liệu'
-                              : 'Cập nhật ${TimeOfDay.fromDateTime(_updated!).format(context)} · mỗi 5 giây',
+                          _stale
+                              ? (_updated == null
+                                    ? 'Chưa cập nhật được trạng thái'
+                                    : 'Chưa cập nhật được trạng thái · lần cuối ${TimeOfDay.fromDateTime(_updated!).format(context)}')
+                              : (_updated == null
+                                    ? 'Chưa cập nhật được trạng thái'
+                                    : 'Cập nhật ${TimeOfDay.fromDateTime(_updated!).format(context)} · mỗi 5 giây'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: 20),

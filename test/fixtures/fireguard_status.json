@@ -1,0 +1,22 @@
+{
+  "hostname": "ignivo-pi5",
+  "detection_source": "local",
+  "cpu_temp_c": 48.5,
+  "vision": {
+    "ready": true,
+    "detector": "hailo",
+    "total_ai_fps": 16.2,
+    "model": "fire_1cls",
+    "person_model": "coco_yolov6n",
+    "model_classes": ["fire", "smoke", "human"],
+    "error": null
+  },
+  "gemini_configured": true,
+  "gemini_model": "gemini-1.5-flash",
+  "call_provider": "stringee",
+  "stringee_configured": true,
+  "stringee_missing": [],
+  "location_configured": true,
+  "family_contacts": 2,
+  "fire_dept_contacts": 1
+}

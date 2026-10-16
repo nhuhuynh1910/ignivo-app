@@ -147,7 +147,13 @@ void main() {
         if (r.url.path.endsWith('/camera')) {
           return json({
             'online': true,
-            'binding': {'guard_device_id': 'pi', 'guard_camera_id': 2},
+            'status': 'valid',
+            'ptz': true,
+            'binding': {
+              'guard_device_id': 'pi',
+              'guard_camera_id': 2,
+              'source_revision': 'rev',
+            },
           });
         }
         final action = jsonDecode(r.body)['action'] as String;
@@ -160,7 +166,7 @@ void main() {
             eye: eye,
             guard: eye.fireguard,
             deviceId: 'pi',
-            camera: const {'id': 2, 'name': 'Bếp'},
+            camera: const {'id': 2, 'name': 'Bếp', 'source_revision': 'rev'},
           ),
         ),
       );

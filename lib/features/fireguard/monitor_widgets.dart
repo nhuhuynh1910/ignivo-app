@@ -1,5 +1,81 @@
 import 'package:flutter/material.dart';
 
+class PulsingAlertWrapper extends StatefulWidget {
+  const PulsingAlertWrapper({
+    super.key,
+    required this.child,
+    this.active = true,
+    this.glowColor = const Color(0xFFEF4444),
+  });
+
+  final Widget child;
+  final bool active;
+  final Color glowColor;
+
+  @override
+  State<PulsingAlertWrapper> createState() => _PulsingAlertWrapperState();
+}
+
+class _PulsingAlertWrapperState extends State<PulsingAlertWrapper>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  bool get _isTest =>
+      WidgetsBinding.instance.runtimeType.toString().contains('Test');
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+      value: 1.0,
+    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    if (widget.active && !_isTest) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PulsingAlertWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !_controller.isAnimating && !_isTest) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.active && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active) return widget.child;
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) => Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: widget.glowColor.withValues(alpha: 0.15 + 0.35 * _animation.value),
+              blurRadius: 8.0 + 10.0 * _animation.value,
+              spreadRadius: 1.0 + 2.5 * _animation.value,
+            ),
+          ],
+        ),
+        child: child,
+      ),
+      child: widget.child,
+    );
+  }
+}
+
 class GuardPanel extends StatelessWidget {
   const GuardPanel({super.key, required this.child});
   final Widget child;
@@ -162,9 +238,16 @@ class CameraTelemetry extends StatelessWidget {
 
 class IncidentPresentationHelper {
   static String cameraName(Map<String, dynamic> incident) {
-    final name = incident['camera_name'] ?? incident['source'];
+    final name = incident['camera_name'];
     if (name != null && name.toString().trim().isNotEmpty) {
       return name.toString().trim();
+    }
+    final source = incident['source']?.toString().trim();
+    if (source != null &&
+        source.isNotEmpty &&
+        !source.contains('://') &&
+        !source.startsWith('/dev/')) {
+      return source;
     }
     return 'Camera #${incident['camera_id'] ?? incident['id']}';
   }

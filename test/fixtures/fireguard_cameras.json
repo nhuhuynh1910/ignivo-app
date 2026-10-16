@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "name": "Camera Kho A",
+    "source_type": "rtsp",
+    "source": "rtsp://camera1/live",
+    "area": "Kho nguyên liệu",
+    "enabled": true,
+    "detect_enabled": true,
+    "ai_fps": 8.0,
+    "source_revision": "rev-101",
+    "status": {
+      "online": true,
+      "capture_fps": 15.0,
+      "ai_fps": 7.8,
+      "state": "SAFE",
+      "scores": {
+        "fire": 0.05,
+        "smoke": 0.02,
+        "human": 0.0
+      }
+    }
+  }
+]

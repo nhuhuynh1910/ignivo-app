@@ -13,6 +13,13 @@ class MockAlertFeedbackAdapter implements AlertFeedbackAdapter {
   int sirenStopCount = 0;
   int vibrationCount = 0;
   bool isSirenActive = false;
+  String? error;
+
+  @override
+  String? get lastError => error;
+
+  @override
+  bool get isSirenPlaying => isSirenActive;
 
   @override
   Future<void> playWarningChime() async {
@@ -234,6 +241,98 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(feedback.sirenStartCount, 1);
+    });
+
+    test('Two simultaneous incidents: ACK on incident A keeps siren active for incident B', () async {
+      realtime.emit('incident.analyzed', {'id': 201, 'status': 'notifying', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isTrue);
+
+      realtime.emit('incident.analyzed', {'id': 202, 'status': 'notifying', 'severity': 'critical'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isTrue);
+
+      // ACK incident A
+      realtime.emit('incident.updated', {'id': 201, 'status': 'acknowledged', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+
+      // Siren MUST stay active because incident B is still active and urgent
+      expect(feedback.isSirenActive, isTrue);
+      expect(coordinator.currentIncident?.incidentId, 202);
+
+      // ACK incident B
+      realtime.emit('incident.updated', {'id': 202, 'status': 'acknowledged', 'severity': 'critical'});
+      await Future<void>.delayed(Duration.zero);
+
+      // Now all urgent incidents are acknowledged, siren must stop
+      expect(feedback.isSirenActive, isFalse);
+      expect(coordinator.level, AlertLevel.none);
+    });
+
+    test('Escalation from high to critical re-alerts when high was silenced', () async {
+      realtime.emit('incident.analyzed', {'id': 203, 'status': 'notifying', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isTrue);
+
+      // User silences high alarm
+      coordinator.silenceAlarm();
+      expect(feedback.isSirenActive, isFalse);
+      expect(coordinator.isSilenced, isTrue);
+
+      // Escalation to critical
+      realtime.emit('incident.updated', {'id': 203, 'status': 'notifying', 'severity': 'critical'});
+      await Future<void>.delayed(Duration.zero);
+
+      // Must re-alert for critical
+      expect(feedback.isSirenActive, isTrue);
+      expect(coordinator.isSilenced, isFalse);
+    });
+
+    test('call.updated events are ignored by coordinator and do not overwrite incident state', () async {
+      realtime.emit('incident.analyzed', {'id': 204, 'status': 'notifying', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(coordinator.currentIncident?.incidentId, 204);
+      expect(coordinator.level, AlertLevel.urgent);
+
+      // Unrelated phone call event arrives with incident_id but no severity/status
+      realtime.emit('call.updated', {'incident_id': 204, 'call_status': 'ringing'});
+      await Future<void>.delayed(Duration.zero);
+
+      expect(coordinator.currentIncident?.incidentId, 204);
+      expect(coordinator.level, AlertLevel.urgent);
+      expect(feedback.isSirenActive, isTrue);
+    });
+
+    test('Stale non-terminal event arriving after ACK does not resurrect siren', () async {
+      realtime.emit('incident.analyzed', {'id': 205, 'status': 'notifying', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isTrue);
+
+      // External ACK arrives
+      realtime.emit('incident.updated', {'id': 205, 'status': 'acknowledged', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isFalse);
+
+      // Delayed duplicate notifying event arrives
+      realtime.emit('incident.updated', {'id': 205, 'status': 'notifying', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isFalse);
+      expect(coordinator.level, AlertLevel.none);
+    });
+
+    test('pauseFeedback stops hardware audio and resumeFeedback restores it', () async {
+      realtime.emit('incident.analyzed', {'id': 206, 'status': 'notifying', 'severity': 'high'});
+      await Future<void>.delayed(Duration.zero);
+      expect(feedback.isSirenActive, isTrue);
+
+      // App transitions to background
+      coordinator.pauseFeedback();
+      expect(feedback.isSirenActive, isFalse);
+      expect(coordinator.level, AlertLevel.urgent);
+
+      // App returns to foreground
+      coordinator.resumeFeedback();
+      expect(feedback.isSirenActive, isTrue);
     });
   });
 }

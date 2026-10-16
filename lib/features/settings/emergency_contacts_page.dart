@@ -16,7 +16,6 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
   bool _loading = false;
   List<Map<String, dynamic>> _contacts = [];
   String? _errorMessage;
-  bool _calling = false;
 
   void _showError() {
     if (!mounted) return;
@@ -95,56 +94,6 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
       } else {
         _showError();
       }
-    }
-  }
-
-  Future<void> _testCall(int id, String name) async {
-    if (_calling) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận gọi thử'),
-        content: Text(
-          'Gửi lệnh gọi thử tới $name. Có thể phát sinh cuộc gọi thật nếu Pi dùng Stringee.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Gọi thử'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted || _calling) return;
-    setState(() => _calling = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đang gửi lệnh gọi thử nghiệm tới $name...')),
-    );
-    final ok = await _api.testCall(id);
-    if (!mounted) return;
-    setState(() => _calling = false);
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _api.lastCallProvider == 'mock'
-                ? 'Đã gọi giả lập (mock), không có cuộc gọi thật.'
-                : 'Nhà cung cấp đã nhận yêu cầu gọi thử.',
-          ),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_api.lastError ?? 'Không thể thực hiện cuộc gọi.'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
     }
   }
 
@@ -426,17 +375,6 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                             ),
                           ],
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.phone_forwarded_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        tooltip: 'Gọi thử nghiệm',
-                        onPressed: _api.canConfigure && !_calling
-                            ? () => _testCall(id, name)
-                            : null,
                       ),
                       Switch(
                         value: isEnabled,

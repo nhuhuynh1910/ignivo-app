@@ -32,6 +32,57 @@ Future<FireeyeApiService> eyeFor(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  for (final missing in [
+    'status',
+    'online',
+    'ptz',
+    'revision',
+    'unavailable',
+  ]) {
+    testWidgets('PTZ fails closed for $missing capability', (tester) async {
+      tester.view.physicalSize = const Size(600, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var moves = 0;
+      final caps = <String, dynamic>{
+        'status': 'valid',
+        'online': true,
+        'ptz': true,
+        'binding': {
+          'guard_device_id': 'pi',
+          'guard_camera_id': 1,
+          'source_revision': 'rev',
+        },
+      };
+      if (missing == 'revision') {
+        (caps['binding'] as Map).remove('source_revision');
+      } else if (missing == 'unavailable') {
+        caps['status'] = 'unavailable';
+      } else {
+        caps.remove(missing);
+      }
+      final eye = await eyeFor((r) async {
+        if (r.method == 'POST') moves++;
+        return jsonResp(caps);
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PiCameraPage(
+            eye: eye,
+            guard: eye.fireguard,
+            deviceId: 'pi',
+            camera: const {'id': 1, 'name': 'Camera', 'source_revision': 'rev'},
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('Trái'), findsNothing);
+      expect(moves, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   test('FireeyeApiService sends sourceRevision and unbinds', () async {
     final calls = <String>[];
     final eye = await eyeFor((r) async {
@@ -102,7 +153,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(
-        find.textContaining('Cấu hình luồng camera đã thay đổi (source_revision)'),
+        find.textContaining(
+          'Cấu hình luồng camera đã thay đổi (source_revision)',
+        ),
         findsOneWidget,
       );
       expect(
@@ -113,63 +166,63 @@ void main() {
     },
   );
 
-  testWidgets(
-    'PiCameraPage displays relink and unbind buttons when bound',
-    (tester) async {
-      tester.view.physicalSize = const Size(600, 1400);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('PiCameraPage displays relink and unbind buttons when bound', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(600, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      var deleted = false;
-      final eye = await eyeFor((r) async {
-        if (r.method == 'DELETE') {
-          deleted = true;
-          return jsonResp({'success': true});
-        }
-        if (r.url.path == '/api/integration/camera') {
-          return jsonResp({
-            'online': true,
-            'status': 'valid',
-            'binding': {
-              'guard_device_id': 'pi',
-              'guard_camera_id': 1,
-              'source_revision': 'rev-123',
-            },
-          });
-        }
+    var deleted = false;
+    final eye = await eyeFor((r) async {
+      if (r.method == 'DELETE') {
+        deleted = true;
         return jsonResp({'success': true});
-      });
+      }
+      if (r.url.path == '/api/integration/camera') {
+        return jsonResp({
+          'online': true,
+          'status': 'valid',
+          'ptz': true,
+          'binding': {
+            'guard_device_id': 'pi',
+            'guard_camera_id': 1,
+            'source_revision': 'rev-123',
+          },
+        });
+      }
+      return jsonResp({'success': true});
+    });
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: PiCameraPage(
-            eye: eye,
-            guard: eye.fireguard,
-            deviceId: 'pi',
-            camera: const {
-              'id': 1,
-              'name': 'Cổng chính',
-              'source_revision': 'rev-123',
-            },
-          ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PiCameraPage(
+          eye: eye,
+          guard: eye.fireguard,
+          deviceId: 'pi',
+          camera: const {
+            'id': 1,
+            'name': 'Cổng chính',
+            'source_revision': 'rev-123',
+          },
         ),
-      );
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pump(const Duration(milliseconds: 200));
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text('Đã liên kết PTZ với camera này.'), findsOneWidget);
-      expect(find.text('Kiểm tra lại'), findsOneWidget);
-      expect(find.text('Hủy liên kết'), findsOneWidget);
+    expect(find.text('Đã liên kết PTZ với camera này.'), findsOneWidget);
+    expect(find.text('Kiểm tra lại'), findsOneWidget);
+    expect(find.text('Hủy liên kết'), findsOneWidget);
 
-      await tester.tap(find.text('Hủy liên kết'));
-      await tester.pumpAndSettle();
-      expect(find.text('Hủy liên kết PTZ'), findsOneWidget);
+    await tester.tap(find.text('Hủy liên kết'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hủy liên kết PTZ'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Hủy liên kết'));
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(deleted, isTrue);
-      await tester.pumpWidget(const SizedBox.shrink());
-    },
-  );
+    await tester.tap(find.widgetWithText(FilledButton, 'Hủy liên kết'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(deleted, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }

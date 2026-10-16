@@ -113,26 +113,70 @@ class FireeyeApiService {
       return false;
     }
     final revision = fireguard.sessionRevision;
-    final data = await _request(
-      '/api/auth/refresh',
-      method: 'POST',
-      authorize: false,
-      body: {'refresh_token': _refreshToken},
-    );
+    // Legacy Pi uses cookies; newer mobile APIs accept JSON. Send both only
+    // to this configured auth origin, with redirects disabled by _exchange.
+    final refreshToken = _refreshToken!;
+    final response = await _exchange(() {
+      final request = http.Request(
+        'POST',
+        Uri.parse('$_baseUrl/api/auth/refresh'),
+      );
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['Cookie'] =
+          'refresh_token=${Uri.encodeComponent(refreshToken)}';
+      request.body = jsonEncode({'refresh_token': refreshToken});
+      return request;
+    }, authorize: false);
+    final data = _decode(response);
     if (revision != fireguard.sessionRevision) {
       throw const FireeyeException(
         'Phiên đã thay đổi. Vui lòng đăng nhập lại.',
       );
     }
-    final token = data['token'];
+    final token = data['token'] ?? _responseCookie(response, 'access_token');
     if (token is! String || token.isEmpty) {
       throw const FireeyeException('FireEye chưa hỗ trợ gia hạn phiên mobile.');
     }
+    // Some older servers return an access cookie that is not associated with
+    // a valid session. Verify it before replacing the shared authenticated token.
+    try {
+      _decode(
+        await _exchange(() {
+          final request = http.Request(
+            'GET',
+            Uri.parse('$_baseUrl/api/auth/me'),
+          );
+          request.headers['Authorization'] = 'Bearer $token';
+          return request;
+        }, authorize: false),
+      );
+    } on FireeyeException catch (e) {
+      if (e.statusCode == 401 && revision == fireguard.sessionRevision) {
+        _forgetRefresh();
+        _user = null;
+        await fireguard.setAuthToken(null);
+      }
+      rethrow;
+    }
     await fireguard.setAuthToken(token, preserveUser: true);
+    _refreshToken =
+        data['refresh_token'] as String? ??
+        _responseCookie(response, 'refresh_token') ??
+        refreshToken;
     _expires = DateTime.now().add(
       Duration(seconds: (data['expires_in'] as num?)?.toInt() ?? 1800),
     );
     return true;
+  }
+
+  // http combines Set-Cookie headers. Match the named cookie at a header
+  // boundary, not attributes such as Expires (which can also contain commas).
+  String? _responseCookie(http.Response response, String name) {
+    final match = RegExp(
+      '(?:^|,\\s*)${RegExp.escape(name)}=([^;,]*)',
+    ).firstMatch(response.headers['set-cookie'] ?? '');
+    final value = match?.group(1)?.replaceAll('"', '');
+    return value == null || value.isEmpty ? null : Uri.decodeComponent(value);
   }
 
   Future<http.Response> _exchange(
@@ -316,9 +360,16 @@ class FireeyeApiService {
     final query = sourceRevision != null && sourceRevision.isNotEmpty
         ? '?source_revision=${Uri.encodeComponent(sourceRevision)}'
         : '';
-    return Map<String, dynamic>.from(
-      await _request('/api/integration/camera$query'),
-    );
+    try {
+      return Map<String, dynamic>.from(
+        await _request('/api/integration/camera$query'),
+      );
+    } on FireeyeException catch (e) {
+      if (e.statusCode == 404 || e.statusCode == 501) {
+        return {'status': 'unsupported', 'ptz': false, 'online': false};
+      }
+      rethrow;
+    }
   }
 
   Future<void> bindCamera(

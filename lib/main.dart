@@ -17,6 +17,8 @@ class IgnivoApp extends StatelessWidget {
       title: 'IGNIVO',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: const EdgeConnectionPage(),
     );
   }
