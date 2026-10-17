@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
-import '../../widgets/ignivo_logo.dart';
 import 'incident_page.dart';
 import 'monitoring_controller.dart';
 import 'monitor_widgets.dart';
@@ -24,20 +24,11 @@ class GuardHomePage extends StatelessWidget {
   final void Function(int cameraId)? onOpenLiveView;
   final VoidCallback? onOpenDiagnostics;
 
-  String _formatTime(DateTime? dt) {
-    if (dt == null) return 'Chưa cập nhật';
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    final s = dt.second.toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: monitoringController,
       builder: (context, _) {
-        final theme = Theme.of(context);
         final status = monitoringController.status;
         final cameras = monitoringController.cameras;
         final incidents = monitoringController.incidents;
@@ -50,108 +41,86 @@ class GuardHomePage extends StatelessWidget {
           return s != 'resolved' && s != 'false_alarm';
         }).toList();
 
-        return RefreshIndicator(
-          onRefresh: monitoringController.refresh,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-            // 1. Header: Brand Logo & Location Name & Sync Status
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const IgnivoLogo.mark(size: 44),
-                const SizedBox(width: BrandTokens.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sessionController.systemName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            isStale ? Icons.sync_problem : Icons.check_circle,
-                            size: 14,
-                            color: isStale ? BrandTokens.mediumFg : BrandTokens.normalFg,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              isStale
-                                  ? 'Dữ liệu chưa đồng bộ (${_formatTime(monitoringController.updated)})'
-                                  : 'Đồng bộ lúc ${_formatTime(monitoringController.updated)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isStale ? BrandTokens.mediumFg : null,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (onOpenDiagnostics != null)
-                  IconButton(
-                    icon: const Icon(Icons.monitor_heart_outlined),
+        return IgnivoPageBody(
+          header: IgnivoPageHeader(
+            title: 'Trang chủ',
+            subtitle: 'Tổng quan hệ thống giám sát',
+            systemName: sessionController.systemName,
+            showSync: true,
+            updatedAt: monitoringController.updated,
+            stale: isStale,
+            action: onOpenDiagnostics == null
+                ? null
+                : IgnivoHeaderAction(
+                    icon: Icons.monitor_heart_outlined,
                     tooltip: 'Chẩn đoán hệ thống',
                     onPressed: onOpenDiagnostics,
                   ),
-              ],
+          ),
+          child: RefreshIndicator(
+            onRefresh: monitoringController.refresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 2. Alert Banner / Safe State
+                  if (unclosedIncidents.isNotEmpty || active != null) ...[
+                    _buildActiveIncidentBanner(
+                      context,
+                      active ?? unclosedIncidents.first,
+                      unclosedIncidents.length,
+                    ),
+                  ] else ...[
+                    _buildSafeStateBanner(context, isStale),
+                  ],
+                  const SizedBox(height: 20),
+
+                  // 3. Monitoring Readiness Section
+                  _buildReadinessCard(context, status, cameras),
+                  const SizedBox(height: 20),
+
+                  // 4. Quick Cameras Preview
+                  _buildQuickCamerasSection(context, cameras),
+                  const SizedBox(height: 20),
+
+                  // 5. Recent Activity Section
+                  _buildRecentActivitySection(context, incidents),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // 2. Alert Banner / Safe State
-            if (unclosedIncidents.isNotEmpty || active != null) ...[
-              _buildActiveIncidentBanner(context, active ?? unclosedIncidents.first, unclosedIncidents.length),
-            ] else ...[
-              _buildSafeStateBanner(context, isStale),
-            ],
-            const SizedBox(height: 20),
-
-            // 3. Monitoring Readiness Section
-            _buildReadinessCard(context, status, cameras),
-            const SizedBox(height: 20),
-
-            // 4. Quick Cameras Preview
-            _buildQuickCamerasSection(context, cameras),
-            const SizedBox(height: 20),
-
-            // 5. Recent Activity Section
-            _buildRecentActivitySection(context, incidents),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }
 
-  Widget _buildActiveIncidentBanner(BuildContext context, Map<String, dynamic> inc, int totalActive) {
+  Widget _buildActiveIncidentBanner(
+    BuildContext context,
+    Map<String, dynamic> inc,
+    int totalActive,
+  ) {
     final id = inc['id'] as int? ?? 0;
     final rawSeverity = inc['severity']?.toString();
     final severityText = (rawSeverity != null && rawSeverity.trim().isNotEmpty)
         ? rawSeverity.toUpperCase()
         : 'CHƯA XÁC ĐỊNH';
     final area = inc['area']?.toString() ?? 'Chưa xác định';
-    final statusStr = AlertPresentationMapping.statusLabel(inc['status']?.toString());
+    final statusStr = AlertPresentationMapping.statusLabel(
+      inc['status']?.toString(),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final statusStyle = AlertPresentationMapping.statusStyle(severity: rawSeverity, isDark: isDark);
+    final statusStyle = AlertPresentationMapping.statusStyle(
+      severity: rawSeverity,
+      isDark: isDark,
+    );
     final shouldPulse = AlertPresentationMapping.shouldPulse(
       incident: inc,
       stale: monitoringController.stale,
-      disableAnimations: MediaQuery.maybeOf(context)?.disableAnimations ?? false,
+      disableAnimations:
+          MediaQuery.maybeOf(context)?.disableAnimations ?? false,
     );
 
     return PulsingAlertWrapper(
@@ -169,7 +138,11 @@ class GuardHomePage extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: statusStyle.foreground, size: 28),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: statusStyle.foreground,
+                  size: 28,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -183,10 +156,15 @@ class GuardHomePage extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusStyle.border.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+                    borderRadius: BorderRadius.circular(
+                      BrandTokens.badgeRadius,
+                    ),
                   ),
                   child: Text(
                     severityText,
@@ -203,7 +181,9 @@ class GuardHomePage extends StatelessWidget {
             Text(
               'Khu vực: $area · Trạng thái: $statusStr',
               style: TextStyle(
-                color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary,
+                color: isDark
+                    ? BrandTokens.darkTextPrimary
+                    : BrandTokens.textPrimary,
                 fontSize: 14,
               ),
             ),
@@ -219,7 +199,10 @@ class GuardHomePage extends StatelessWidget {
                     ),
                     onPressed: () => onOpenIncident?.call(id),
                     icon: const Icon(Icons.remove_red_eye_outlined),
-                    label: const Text('Xem bằng chứng & xử lý', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'Xem bằng chứng & xử lý',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 if (totalActive > 1) ...[
@@ -294,10 +277,16 @@ class GuardHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildReadinessCard(BuildContext context, Map<String, dynamic>? status, List<Map<String, dynamic>> cameras) {
+  Widget _buildReadinessCard(
+    BuildContext context,
+    Map<String, dynamic>? status,
+    List<Map<String, dynamic>> cameras,
+  ) {
     final theme = Theme.of(context);
     final totalCameras = cameras.length;
-    final onlineCameras = cameras.where((c) => (c['status'] as Map?)?['online'] == true).length;
+    final onlineCameras = cameras
+        .where((c) => (c['status'] as Map?)?['online'] == true)
+        .length;
     final callConfigured = status?['stringee_configured'] == true;
     final familyCount = status?['family_contacts'] as int? ?? 0;
     final fireDeptCount = status?['fire_dept_contacts'] as int? ?? 0;
@@ -308,7 +297,9 @@ class GuardHomePage extends StatelessWidget {
         children: [
           Text(
             'Mức sẵn sàng giám sát',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -318,7 +309,9 @@ class GuardHomePage extends StatelessWidget {
                   context,
                   icon: Icons.videocam_outlined,
                   title: 'Camera giám sát',
-                  subtitle: totalCameras > 0 ? '$onlineCameras/$totalCameras trực tuyến' : 'Chưa có camera',
+                  subtitle: totalCameras > 0
+                      ? '$onlineCameras/$totalCameras trực tuyến'
+                      : 'Chưa có camera',
                   isOk: totalCameras > 0 && onlineCameras == totalCameras,
                 ),
               ),
@@ -391,7 +384,10 @@ class GuardHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickCamerasSection(BuildContext context, List<Map<String, dynamic>> cameras) {
+  Widget _buildQuickCamerasSection(
+    BuildContext context,
+    List<Map<String, dynamic>> cameras,
+  ) {
     final theme = Theme.of(context);
 
     return Column(
@@ -402,7 +398,9 @@ class GuardHomePage extends StatelessWidget {
           children: [
             Text(
               'Xem nhanh Camera',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             if (cameras.isNotEmpty)
               TextButton(
@@ -419,7 +417,9 @@ class GuardHomePage extends StatelessWidget {
             decoration: BoxDecoration(
               color: theme.cardColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+              border: Border.all(
+                color: theme.dividerColor.withValues(alpha: 0.1),
+              ),
             ),
             child: const Text('Chưa có camera nào được thiết lập trên Pi.'),
           ),
@@ -449,7 +449,9 @@ class GuardHomePage extends StatelessWidget {
                     padding: const EdgeInsets.all(BrandTokens.space12),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                      borderRadius: BorderRadius.circular(
+                        BrandTokens.cardRadius,
+                      ),
                       border: Border.all(
                         color: theme.dividerColor.withValues(alpha: 0.15),
                       ),
@@ -462,7 +464,9 @@ class GuardHomePage extends StatelessWidget {
                             Icon(
                               Icons.videocam_outlined,
                               size: 18,
-                              color: isOnline ? BrandTokens.normalFg : BrandTokens.staleFg,
+                              color: isOnline
+                                  ? BrandTokens.normalFg
+                                  : BrandTokens.staleFg,
                             ),
                             const SizedBox(width: 4),
                             Expanded(
@@ -471,7 +475,9 @@ class GuardHomePage extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: isOnline ? BrandTokens.normalFg : BrandTokens.staleFg,
+                                  color: isOnline
+                                      ? BrandTokens.normalFg
+                                      : BrandTokens.staleFg,
                                 ),
                               ),
                             ),
@@ -480,7 +486,9 @@ class GuardHomePage extends StatelessWidget {
                               height: 8,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isOnline ? BrandTokens.normalFg : BrandTokens.criticalFg,
+                                color: isOnline
+                                    ? BrandTokens.normalFg
+                                    : BrandTokens.criticalFg,
                               ),
                             ),
                           ],
@@ -488,7 +496,10 @@ class GuardHomePage extends StatelessWidget {
                         const Spacer(),
                         Text(
                           name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -510,7 +521,9 @@ class GuardHomePage extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                             color: aiResult.isActive
                                 ? BrandTokens.normalFg
-                                : (aiResult.isError ? BrandTokens.criticalFg : BrandTokens.staleFg),
+                                : (aiResult.isError
+                                      ? BrandTokens.criticalFg
+                                      : BrandTokens.staleFg),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -527,7 +540,10 @@ class GuardHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentActivitySection(BuildContext context, List<Map<String, dynamic>> incidents) {
+  Widget _buildRecentActivitySection(
+    BuildContext context,
+    List<Map<String, dynamic>> incidents,
+  ) {
     final theme = Theme.of(context);
     final recent = incidents.take(4).toList();
 
@@ -539,7 +555,9 @@ class GuardHomePage extends StatelessWidget {
           children: [
             Text(
               'Hoạt động gần đây',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             if (incidents.isNotEmpty)
               TextButton(
@@ -556,7 +574,9 @@ class GuardHomePage extends StatelessWidget {
             decoration: BoxDecoration(
               color: theme.cardColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+              border: Border.all(
+                color: theme.dividerColor.withValues(alpha: 0.1),
+              ),
             ),
             child: const Text('Chưa có hoạt động nào được ghi nhận.'),
           ),
@@ -577,7 +597,9 @@ class GuardHomePage extends StatelessWidget {
               return ListTile(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
+                  side: BorderSide(
+                    color: theme.dividerColor.withValues(alpha: 0.1),
+                  ),
                 ),
                 tileColor: theme.cardColor,
                 leading: CircleAvatar(
@@ -591,8 +613,17 @@ class GuardHomePage extends StatelessWidget {
                         : Colors.orange,
                   ),
                 ),
-                title: Text('Sự cố #$id — $area', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: Text('Trạng thái: $status · $time', style: const TextStyle(fontSize: 12)),
+                title: Text(
+                  'Sự cố #$id — $area',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  'Trạng thái: $status · $time',
+                  style: const TextStyle(fontSize: 12),
+                ),
                 trailing: const Icon(Icons.chevron_right, size: 20),
                 onTap: () => onOpenIncident?.call(id),
               );

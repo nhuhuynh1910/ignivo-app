@@ -8,6 +8,7 @@ import '../features/fireguard/guard_home_page.dart';
 import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
 import '../features/settings/guard_settings_page.dart';
+import '../features/settings/diagnostics_page.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
@@ -23,8 +24,7 @@ class IgnivoShell extends StatefulWidget {
   State<IgnivoShell> createState() => _IgnivoShellState();
 }
 
-class _IgnivoShellState extends State<IgnivoShell>
-    with WidgetsBindingObserver {
+class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   late final MonitoringController _monitoring;
   final Set<int> _snackBarAnnounced = {};
 
@@ -32,7 +32,8 @@ class _IgnivoShellState extends State<IgnivoShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _monitoring = widget.monitoringController ??
+    _monitoring =
+        widget.monitoringController ??
         MonitoringController(api: widget.sessionController.api);
     _monitoring.addListener(_onMonitoringChanged);
     _monitoring.start();
@@ -127,7 +128,14 @@ class _IgnivoShellState extends State<IgnivoShell>
   }
 
   void _openDiagnostics() {
-    setState(() => _selectedTab = 3);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DiagnosticsPage(
+          sessionController: widget.sessionController,
+          monitoringController: _monitoring,
+        ),
+      ),
+    );
   }
 
   @override

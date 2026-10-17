@@ -73,7 +73,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Danh sách Camera'), findsOneWidget);
+      expect(find.text('Camera'), findsOneWidget);
       expect(find.text('Chưa phát hiện camera kết nối'), findsOneWidget);
       expect(find.text('Chưa có camera nào được cấu hình'), findsOneWidget);
       expect(find.text('Xem hướng dẫn thiết lập'), findsOneWidget);

@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
-import '../../widgets/ignivo_logo.dart';
 import '../settings/connection_setup_page.dart';
 
 class SystemLoginPage extends StatefulWidget {
-  const SystemLoginPage({
-    super.key,
-    required this.sessionController,
-  });
+  const SystemLoginPage({super.key, required this.sessionController});
 
   final SystemSessionController sessionController;
 
@@ -81,17 +78,9 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 12),
-                    const Center(
-                      child: IgnivoLogo.wordmark(width: 220),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Hệ thống giám sát và cảnh báo khẩn cấp',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodySmall?.color,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
+                    const IgnivoAuthHeader(
+                      title: 'Đăng nhập',
+                      subtitle: 'Truy cập hệ thống giám sát của bạn',
                     ),
                     const SizedBox(height: 24),
 
@@ -103,7 +92,9 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                       ),
                       decoration: BoxDecoration(
                         color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                        borderRadius: BorderRadius.circular(
+                          BrandTokens.cardRadius,
+                        ),
                         border: Border.all(
                           color: theme.dividerColor.withValues(alpha: 0.15),
                         ),
@@ -146,7 +137,9 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                             onPressed: isAuthenticating ? null : _openSetupPage,
                             style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                             ),
                             child: const Text('Đổi kết nối'),
                           ),
@@ -163,7 +156,9 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                           color: theme.brightness == Brightness.dark
                               ? BrandTokens.darkCriticalBg
                               : BrandTokens.criticalBg,
-                          borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
+                          borderRadius: BorderRadius.circular(
+                            BrandTokens.inputRadius,
+                          ),
                           border: Border.all(
                             color: theme.brightness == Brightness.dark
                                 ? BrandTokens.darkCriticalBorder
@@ -235,9 +230,8 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                                 ? Icons.visibility_off
                                 : Icons.visibility,
                           ),
-                          onPressed: () => setState(
-                            () => _obscureSecret = !_obscureSecret,
-                          ),
+                          onPressed: () =>
+                              setState(() => _obscureSecret = !_obscureSecret),
                         ),
                       ),
                       validator: (val) {

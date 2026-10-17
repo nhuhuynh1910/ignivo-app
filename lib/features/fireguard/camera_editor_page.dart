@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/theme/brand_tokens.dart';
 
@@ -32,7 +33,11 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
   }
 
   Future<void> _save() async {
-    if (widget.camera == null || !_form.currentState!.validate() || !widget.api.canConfigure) return;
+    if (widget.camera == null ||
+        !_form.currentState!.validate() ||
+        !widget.api.canConfigure) {
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -66,8 +71,10 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.camera == null ? 'Thêm camera' : 'Sửa camera'),
+      appBar: ignivoDetailAppBar(
+        context,
+        title: widget.camera == null ? 'Thêm camera' : 'Sửa camera',
+        subtitle: 'Thiết lập thông tin camera',
       ),
       body: Form(
         key: _form,
@@ -76,11 +83,15 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
           children: [
             if (widget.camera == null) ...[
               Card(
-                color: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
+                color: isDark
+                    ? BrandTokens.darkBrandTint
+                    : BrandTokens.brandTint,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: isDark ? BrandTokens.darkBorder : BrandTokens.border),
+                  side: BorderSide(
+                    color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -89,14 +100,18 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                        color: isDark
+                            ? BrandTokens.darkPrimary
+                            : BrandTokens.brandPrimary,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Việc thêm camera mới (RTSP/USB) được thiết lập trực tiếp trên Edge Box hoặc giao diện quản trị hệ thống để bảo đảm an toàn kết nối. Ứng dụng di động chỉ hỗ trợ cấu hình camera đã có.',
                           style: TextStyle(
-                            color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
+                            color: isDark
+                                ? BrandTokens.darkTextPrimary
+                                : BrandTokens.brandNavy,
                             fontSize: 13,
                           ),
                         ),
@@ -108,7 +123,9 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
               const SizedBox(height: 16),
             ] else ...[
               Card(
-                color: isDark ? BrandTokens.darkSurfaceVariant : const Color(0xFFF1F5F9),
+                color: isDark
+                    ? BrandTokens.darkSurfaceVariant
+                    : const Color(0xFFF1F5F9),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -123,7 +140,9 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
                       Icon(
                         Icons.lock_outline,
                         size: 20,
-                        color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                        color: isDark
+                            ? BrandTokens.darkTextSecondary
+                            : BrandTokens.textSecondary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -131,7 +150,9 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
                           'Nguồn video và thông tin RTSP được bảo mật trực tiếp trên Edge Box.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                            color: isDark
+                                ? BrandTokens.darkTextSecondary
+                                : BrandTokens.textSecondary,
                           ),
                         ),
                       ),
@@ -141,69 +162,78 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
               ),
               const SizedBox(height: 16),
             ],
-          TextFormField(
-            controller: _name,
-            enabled: !_saving && widget.camera != null,
-            maxLength: 100,
-            decoration: const InputDecoration(labelText: 'Tên camera'),
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Nhập tên camera' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _area,
-            enabled: !_saving && widget.camera != null,
-            maxLength: 100,
-            decoration: const InputDecoration(
-              labelText: 'Khu vực',
-              helperText: 'Được đọc trong cuộc gọi cảnh báo',
+            TextFormField(
+              controller: _name,
+              enabled: !_saving && widget.camera != null,
+              maxLength: 100,
+              decoration: const InputDecoration(labelText: 'Tên camera'),
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Nhập tên camera' : null,
             ),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _fps,
-            enabled: !_saving && widget.camera != null,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'FPS mục tiêu của AI',
-              helperText: 'Từ 0.5 đến 30; khác với FPS thực tế',
-            ),
-            validator: (v) {
-              final n = double.tryParse(v?.trim() ?? '');
-              return n == null || !n.isFinite || n < .5 || n > 30
-                  ? 'Nhập số từ 0.5 đến 30'
-                  : null;
-            },
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Bật camera'),
-            value: _enabled,
-            onChanged: _saving || widget.camera == null ? null : (v) => setState(() => _enabled = v),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Chạy AI nhận diện'),
-            subtitle: const Text('Tắt AI chỉ còn xem hình từ camera này.'),
-            value: _detect,
-            onChanged: _saving || widget.camera == null ? null : (v) => setState(() => _detect = v),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _area,
+              enabled: !_saving && widget.camera != null,
+              maxLength: 100,
+              decoration: const InputDecoration(
+                labelText: 'Khu vực',
+                helperText: 'Được đọc trong cuộc gọi cảnh báo',
               ),
             ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _saving || !widget.api.canConfigure || widget.camera == null ? null : _save,
-            child: Text(_saving ? 'Đang lưu…' : 'Lưu camera'),
-          ),
-        ],
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _fps,
+              enabled: !_saving && widget.camera != null,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'FPS mục tiêu của AI',
+                helperText: 'Từ 0.5 đến 30; khác với FPS thực tế',
+              ),
+              validator: (v) {
+                final n = double.tryParse(v?.trim() ?? '');
+                return n == null || !n.isFinite || n < .5 || n > 30
+                    ? 'Nhập số từ 0.5 đến 30'
+                    : null;
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Bật camera'),
+              value: _enabled,
+              onChanged: _saving || widget.camera == null
+                  ? null
+                  : (v) => setState(() => _enabled = v),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Chạy AI nhận diện'),
+              subtitle: const Text('Tắt AI chỉ còn xem hình từ camera này.'),
+              value: _detect,
+              onChanged: _saving || widget.camera == null
+                  ? null
+                  : (v) => setState(() => _detect = v),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed:
+                  _saving || !widget.api.canConfigure || widget.camera == null
+                  ? null
+                  : _save,
+              child: Text(_saving ? 'Đang lưu…' : 'Lưu camera'),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/fireguard_realtime_service.dart';
@@ -323,8 +324,9 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                 ),
               ),
             ),
-      appBar: AppBar(
-        title: Text('Sự cố #${widget.incidentId}'),
+      appBar: ignivoDetailAppBar(
+        context,
+        title: 'Sự cố #${widget.incidentId}',
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
@@ -346,11 +348,9 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
             Text(
               '${IncidentPresentationHelper.areaText(incident)} · ${incident['created_at'] ?? ''}'
                   .replaceAll('T', ' '),
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
             ),
             const SizedBox(height: 8),
             Wrap(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/system_session_controller.dart';
 import '../fireguard/camera_editor_page.dart';
@@ -71,7 +72,8 @@ class _CameraLivePageState extends State<CameraLivePage> {
     final detectEnabled = cam['detect_enabled'] != false;
     final fps = cam['ai_fps'] ?? 8;
     final streamUrl = widget.api.getMjpegStreamUrl(id);
-    final canConfig = widget.sessionController?.isOwnerOrAdmin ?? widget.api.canConfigure;
+    final canConfig =
+        widget.sessionController?.isOwnerOrAdmin ?? widget.api.canConfigure;
 
     if (_isFullscreen) {
       return Scaffold(
@@ -89,7 +91,10 @@ class _CameraLivePageState extends State<CameraLivePage> {
             ),
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -122,20 +127,10 @@ class _CameraLivePageState extends State<CameraLivePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text(
-              area,
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.textTheme.bodySmall?.color,
-              ),
-            ),
-          ],
-        ),
+      appBar: ignivoDetailAppBar(
+        context,
+        title: name,
+        subtitle: area,
         actions: [
           IconButton(
             icon: const Icon(Icons.fullscreen),
@@ -177,7 +172,9 @@ class _CameraLivePageState extends State<CameraLivePage> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+                      side: BorderSide(
+                        color: theme.dividerColor.withValues(alpha: 0.15),
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -194,12 +191,20 @@ class _CameraLivePageState extends State<CameraLivePage> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  isOnline ? 'Camera đang truyền phát' : 'Camera mất tín hiệu',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  isOnline
+                                      ? 'Camera đang truyền phát'
+                                      : 'Camera mất tín hiệu',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isOnline
                                       ? Colors.green.withValues(alpha: 0.15)
@@ -224,12 +229,22 @@ class _CameraLivePageState extends State<CameraLivePage> {
                             context,
                             'AI nhận diện cháy',
                             detectEnabled ? 'Đang kích hoạt' : 'Đã tạm tắt',
-                            valueColor: detectEnabled ? Colors.green : Colors.orange,
+                            valueColor: detectEnabled
+                                ? Colors.green
+                                : Colors.orange,
                           ),
                           const SizedBox(height: 8),
-                          _buildDetailRow(context, 'Tốc độ phân tích mục tiêu', '$fps FPS'),
+                          _buildDetailRow(
+                            context,
+                            'Tốc độ phân tích mục tiêu',
+                            '$fps FPS',
+                          ),
                           const SizedBox(height: 8),
-                          _buildDetailRow(context, 'Mã định danh camera', 'Camera #$id'),
+                          _buildDetailRow(
+                            context,
+                            'Mã định danh camera',
+                            'Camera #$id',
+                          ),
                         ],
                       ),
                     ),
@@ -240,14 +255,21 @@ class _CameraLivePageState extends State<CameraLivePage> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+                      border: Border.all(
+                        color: theme.dividerColor.withValues(alpha: 0.1),
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline, size: 20, color: theme.colorScheme.primary),
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -270,14 +292,22 @@ class _CameraLivePageState extends State<CameraLivePage> {
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, String label, String value, {Color? valueColor}) {
+  Widget _buildDetailRow(
+    BuildContext context,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 13),
+          style: TextStyle(
+            color: theme.textTheme.bodySmall?.color,
+            fontSize: 13,
+          ),
         ),
         Text(
           value,

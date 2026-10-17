@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/pi_connection_profile.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
-import '../../widgets/ignivo_logo.dart';
 
 class ConnectionSetupPage extends StatefulWidget {
   const ConnectionSetupPage({
@@ -95,7 +95,8 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
       setState(() {
         _isChecking = false;
         _checkSuccess = false;
-        _checkMessage = 'Lỗi kết nối: Không thể truy cập địa chỉ được chỉ định.';
+        _checkMessage =
+            'Lỗi kết nối: Không thể truy cập địa chỉ được chỉ định.';
       });
     }
   }
@@ -136,10 +137,9 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kết nối hệ thống IGNIVO'),
-        automaticallyImplyLeading: widget.canPop,
-      ),
+      appBar: widget.canPop
+          ? ignivoDetailAppBar(context, title: 'Đổi kết nối')
+          : null,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -151,27 +151,10 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(
-                      child: IgnivoLogo.mark(size: 72),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Kết nối hệ thống IGNIVO',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.brightness == Brightness.dark
-                            ? BrandTokens.darkTextPrimary
-                            : BrandTokens.brandNavy,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Nhập tên vị trí và địa chỉ do người cài đặt cung cấp để kết nối đến bộ xử lý FireGuard.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodySmall?.color,
-                      ),
-                      textAlign: TextAlign.center,
+                    const IgnivoAuthHeader(
+                      title: 'Kết nối hệ thống IGNIVO',
+                      subtitle:
+                          'Nhập tên vị trí và địa chỉ do người cài đặt cung cấp để kết nối đến bộ xử lý FireGuard.',
                     ),
                     const SizedBox(height: 28),
                     TextFormField(
@@ -198,7 +181,8 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                       autocorrect: false,
                       decoration: const InputDecoration(
                         labelText: 'Địa chỉ FireGuard',
-                        hintText: 'Ví dụ: 100.95.189.60:8080 hoặc http://pi.lan:8080',
+                        hintText:
+                            'Ví dụ: 100.95.189.60:8080 hoặc http://pi.lan:8080',
                         prefixIcon: Icon(Icons.dns_outlined),
                         border: OutlineInputBorder(),
                       ),
@@ -231,20 +215,22 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                         decoration: BoxDecoration(
                           color: _checkSuccess == true
                               ? (theme.brightness == Brightness.dark
-                                  ? BrandTokens.darkNormalBg
-                                  : BrandTokens.normalBg)
+                                    ? BrandTokens.darkNormalBg
+                                    : BrandTokens.normalBg)
                               : (theme.brightness == Brightness.dark
-                                  ? BrandTokens.darkCriticalBg
-                                  : BrandTokens.criticalBg),
-                          borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
+                                    ? BrandTokens.darkCriticalBg
+                                    : BrandTokens.criticalBg),
+                          borderRadius: BorderRadius.circular(
+                            BrandTokens.inputRadius,
+                          ),
                           border: Border.all(
                             color: _checkSuccess == true
                                 ? (theme.brightness == Brightness.dark
-                                    ? BrandTokens.darkNormalBorder
-                                    : BrandTokens.normalBorder)
+                                      ? BrandTokens.darkNormalBorder
+                                      : BrandTokens.normalBorder)
                                 : (theme.brightness == Brightness.dark
-                                    ? BrandTokens.darkCriticalBorder
-                                    : BrandTokens.criticalBorder),
+                                      ? BrandTokens.darkCriticalBorder
+                                      : BrandTokens.criticalBorder),
                           ),
                         ),
                         child: Row(
@@ -255,11 +241,11 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                                   : Icons.error_outline,
                               color: _checkSuccess == true
                                   ? (theme.brightness == Brightness.dark
-                                      ? BrandTokens.darkNormalFg
-                                      : BrandTokens.normalFg)
+                                        ? BrandTokens.darkNormalFg
+                                        : BrandTokens.normalFg)
                                   : (theme.brightness == Brightness.dark
-                                      ? BrandTokens.darkCriticalFg
-                                      : BrandTokens.criticalFg),
+                                        ? BrandTokens.darkCriticalFg
+                                        : BrandTokens.criticalFg),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -268,11 +254,11 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: _checkSuccess == true
                                       ? (theme.brightness == Brightness.dark
-                                          ? BrandTokens.darkNormalFg
-                                          : BrandTokens.normalFg)
+                                            ? BrandTokens.darkNormalFg
+                                            : BrandTokens.normalFg)
                                       : (theme.brightness == Brightness.dark
-                                          ? BrandTokens.darkCriticalFg
-                                          : BrandTokens.criticalFg),
+                                            ? BrandTokens.darkCriticalFg
+                                            : BrandTokens.criticalFg),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/theme/brand_tokens.dart';
 
@@ -116,11 +117,10 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text(
-          'Vị trí & Địa chỉ khẩn cấp',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
+      appBar: ignivoDetailAppBar(
+        context,
+        title: 'Vị trí & Địa chỉ khẩn cấp',
+        subtitle: 'Vị trí hỗ trợ ứng cứu',
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -132,10 +132,14 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
+                    color: isDark
+                        ? BrandTokens.darkBrandTint
+                        : BrandTokens.brandTint,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                      color: isDark
+                          ? BrandTokens.darkBorder
+                          : BrandTokens.border,
                     ),
                   ),
                   child: Row(
@@ -143,7 +147,9 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                     children: [
                       Icon(
                         Icons.info_outline_rounded,
-                        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                        color: isDark
+                            ? BrandTokens.darkPrimary
+                            : BrandTokens.brandPrimary,
                         size: 22,
                       ),
                       const SizedBox(width: 10),
@@ -153,7 +159,9 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.45,
-                            color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
+                            color: isDark
+                                ? BrandTokens.darkTextPrimary
+                                : BrandTokens.brandNavy,
                           ),
                         ),
                       ),
@@ -169,7 +177,9 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                     border: Border.all(
-                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                      color: isDark
+                          ? BrandTokens.darkBorder
+                          : BrandTokens.border,
                     ),
                   ),
                   child: Column(
@@ -247,9 +257,13 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: theme.colorScheme.primary,
-                            foregroundColor: isDark ? BrandTokens.darkOnPrimary : Colors.white,
+                            foregroundColor: isDark
+                                ? BrandTokens.darkOnPrimary
+                                : Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                              borderRadius: BorderRadius.circular(
+                                BrandTokens.buttonRadius,
+                              ),
                             ),
                           ),
                           onPressed: _saving || !_loaded || !_api.canConfigure
@@ -260,7 +274,9 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
-                                    color: isDark ? BrandTokens.darkOnPrimary : Colors.white,
+                                    color: isDark
+                                        ? BrandTokens.darkOnPrimary
+                                        : Colors.white,
                                     strokeWidth: 2,
                                   ),
                                 )

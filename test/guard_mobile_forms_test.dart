@@ -67,6 +67,7 @@ void main() {
           250,
           scrollable: find.byType(Scrollable).first,
         );
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Lưu camera'));
         await tester.pumpAndSettle();
         expect(sent, isNotNull);
@@ -181,6 +182,7 @@ void main() {
       250,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Lưu camera'));
     await tester.pumpAndSettle();
     expect(writes, 0);

@@ -146,19 +146,33 @@ class _GuardEscalationPageState extends State<GuardEscalationPage> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _values!['fire_dept_min_severity'],
+                    isExpanded: true,
+                    isDense: true,
                     decoration: const InputDecoration(
                       labelText: 'Gọi PCCC ngay từ mức',
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'low', child: Text('Thấp')),
+                      DropdownMenuItem(
+                        value: 'low',
+                        child: Text('Thấp', overflow: TextOverflow.ellipsis),
+                      ),
                       DropdownMenuItem(
                         value: 'medium',
-                        child: Text('Trung bình'),
+                        child: Text(
+                          'Trung bình',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      DropdownMenuItem(value: 'high', child: Text('Cao')),
+                      DropdownMenuItem(
+                        value: 'high',
+                        child: Text('Cao', overflow: TextOverflow.ellipsis),
+                      ),
                       DropdownMenuItem(
                         value: 'critical',
-                        child: Text('Nghiêm trọng'),
+                        child: Text(
+                          'Nghiêm trọng',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: widget.api.canConfigure && !_saving

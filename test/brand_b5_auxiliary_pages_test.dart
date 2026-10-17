@@ -86,6 +86,8 @@ void main() {
       expect(find.text('0988888888'), findsOneWidget);
       expect(find.text('Người liên hệ khẩn cấp'), findsOneWidget);
       expect(find.text('Địa chỉ khẩn cấp'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Chẩn đoán hệ thống Edge Pi'), 100);
+      await tester.pumpAndSettle();
       expect(find.text('Chẩn đoán hệ thống Edge Pi'), findsOneWidget);
 
       // Verify logout button exists with critical color
@@ -133,6 +135,38 @@ void main() {
       final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
       expect(scaffold.backgroundColor, BrandTokens.darkBackground);
     });
+
+    testWidgets('EmergencyContactsPage add contact dialog opens without overflow on phone width', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final api = FireguardApiService(
+        client: MockClient((r) async => _jsonResp([])),
+      );
+      api.currentUser = {'role': 'OWNER'};
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: const TextScaler.linear(1.5),
+            ),
+            child: child!,
+          ),
+          home: EmergencyContactsPage(api: api),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thêm liên hệ khẩn cấp'), findsOneWidget);
+    });
+
 
     testWidgets('EmergencyLocationPage info banner and form use themed surfaces in dark mode', (tester) async {
       final api = FireguardApiService(

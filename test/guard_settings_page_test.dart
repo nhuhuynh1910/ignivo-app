@@ -94,6 +94,7 @@ void main() {
       expect(find.text('Cảnh báo hoạt động khi mở ứng dụng'), findsOneWidget);
 
       await tester.scrollUntilVisible(find.text('Đăng xuất tài khoản'), 100);
+      await tester.pumpAndSettle();
       expect(find.text('Đăng xuất tài khoản'), findsOneWidget);
 
       // Tap logout and confirm
