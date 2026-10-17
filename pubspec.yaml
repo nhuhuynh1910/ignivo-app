@@ -68,6 +68,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/ignivo_logo.png
+    - assets/images/ignivo_mark.jpg
+    - assets/images/ignivo_wordmark.jpg
     - assets/sounds/
   # To add assets to your application, add an assets section, like this:
   # assets:

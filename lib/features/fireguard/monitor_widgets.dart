@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/brand_tokens.dart';
 
 class PulsingAlertWrapper extends StatefulWidget {
   const PulsingAlertWrapper({
@@ -57,6 +58,8 @@ class _PulsingAlertWrapperState extends State<PulsingAlertWrapper>
   @override
   Widget build(BuildContext context) {
     if (!widget.active) return widget.child;
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return widget.child;
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) => Container(
@@ -278,6 +281,242 @@ class IncidentPresentationHelper {
       'smoke' => 'Phát hiện Khói',
       _ => '${trigger ?? 'Cảnh báo'}',
     };
+  }
+}
+
+/// Helper thuần túy ánh xạ trạng thái và mức độ nghiêm trọng của sự cố.
+///
+/// TUÂN THỦ NGHIÊM NGẶT CÁC INVARIANTS:
+/// - Không gọi API, không phát âm thanh, không sửa đổi trạng thái controller.
+/// - Không tự động coi status 'open' thô là hợp lệ mà kiểm tra mapping rõ ràng.
+/// - Không fallback mù quáng về 'high' khi severity bị thiếu/null.
+/// - Hiệu ứng pulse chỉ bật khi sự cố đang hoạt động (not resolved, false_alarm, ai_dismissed),
+///   chưa được xác nhận (status != 'acknowledged'), dữ liệu không cũ (stale == false),
+///   không phải sự kiện mô phỏng, và không bị tắt animation (disableAnimations == false).
+class AlertPresentationMapping {
+  AlertPresentationMapping._();
+
+  /// Đánh giá xem có nên bật hiệu ứng nhấp nháy cảnh báo (pulse) hay không.
+  static bool shouldPulse({
+    required Map<String, dynamic>? incident,
+    bool stale = false,
+    bool disableAnimations = false,
+  }) {
+    if (incident == null || stale || disableAnimations) return false;
+
+    // Sự kiện mô phỏng không được phát hiệu ứng pulse khẩn cấp thật
+    final isSimulation = incident['simulation'] == true ||
+        incident['is_simulation'] == true ||
+        incident['source']?.toString().toLowerCase().contains('simulation') == true;
+    if (isSimulation) return false;
+
+    final status = incident['status']?.toString().toLowerCase().trim();
+
+    // Các trạng thái kết thúc hoặc đã xử lý không được pulse
+    if (status == 'resolved' ||
+        status == 'false_alarm' ||
+        status == 'ai_dismissed') {
+      return false;
+    }
+
+    // Đã được xác nhận (ACK) trong phiên: dừng pulse cho sự cố này
+    if (status == 'acknowledged') {
+      return false;
+    }
+
+    // Chỉ pulse khi có nguy cơ thực sự đang hoạt động
+    final severity = incident['severity']?.toString().toLowerCase().trim();
+    if (severity == 'none') return false;
+
+    // Chỉ pulse với critical hoặc high đang chưa ACK
+    return severity == 'critical' || severity == 'high';
+  }
+
+  /// Trả về nhãn trạng thái tiếng Việt chuẩn
+  static String statusLabel(String? rawStatus) {
+    final s = rawStatus?.toLowerCase().trim();
+    return switch (s) {
+      'analyzing' => 'Đang phân tích',
+      'notifying' => 'Đang phát cảnh báo',
+      'notified' => 'Đã phát cảnh báo',
+      'acknowledged' => 'Đã xác nhận',
+      'resolved' => 'Đã xử lý xong',
+      'false_alarm' => 'Báo động giả',
+      'ai_dismissed' => 'AI đã bỏ qua',
+      'error' => 'Lỗi giám sát',
+      'offline' => 'Mất kết nối',
+      'stale' => 'Dữ liệu cũ',
+      _ => 'Chưa xác định trạng thái',
+    };
+  }
+
+  /// Trả về nhãn mức độ nguy hiểm
+  static String severityLabel(String? rawSeverity) {
+    final s = rawSeverity?.toLowerCase().trim();
+    return switch (s) {
+      'critical' => 'Khẩn cấp',
+      'high' => 'Nguy cơ cao',
+      'medium' => 'Cảnh báo vừa',
+      'low' => 'Mức độ thấp',
+      'none' => 'An toàn (None)',
+      _ => 'Chưa xác định mức độ',
+    };
+  }
+
+  /// Trả về màu sắc ngữ nghĩa trạng thái an toàn
+  static StatusStyle statusStyle({
+    required String? severity,
+    required bool isDark,
+  }) {
+    return StatusStyle.forSeverity(severity, isDark: isDark);
+  }
+}
+
+/// Kết quả đánh giá trạng thái AI theo 7 quy tắc ưu tiên (Mục 5.1 Kế hoạch)
+class AiStatusResult {
+  const AiStatusResult({
+    required this.ruleLevel,
+    required this.label,
+    this.secondaryLabel,
+    this.isActive = false,
+    this.isOff = false,
+    this.isError = false,
+    this.isStale = false,
+  });
+
+  final int ruleLevel;
+  final String label;
+  final String? secondaryLabel;
+  final bool isActive;
+  final bool isOff;
+  final bool isError;
+  final bool isStale;
+}
+
+/// Trình đánh giá trạng thái AI Telemetry theo bảng ưu tiên 7 cấp
+class AiTelemetryEvaluator {
+  AiTelemetryEvaluator._();
+
+  /// Ngưỡng thời gian tối đa để coi lần suy luận AI là còn mới (fresh)
+  static const Duration defaultFreshnessThreshold = Duration(seconds: 15);
+
+  /// Đánh giá trạng thái AI của camera theo đúng thứ tự 1 -> 7
+  static AiStatusResult evaluate({
+    required Map<String, dynamic>? camera,
+    bool stale = false,
+    DateTime? now,
+    Duration freshnessThreshold = defaultFreshnessThreshold,
+  }) {
+    final currentTime = now ?? DateTime.now();
+
+    // =========================================================================
+    // ƯU TIÊN 1: Sai camera/phiên, mất kết nối, dữ liệu đã cũ hoặc mâu thuẫn
+    // =========================================================================
+    if (camera == null || stale) {
+      return const AiStatusResult(
+        ruleLevel: 1,
+        label: 'Chưa xác định trạng thái nhận diện',
+        isStale: true,
+      );
+    }
+
+    final status = camera['status'] as Map?;
+
+    // =========================================================================
+    // ƯU TIÊN 2: Có lỗi runtime đủ mới ngăn nhận diện
+    // =========================================================================
+    final runtimeError = status?['error']?.toString().trim();
+    if (runtimeError != null && runtimeError.isNotEmpty) {
+      return AiStatusResult(
+        ruleLevel: 2,
+        label: 'Lỗi nhận diện: $runtimeError',
+        secondaryLabel: camera['detect_enabled'] == true ? 'Cấu hình: Bật' : 'Cấu hình: Tắt',
+        isError: true,
+      );
+    }
+
+    // =========================================================================
+    // ƯU TIÊN 3: Cấu hình đủ mới xác nhận detect_enabled == false
+    // =========================================================================
+    if (camera['detect_enabled'] == false || status?['state'] == 'AI_OFF') {
+      return const AiStatusResult(
+        ruleLevel: 3,
+        label: 'AI đang tắt',
+        isOff: true,
+      );
+    }
+
+    // =========================================================================
+    // ƯU TIÊN 4: Nhận diện được bật nhưng runtime xác nhận running == false hoặc online == false
+    // =========================================================================
+    if (status != null) {
+      final isOnline = status['online'] == true;
+      final isRunning = status['running'] == true;
+      if (!isOnline) {
+        return const AiStatusResult(
+          ruleLevel: 4,
+          label: 'Camera mất kết nối',
+          isError: true,
+        );
+      }
+      if (!isRunning) {
+        return const AiStatusResult(
+          ruleLevel: 4,
+          label: 'Nhận diện chưa hoạt động',
+          secondaryLabel: 'Dịch vụ AI đang dừng trên Pi',
+        );
+      }
+    }
+
+    // =========================================================================
+    // ƯU TIÊN 5: Cấu hình bật VÀ đáp ứng toàn bộ điều kiện runtime / suy luận gần đây
+    // =========================================================================
+    if (status != null && status['online'] == true && status['running'] == true) {
+      final lastInferRaw = status['last_infer_at'];
+      DateTime? lastInferTime;
+
+      if (lastInferRaw is String && lastInferRaw.isNotEmpty) {
+        lastInferTime = DateTime.tryParse(lastInferRaw);
+      } else if (lastInferRaw is num && lastInferRaw > 0) {
+        // Hỗ trợ unix timestamp (seconds hoặc milliseconds)
+        lastInferTime = lastInferRaw > 10000000000
+            ? DateTime.fromMillisecondsSinceEpoch(lastInferRaw.toInt())
+            : DateTime.fromMillisecondsSinceEpoch((lastInferRaw * 1000).toInt());
+      }
+
+      if (lastInferTime != null) {
+        final age = currentTime.difference(lastInferTime);
+        // Kiểm tra độ mới và loại trừ trường hợp chênh lệch đồng hồ âm quá xa
+        if (!age.isNegative && age <= freshnessThreshold) {
+          final aiFps = status['ai_fps'] as num? ?? 0;
+          return AiStatusResult(
+            ruleLevel: 5,
+            label: 'AI đang giám sát',
+            secondaryLabel: aiFps > 0 ? '${aiFps.toStringAsFixed(1)} FPS' : null,
+            isActive: true,
+          );
+        }
+      }
+    }
+
+    // =========================================================================
+    // ƯU TIÊN 6: Chỉ có cấu hình bật đủ mới, chưa đủ bằng chứng runtime
+    // =========================================================================
+    if (camera['detect_enabled'] == true) {
+      return const AiStatusResult(
+        ruleLevel: 6,
+        label: 'Đã bật nhận diện',
+        secondaryLabel: 'Chưa xác định trạng thái hoạt động',
+      );
+    }
+
+    // =========================================================================
+    // ƯU TIÊN 7: Các trường hợp còn lại
+    // =========================================================================
+    return const AiStatusResult(
+      ruleLevel: 7,
+      label: 'Chưa xác định trạng thái nhận diện',
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/fireguard_api_service.dart';
+import '../../core/theme/brand_tokens.dart';
 
 /// Compact mobile form; omitted advanced values are preserved by partial PUT.
 class GuardCameraEditor extends StatefulWidget {
@@ -60,64 +61,86 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.camera == null ? 'Thêm camera' : 'Sửa camera'),
-    ),
-    body: Form(
-      key: _form,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          if (widget.camera == null) ...[
-            Card(
-              color: Colors.blue.shade50,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.blue.shade300),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade800),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Việc thêm camera mới (RTSP/USB) được thiết lập trực tiếp trên Edge Box hoặc giao diện quản trị hệ thống để bảo đảm an toàn kết nối. Ứng dụng di động chỉ hỗ trợ cấu hình camera đã có.',
-                        style: TextStyle(color: Colors.blue.shade900, fontSize: 13),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.camera == null ? 'Thêm camera' : 'Sửa camera'),
+      ),
+      body: Form(
+        key: _form,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            if (widget.camera == null) ...[
+              Card(
+                color: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: isDark ? BrandTokens.darkBorder : BrandTokens.border),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Việc thêm camera mới (RTSP/USB) được thiết lập trực tiếp trên Edge Box hoặc giao diện quản trị hệ thống để bảo đảm an toàn kết nối. Ứng dụng di động chỉ hỗ trợ cấu hình camera đã có.',
+                          style: TextStyle(
+                            color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ] else ...[
-            Card(
-              color: Colors.blueGrey.shade50,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(Icons.lock_outline, size: 20, color: Colors.black54),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Nguồn video và thông tin RTSP được bảo mật trực tiếp trên Edge Box.',
-                        style: TextStyle(fontSize: 12, color: Colors.black87),
+              const SizedBox(height: 16),
+            ] else ...[
+              Card(
+                color: isDark ? BrandTokens.darkSurfaceVariant : const Color(0xFFF1F5F9),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        size: 20,
+                        color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Nguồn video và thông tin RTSP được bảo mật trực tiếp trên Edge Box.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
           TextFormField(
             controller: _name,
             enabled: !_saving && widget.camera != null,
@@ -182,4 +205,5 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
       ),
     ),
   );
+  }
 }

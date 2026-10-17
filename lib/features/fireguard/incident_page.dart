@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/fireguard_realtime_service.dart';
 import '../../core/services/incident_alert_coordinator.dart';
+import '../../core/theme/brand_tokens.dart';
 import '../camera/mjpeg_stream_view.dart';
 import 'monitor_widgets.dart';
 
@@ -262,7 +263,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        backgroundColor: Colors.deepOrange.shade600,
+                        backgroundColor: BrandTokens.criticalFg,
                         foregroundColor: Colors.white,
                       ),
                       onPressed:
@@ -347,7 +348,9 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                   .replaceAll('T', ' '),
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.black87),
+              ).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
             ),
             const SizedBox(height: 8),
             Wrap(

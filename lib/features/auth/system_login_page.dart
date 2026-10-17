@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
+import '../../widgets/ignivo_logo.dart';
 import '../settings/connection_setup_page.dart';
 
 class SystemLoginPage extends StatefulWidget {
@@ -80,27 +82,14 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                   children: [
                     const SizedBox(height: 12),
                     const Center(
-                      child: Icon(
-                        Icons.local_fire_department,
-                        size: 64,
-                        color: Color(0xFFFF5722),
-                      ),
+                      child: IgnivoLogo.wordmark(width: 220),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'IGNIVO',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                        color: const Color(0xFFFF5722),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 12),
                     Text(
                       'Hệ thống giám sát và cảnh báo khẩn cấp',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.textTheme.bodySmall?.color,
+                        fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -114,17 +103,17 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                       ),
                       decoration: BoxDecoration(
                         color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                         border: Border.all(
                           color: theme.dividerColor.withValues(alpha: 0.15),
                         ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.home_work_outlined,
                             size: 28,
-                            color: Color(0xFFFF5722),
+                            color: theme.colorScheme.primary,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -169,17 +158,25 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                     // Error banner
                     if (errorMessage != null && errorMessage.isNotEmpty) ...[
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(BrandTokens.space12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade400),
+                          color: theme.brightness == Brightness.dark
+                              ? BrandTokens.darkCriticalBg
+                              : BrandTokens.criticalBg,
+                          borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
+                          border: Border.all(
+                            color: theme.brightness == Brightness.dark
+                                ? BrandTokens.darkCriticalBorder
+                                : BrandTokens.criticalBorder,
+                          ),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.error_outline,
-                              color: Colors.red.shade700,
+                              color: theme.brightness == Brightness.dark
+                                  ? BrandTokens.darkCriticalFg
+                                  : BrandTokens.criticalFg,
                               size: 22,
                             ),
                             const SizedBox(width: 10),
@@ -187,7 +184,9 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                               child: Text(
                                 errorMessage,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.red.shade800,
+                                  color: theme.brightness == Brightness.dark
+                                      ? BrandTokens.darkCriticalFg
+                                      : BrandTokens.criticalFg,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

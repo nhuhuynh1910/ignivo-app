@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
+import '../../widgets/ignivo_logo.dart';
 import 'incident_page.dart';
 import 'monitoring_controller.dart';
 import 'monitor_widgets.dart';
@@ -56,38 +58,42 @@ class GuardHomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-            // 1. Header: Location Name & Sync Status
+            // 1. Header: Brand Logo & Location Name & Sync Status
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                const IgnivoLogo.mark(size: 44),
+                const SizedBox(width: BrandTokens.space12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         sessionController.systemName,
-                        style: theme.textTheme.headlineSmall?.copyWith(
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
                           Icon(
                             isStale ? Icons.sync_problem : Icons.check_circle,
                             size: 14,
-                            color: isStale ? Colors.amber.shade700 : Colors.green,
+                            color: isStale ? BrandTokens.mediumFg : BrandTokens.normalFg,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            isStale
-                                ? 'Dữ liệu chưa đồng bộ (${_formatTime(monitoringController.updated)})'
-                                : 'Đồng bộ lúc ${_formatTime(monitoringController.updated)}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: isStale ? Colors.amber.shade800 : null,
+                          Flexible(
+                            child: Text(
+                              isStale
+                                  ? 'Dữ liệu chưa đồng bộ (${_formatTime(monitoringController.updated)})'
+                                  : 'Đồng bộ lúc ${_formatTime(monitoringController.updated)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isStale ? BrandTokens.mediumFg : null,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -134,32 +140,42 @@ class GuardHomePage extends StatelessWidget {
 
   Widget _buildActiveIncidentBanner(BuildContext context, Map<String, dynamic> inc, int totalActive) {
     final id = inc['id'] as int? ?? 0;
-    final severity = inc['severity']?.toString().toUpperCase() ?? 'HIGH';
+    final rawSeverity = inc['severity']?.toString();
+    final severityText = (rawSeverity != null && rawSeverity.trim().isNotEmpty)
+        ? rawSeverity.toUpperCase()
+        : 'CHƯA XÁC ĐỊNH';
     final area = inc['area']?.toString() ?? 'Chưa xác định';
-    final statusStr = incidentStatusLabel(inc['status']);
+    final statusStr = AlertPresentationMapping.statusLabel(inc['status']?.toString());
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statusStyle = AlertPresentationMapping.statusStyle(severity: rawSeverity, isDark: isDark);
+    final shouldPulse = AlertPresentationMapping.shouldPulse(
+      incident: inc,
+      stale: monitoringController.stale,
+      disableAnimations: MediaQuery.maybeOf(context)?.disableAnimations ?? false,
+    );
 
     return PulsingAlertWrapper(
-      active: true,
-      glowColor: Colors.red.shade700,
+      active: shouldPulse,
+      glowColor: statusStyle.border,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(BrandTokens.space16),
         decoration: BoxDecoration(
-          color: Colors.red.shade900.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.red.shade400, width: 1.5),
+          color: statusStyle.background,
+          borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+          border: Border.all(color: statusStyle.border, width: 1.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+                Icon(Icons.warning_amber_rounded, color: statusStyle.foreground, size: 28),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'SỰ CỐ CẦN CHÚ Ý (#$id)',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: statusStyle.foreground,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       letterSpacing: 0.5,
@@ -169,13 +185,13 @@ class GuardHomePage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade700,
-                    borderRadius: BorderRadius.circular(8),
+                    color: statusStyle.border.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
                   ),
                   child: Text(
-                    severity,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    severityText,
+                    style: TextStyle(
+                      color: statusStyle.foreground,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -186,7 +202,10 @@ class GuardHomePage extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Khu vực: $area · Trạng thái: $statusStr',
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(
+                color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 14),
             Row(
@@ -194,8 +213,8 @@ class GuardHomePage extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.red.shade900,
+                      backgroundColor: statusStyle.foreground,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                     onPressed: () => onOpenIncident?.call(id),
@@ -207,8 +226,8 @@ class GuardHomePage extends StatelessWidget {
                   const SizedBox(width: 8),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white70),
+                      foregroundColor: statusStyle.foreground,
+                      side: BorderSide(color: statusStyle.border),
                     ),
                     onPressed: () => onNavigateTab?.call(2),
                     child: Text('Tất cả ($totalActive)'),
@@ -417,16 +436,20 @@ class GuardHomePage extends StatelessWidget {
                 final name = cam['name']?.toString() ?? 'Camera #$id';
                 final area = cam['area']?.toString() ?? '';
                 final isOnline = (cam['status'] as Map?)?['online'] == true;
+                final aiResult = AiTelemetryEvaluator.evaluate(
+                  camera: cam,
+                  stale: monitoringController.stale,
+                );
 
                 return InkWell(
                   onTap: () => onOpenLiveView?.call(id),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                   child: Container(
-                    width: 170,
-                    padding: const EdgeInsets.all(10),
+                    width: 175,
+                    padding: const EdgeInsets.all(BrandTokens.space12),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                       border: Border.all(
                         color: theme.dividerColor.withValues(alpha: 0.15),
                       ),
@@ -437,17 +460,27 @@ class GuardHomePage extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              Icons.videocam,
+                              Icons.videocam_outlined,
                               size: 18,
-                              color: isOnline ? Colors.green : Colors.grey,
+                              color: isOnline ? BrandTokens.normalFg : BrandTokens.staleFg,
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                isOnline ? 'Online' : 'Offline',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: isOnline ? BrandTokens.normalFg : BrandTokens.staleFg,
+                                ),
+                              ),
+                            ),
                             Container(
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isOnline ? Colors.green : Colors.red,
+                                color: isOnline ? BrandTokens.normalFg : BrandTokens.criticalFg,
                               ),
                             ),
                           ],
@@ -470,12 +503,17 @@ class GuardHomePage extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Text('Live View', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                            const SizedBox(width: 4),
-                            Icon(Icons.arrow_forward_ios, size: 10, color: Colors.blue.shade400),
-                          ],
+                        Text(
+                          aiResult.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: aiResult.isActive
+                                ? BrandTokens.normalFg
+                                : (aiResult.isError ? BrandTokens.criticalFg : BrandTokens.staleFg),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

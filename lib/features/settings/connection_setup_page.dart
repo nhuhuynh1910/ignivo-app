@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/pi_connection_profile.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
+import '../../widgets/ignivo_logo.dart';
 
 class ConnectionSetupPage extends StatefulWidget {
   const ConnectionSetupPage({
@@ -149,16 +151,17 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(
-                      Icons.hub_outlined,
-                      size: 56,
-                      color: Color(0xFFFF5722),
+                    const Center(
+                      child: IgnivoLogo.mark(size: 72),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Thiết lập kết nối IGNIVO Pi',
+                      'Kết nối hệ thống IGNIVO',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: theme.brightness == Brightness.dark
+                            ? BrandTokens.darkTextPrimary
+                            : BrandTokens.brandNavy,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -224,16 +227,24 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                     if (_checkMessage != null) ...[
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(BrandTokens.space12),
                         decoration: BoxDecoration(
                           color: _checkSuccess == true
-                              ? Colors.green.withValues(alpha: 0.12)
-                              : Colors.red.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
+                              ? (theme.brightness == Brightness.dark
+                                  ? BrandTokens.darkNormalBg
+                                  : BrandTokens.normalBg)
+                              : (theme.brightness == Brightness.dark
+                                  ? BrandTokens.darkCriticalBg
+                                  : BrandTokens.criticalBg),
+                          borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
                           border: Border.all(
                             color: _checkSuccess == true
-                                ? Colors.green.shade600
-                                : Colors.red.shade400,
+                                ? (theme.brightness == Brightness.dark
+                                    ? BrandTokens.darkNormalBorder
+                                    : BrandTokens.normalBorder)
+                                : (theme.brightness == Brightness.dark
+                                    ? BrandTokens.darkCriticalBorder
+                                    : BrandTokens.criticalBorder),
                           ),
                         ),
                         child: Row(
@@ -243,8 +254,12 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                                   ? Icons.check_circle_outline
                                   : Icons.error_outline,
                               color: _checkSuccess == true
-                                  ? Colors.green
-                                  : Colors.red,
+                                  ? (theme.brightness == Brightness.dark
+                                      ? BrandTokens.darkNormalFg
+                                      : BrandTokens.normalFg)
+                                  : (theme.brightness == Brightness.dark
+                                      ? BrandTokens.darkCriticalFg
+                                      : BrandTokens.criticalFg),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -252,8 +267,12 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
                                 _checkMessage!,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: _checkSuccess == true
-                                      ? Colors.green.shade800
-                                      : Colors.red.shade800,
+                                      ? (theme.brightness == Brightness.dark
+                                          ? BrandTokens.darkNormalFg
+                                          : BrandTokens.normalFg)
+                                      : (theme.brightness == Brightness.dark
+                                          ? BrandTokens.darkCriticalFg
+                                          : BrandTokens.criticalFg),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

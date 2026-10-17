@@ -164,9 +164,9 @@ class _IgnivoShellState extends State<IgnivoShell>
         onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.shield_outlined),
-            selectedIcon: Icon(Icons.shield),
-            label: 'Giám sát',
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Trang chủ',
           ),
           NavigationDestination(
             icon: Icon(Icons.videocam_outlined),

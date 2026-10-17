@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
 import '../fireguard/monitoring_controller.dart';
 import 'diagnostics_page.dart';
 import 'emergency_contacts_page.dart';
@@ -18,6 +19,7 @@ class GuardSettingsPage extends StatelessWidget {
   final VoidCallback? onOpenDiagnostics;
 
   void _confirmLogout(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -31,7 +33,9 @@ class GuardSettingsPage extends StatelessWidget {
             child: const Text('Hủy'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Đăng xuất'),
           ),
@@ -45,6 +49,7 @@ class GuardSettingsPage extends StatelessWidget {
   }
 
   void _confirmDisconnect(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -58,7 +63,9 @@ class GuardSettingsPage extends StatelessWidget {
             child: const Text('Hủy'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Ngắt kết nối'),
           ),
@@ -74,10 +81,13 @@ class GuardSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isOwnerOrAdmin = sessionController.isOwnerOrAdmin;
     final role = sessionController.role ?? 'USER';
     final name = sessionController.fullName ?? sessionController.username ?? 'Người dùng';
     final phone = sessionController.phoneNumber ?? '';
+    final warningStyle = StatusStyle.warning(isDark: isDark);
+    final criticalColor = isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg;
 
     return Scaffold(
       appBar: AppBar(
@@ -90,8 +100,10 @@ class GuardSettingsPage extends StatelessWidget {
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+              borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+              side: BorderSide(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+              ),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -99,8 +111,12 @@ class GuardSettingsPage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 26,
-                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-                    child: Icon(Icons.person, size: 28, color: theme.colorScheme.primary),
+                    backgroundColor: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
+                    child: Icon(
+                      Icons.person,
+                      size: 28,
+                      color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -115,15 +131,25 @@ class GuardSettingsPage extends StatelessWidget {
                         ),
                         if (phone.isNotEmpty) ...[
                           const SizedBox(height: 2),
-                          Text(phone, style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color)),
+                          Text(
+                            phone,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                            ),
+                          ),
                         ],
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isOwnerOrAdmin
-                                ? Colors.purple.withValues(alpha: 0.12)
-                                : Colors.blueGrey.withValues(alpha: 0.12),
+                            color: isDark
+                                ? (isOwnerOrAdmin
+                                    ? Colors.purple.shade900.withValues(alpha: 0.3)
+                                    : BrandTokens.darkSurfaceVariant)
+                                : (isOwnerOrAdmin
+                                    ? Colors.purple.withValues(alpha: 0.12)
+                                    : Colors.blueGrey.withValues(alpha: 0.12)),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -131,7 +157,9 @@ class GuardSettingsPage extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: isOwnerOrAdmin ? Colors.purple.shade700 : Colors.blueGrey.shade800,
+                              color: isDark
+                                  ? (isOwnerOrAdmin ? Colors.purple.shade200 : BrandTokens.darkTextSecondary)
+                                  : (isOwnerOrAdmin ? Colors.purple.shade700 : Colors.blueGrey.shade800),
                             ),
                           ),
                         ),
@@ -149,13 +177,15 @@ class GuardSettingsPage extends StatelessWidget {
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+              borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+              side: BorderSide(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+              ),
             ),
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.contacts_outlined, color: Colors.blue),
+                  leading: _buildLeadingIcon(context, Icons.contacts_outlined),
                   title: const Text('Người liên hệ khẩn cấp', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   subtitle: Text(
                     isOwnerOrAdmin
@@ -174,11 +204,11 @@ class GuardSettingsPage extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.location_on_outlined, color: Colors.red),
+                  leading: _buildLeadingIcon(context, Icons.location_on_outlined),
                   title: const Text('Địa chỉ khẩn cấp', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: Text(
+                  subtitle: const Text(
                     'Vị trí, toà nhà, số tầng để tổng đài cung cấp cho PCCC',
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: 12),
                   ),
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () {
@@ -199,14 +229,14 @@ class GuardSettingsPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.1),
+              color: warningStyle.background,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.amber.shade400, width: 0.8),
+              border: Border.all(color: warningStyle.border, width: 0.8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.volume_up_outlined, color: Colors.amber.shade900, size: 22),
+                Icon(Icons.volume_up_outlined, color: warningStyle.foreground, size: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -219,7 +249,10 @@ class GuardSettingsPage extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Còi hú và rung hoạt động khi ứng dụng đang mở hoặc chạy đa nhiệm. Hãy bật âm lượng chuông để đảm bảo nghe thấy âm báo trong trường hợp có cháy.',
-                        style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -234,13 +267,15 @@ class GuardSettingsPage extends StatelessWidget {
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+              borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+              side: BorderSide(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+              ),
             ),
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.monitor_heart_outlined, color: Colors.teal),
+                  leading: _buildLeadingIcon(context, Icons.monitor_heart_outlined),
                   title: const Text('Chẩn đoán hệ thống Edge Pi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   subtitle: const Text('Xem trạng thái CPU, NPU Hailo, AI FPS, WebSocket', style: TextStyle(fontSize: 12)),
                   trailing: const Icon(Icons.chevron_right, size: 20),
@@ -257,12 +292,12 @@ class GuardSettingsPage extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.router_outlined, color: Colors.indigo),
+                  leading: _buildLeadingIcon(context, Icons.router_outlined),
                   title: const Text('Địa chỉ FireGuard Edge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   subtitle: Text(sessionController.guardUrl, style: const TextStyle(fontSize: 12)),
                   trailing: TextButton(
                     onPressed: () => _confirmDisconnect(context),
-                    child: const Text('Đổi kết nối', style: TextStyle(color: Colors.red)),
+                    child: Text('Đổi kết nối', style: TextStyle(color: criticalColor)),
                   ),
                 ),
               ],
@@ -275,10 +310,12 @@ class GuardSettingsPage extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
+                foregroundColor: criticalColor,
+                side: BorderSide(color: criticalColor),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                ),
               ),
               onPressed: () => _confirmLogout(context),
               icon: const Icon(Icons.logout),
@@ -287,6 +324,23 @@ class GuardSettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLeadingIcon(BuildContext context, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        icon,
+        size: 20,
+        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
       ),
     );
   }

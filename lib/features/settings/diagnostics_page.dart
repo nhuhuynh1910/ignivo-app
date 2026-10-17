@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/services/fireguard_realtime_service.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
 import '../fireguard/monitoring_controller.dart';
+import 'brand_showcase_page.dart';
 
 class DiagnosticsPage extends StatelessWidget {
   const DiagnosticsPage({
@@ -30,6 +33,7 @@ class DiagnosticsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -59,6 +63,13 @@ class DiagnosticsPage extends StatelessWidget {
           final deviceId = sessionController.deviceId ?? status['device_id']?.toString() ?? 'Chưa cấu hình';
           final token = sessionController.api.authToken;
 
+          final normalColor = isDark ? BrandTokens.darkNormalFg : BrandTokens.normalFg;
+          final normalBorder = isDark ? BrandTokens.darkNormalBorder : BrandTokens.normalBorder;
+          final mediumColor = isDark ? BrandTokens.darkMediumFg : BrandTokens.mediumFg;
+          final mediumBorder = isDark ? BrandTokens.darkMediumBorder : BrandTokens.mediumBorder;
+          final criticalColor = isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg;
+          final defaultBorder = isDark ? BrandTokens.darkBorder : BrandTokens.border;
+
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -66,11 +77,9 @@ class DiagnosticsPage extends StatelessWidget {
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                   side: BorderSide(
-                    color: isWsConnected && !isStale
-                        ? Colors.green.withValues(alpha: 0.3)
-                        : Colors.amber.withValues(alpha: 0.4),
+                    color: isWsConnected && !isStale ? normalBorder : mediumBorder,
                   ),
                 ),
                 child: Padding(
@@ -82,7 +91,7 @@ class DiagnosticsPage extends StatelessWidget {
                         children: [
                           Icon(
                             isWsConnected ? Icons.check_circle : Icons.warning_amber_rounded,
-                            color: isWsConnected ? Colors.green : Colors.amber.shade700,
+                            color: isWsConnected ? normalColor : mediumColor,
                             size: 24,
                           ),
                           const SizedBox(width: 10),
@@ -102,10 +111,14 @@ class DiagnosticsPage extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: theme.textTheme.bodySmall?.color),
                       ),
                       const Divider(height: 20),
-                      _buildMetricRow('Trạng thái dữ liệu', isStale ? 'Cần đồng bộ lại' : 'Mới nhất',
-                          valueColor: isStale ? Colors.amber.shade800 : Colors.green),
+                      _buildMetricRow(
+                        context,
+                        'Trạng thái dữ liệu',
+                        isStale ? 'Cần đồng bộ lại' : 'Mới nhất',
+                        valueColor: isStale ? mediumColor : normalColor,
+                      ),
                       const SizedBox(height: 6),
-                      _buildMetricRow('Cập nhật lần cuối', _formatTime(monitoringController.updated)),
+                      _buildMetricRow(context, 'Cập nhật lần cuối', _formatTime(monitoringController.updated)),
                     ],
                   ),
                 ),
@@ -117,24 +130,25 @@ class DiagnosticsPage extends StatelessWidget {
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                  side: BorderSide(color: defaultBorder),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      _buildMetricRow('Tên máy chủ Pi', hostname),
+                      _buildMetricRow(context, 'Tên máy chủ Pi', hostname),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Mã thiết bị (Device ID)', deviceId),
+                      _buildMetricRow(context, 'Mã thiết bị (Device ID)', deviceId),
                       const SizedBox(height: 10),
                       _buildMetricRow(
+                        context,
                         'Hailo-8 / NPU AI',
                         isHailoReady ? 'Sẵn sàng' : 'Chưa sẵn sàng',
-                        valueColor: isHailoReady ? Colors.green : Colors.red,
+                        valueColor: isHailoReady ? normalColor : criticalColor,
                       ),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Tổng AI FPS', '$totalAiFps FPS'),
+                      _buildMetricRow(context, 'Tổng AI FPS', '$totalAiFps FPS'),
                     ],
                   ),
                 ),
@@ -146,22 +160,23 @@ class DiagnosticsPage extends StatelessWidget {
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                  side: BorderSide(color: defaultBorder),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       _buildMetricRow(
+                        context,
                         'Cấu hình tổng đài',
                         stringeeConfigured ? 'Đã thiết lập' : 'Chưa thiết lập',
-                        valueColor: stringeeConfigured ? Colors.green : Colors.orange,
+                        valueColor: stringeeConfigured ? normalColor : mediumColor,
                       ),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Số liên hệ người thân', '$familyCount người'),
+                      _buildMetricRow(context, 'Số liên hệ người thân', '$familyCount người'),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Số liên hệ PCCC', '$fireDeptCount cơ quan'),
+                      _buildMetricRow(context, 'Số liên hệ PCCC', '$fireDeptCount cơ quan'),
                     ],
                   ),
                 ),
@@ -173,24 +188,46 @@ class DiagnosticsPage extends StatelessWidget {
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                  side: BorderSide(color: defaultBorder),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      _buildMetricRow('Địa chỉ FireGuard Edge', sessionController.guardUrl),
+                      _buildMetricRow(context, 'Địa chỉ FireGuard Edge', sessionController.guardUrl),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Vai trò tài khoản', sessionController.role ?? 'USER'),
+                      _buildMetricRow(context, 'Vai trò tài khoản', sessionController.role ?? 'USER'),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Mã phiên (RAM masked)', _maskToken(token)),
+                      _buildMetricRow(context, 'Mã phiên (RAM masked)', _maskToken(token)),
                       const SizedBox(height: 10),
-                      _buildMetricRow('Chính sách lưu phiên', 'RAM bộ nhớ tạm (Không lưu đĩa)'),
+                      _buildMetricRow(context, 'Chính sách lưu phiên', 'RAM bộ nhớ tạm (Không lưu đĩa)'),
                     ],
                   ),
                 ),
               ),
+              if (kDebugMode) ...[
+                const SizedBox(height: 16),
+                _buildSectionHeader(context, 'Thiết kế & Giao diện (Debug Only)'),
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.palette_outlined),
+                    title: const Text('IGNIVO Brand Showcase'),
+                    subtitle: const Text('Thư viện linh kiện & 3 màn hình mẫu (Light/Dark/200% Font)'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const BrandShowcasePage()),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -208,11 +245,18 @@ class DiagnosticsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricRow(String label, String value, {Color? valueColor}) {
+  Widget _buildMetricRow(BuildContext context, String label, String value, {Color? valueColor}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+          ),
+        ),
         const SizedBox(width: 12),
         Flexible(
           child: Text(

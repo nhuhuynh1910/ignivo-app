@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
 import '../fireguard/incident_page.dart';
 import '../fireguard/monitoring_controller.dart';
 
@@ -61,17 +62,14 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
   }
 
   Color _severityColor(String? severity) {
-    switch (severity?.toLowerCase()) {
-      case 'critical':
-        return Colors.red.shade700;
-      case 'high':
-        return Colors.orange.shade800;
-      case 'medium':
-        return Colors.amber.shade700;
-      case 'low':
-      default:
-        return Colors.blueGrey;
-    }
+    final s = severity?.toLowerCase().trim();
+    return switch (s) {
+      'critical' => BrandTokens.criticalFg,
+      'high' => BrandTokens.highFg,
+      'medium' => BrandTokens.mediumFg,
+      'low' => BrandTokens.lowFg,
+      _ => BrandTokens.staleFg,
+    };
   }
 
   IconData _triggerIcon(String? trigger) {

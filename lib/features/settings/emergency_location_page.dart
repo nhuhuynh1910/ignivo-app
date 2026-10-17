@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/fireguard_api_service.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/brand_tokens.dart';
 
 class EmergencyLocationPage extends StatefulWidget {
   const EmergencyLocationPage({super.key, this.api});
@@ -93,7 +93,7 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Đã cập nhật vị trí & địa chỉ khẩn cấp thành công!'),
-          backgroundColor: AppColors.success,
+          backgroundColor: BrandTokens.normalFg,
         ),
       );
       Navigator.pop(context);
@@ -103,7 +103,7 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
           content: Text(
             _api.lastError ?? 'Không thể lưu cấu hình vị trí lên FireGuard.',
           ),
-          backgroundColor: AppColors.danger,
+          backgroundColor: BrandTokens.criticalFg,
         ),
       );
     }
@@ -111,8 +111,11 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundSoft,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Vị trí & Địa chỉ khẩn cấp',
@@ -129,16 +132,18 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                    ),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
                         Icons.info_outline_rounded,
-                        color: Colors.blue.shade700,
+                        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
                         size: 22,
                       ),
                       const SizedBox(width: 10),
@@ -148,7 +153,7 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.45,
-                            color: Colors.blue.shade900,
+                            color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
                           ),
                         ),
                       ),
@@ -161,9 +166,11 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.backgroundBlueSoft),
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -239,17 +246,21 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                         height: 48,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: isDark ? BrandTokens.darkOnPrimary : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                            ),
                           ),
                           onPressed: _saving || !_loaded || !_api.canConfigure
                               ? null
                               : _saveLocation,
                           icon: _saving
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
-                                    color: Colors.white,
+                                    color: isDark ? BrandTokens.darkOnPrimary : Colors.white,
                                     strokeWidth: 2,
                                   ),
                                 )

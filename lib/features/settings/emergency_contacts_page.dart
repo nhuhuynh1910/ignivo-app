@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/fireguard_api_service.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/brand_tokens.dart';
 
 class EmergencyContactsPage extends StatefulWidget {
   const EmergencyContactsPage({super.key, this.api});
@@ -66,6 +66,7 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
   }
 
   Future<void> _deleteContact(int id) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -78,8 +79,10 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Hủy'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Xoá'),
           ),
@@ -209,8 +212,11 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundSoft,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Danh bạ khẩn cấp (Stringee)',
@@ -224,12 +230,13 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: isDark ? BrandTokens.darkOnPrimary : Colors.white,
         onPressed: _api.canConfigure ? _showAddDialog : null,
-        icon: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add),
         label: const Text(
           'Thêm liên hệ',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: _loading
@@ -241,16 +248,18 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.cloud_off_rounded,
                       size: 48,
-                      color: AppColors.danger,
+                      color: isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg,
                     ),
                     const SizedBox(height: 12),
                     Text(
                       _errorMessage!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(
+                        color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
@@ -269,22 +278,22 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                   Icon(
                     Icons.contacts_outlined,
                     size: 54,
-                    color: Colors.grey.shade400,
+                    color: isDark ? BrandTokens.darkTextTertiary : BrandTokens.textTertiary,
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Chưa có số điện thoại khẩn cấp nào.',
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.textTertiary,
+                      color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Bấm nút bên dưới để thêm người thân hoặc số cứu hoả.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textTertiary,
+                      color: isDark ? BrandTokens.darkTextTertiary : BrandTokens.textTertiary,
                     ),
                   ),
                 ],
@@ -301,27 +310,32 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                 final phone = c['phone']?.toString() ?? '';
                 final kind = c['kind']?.toString() ?? 'family';
                 final isEnabled = c['enabled'] == true || c['enabled'] == 1;
+                final isFamily = kind == 'family';
+                final badgeBg = isFamily
+                    ? (isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint)
+                    : (isDark ? BrandTokens.darkCriticalBg : BrandTokens.criticalBg);
+                final badgeFg = isFamily
+                    ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+                    : (isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg);
 
                 return Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.backgroundBlueSoft),
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                    ),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: kind == 'family'
-                            ? AppColors.primary.withValues(alpha: 0.12)
-                            : AppColors.danger.withValues(alpha: 0.12),
+                        backgroundColor: badgeBg,
                         child: Icon(
-                          kind == 'family'
+                          isFamily
                               ? Icons.family_restroom_rounded
                               : Icons.local_fire_department_rounded,
-                          color: kind == 'family'
-                              ? AppColors.primary
-                              : AppColors.danger,
+                          color: badgeFg,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -331,11 +345,14 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
+                                Flexible(
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -345,21 +362,17 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: kind == 'family'
-                                        ? Colors.blue.shade50
-                                        : Colors.red.shade50,
+                                    color: badgeBg,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    kind == 'family'
+                                    isFamily
                                         ? 'Người thân'
                                         : 'PCCC/Bảo vệ',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: kind == 'family'
-                                          ? Colors.blue.shade700
-                                          : Colors.red.shade700,
+                                      color: badgeFg,
                                     ),
                                   ),
                                 ),
@@ -368,9 +381,9 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                             const SizedBox(height: 4),
                             Text(
                               '$phone ${c['relation'] != null && c['relation'].toString().isNotEmpty ? "• ${c['relation']}" : ""}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: AppColors.textSecondary,
+                                color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
                               ),
                             ),
                           ],
@@ -378,15 +391,15 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                       ),
                       Switch(
                         value: isEnabled,
-                        activeThumbColor: AppColors.primary,
+                        activeThumbColor: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
                         onChanged: _api.canConfigure
                             ? (_) => _toggleContact(c)
                             : null,
                       ),
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_outline_rounded,
-                          color: Colors.grey,
+                          color: isDark ? BrandTokens.darkTextTertiary : BrandTokens.textTertiary,
                           size: 20,
                         ),
                         onPressed: _api.canConfigure
