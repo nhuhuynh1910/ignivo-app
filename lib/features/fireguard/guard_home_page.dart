@@ -150,48 +150,53 @@ class _GuardHomePageState extends State<GuardHomePage> {
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Priority Alert Banner (khi có sự cố cần chú ý)
-                  if (unclosedIncidents.isNotEmpty || active != null) ...[
-                    _buildActiveIncidentBanner(
-                      context,
-                      active ?? unclosedIncidents.first,
-                      unclosedIncidents.length,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. Priority Alert Banner (khi có sự cố cần chú ý)
+                      if (unclosedIncidents.isNotEmpty || active != null) ...[
+                        _buildActiveIncidentBanner(
+                          context,
+                          active ?? unclosedIncidents.first,
+                          unclosedIncidents.length,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
-                  // 2. Thẻ Hero: EdgeStatusCard (Stitch gradient xanh)
-                  EdgeStatusCard(
-                    systemName: widget.sessionController.systemName,
-                    isStale: isStale,
-                    aiActive: isAiActive,
-                    totalCameras: totalCameras,
-                    onlineCameras: onlineCameras,
-                    onTap: widget.onOpenDiagnostics,
+                      // 2. Thẻ Hero: EdgeStatusCard (Stitch gradient xanh)
+                      EdgeStatusCard(
+                        systemName: widget.sessionController.systemName,
+                        isStale: isStale,
+                        aiActive: isAiActive,
+                        totalCameras: totalCameras,
+                        onlineCameras: onlineCameras,
+                        onTap: widget.onOpenDiagnostics,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 3. Calibrated Safe State Banner (khi không có sự cố đang diễn ra)
+                      if (unclosedIncidents.isEmpty && active == null) ...[
+                        _buildSafeStateBanner(context, isStale),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // 4. Mức sẵn sàng giám sát (Monitoring Readiness)
+                      _buildReadinessCard(context, status, cameras),
+                      const SizedBox(height: 20),
+
+                      // 5. Xem nhanh Camera (Quick Cameras Preview với Stitch 16:9 cards)
+                      _buildQuickCamerasSection(context, cameras),
+                      const SizedBox(height: 20),
+
+                      // 6. Hoạt động gần đây (Recent Incidents)
+                      _buildRecentActivitySection(context, incidents),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-
-                  // 3. Calibrated Safe State Banner (khi không có sự cố đang diễn ra)
-                  if (unclosedIncidents.isEmpty && active == null) ...[
-                    _buildSafeStateBanner(context, isStale),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // 4. Mức sẵn sàng giám sát (Monitoring Readiness)
-                  _buildReadinessCard(context, status, cameras),
-                  const SizedBox(height: 20),
-
-                  // 5. Xem nhanh Camera (Quick Cameras Preview với Stitch 16:9 cards)
-                  _buildQuickCamerasSection(context, cameras),
-                  const SizedBox(height: 20),
-
-                  // 6. Hoạt động gần đây (Recent Incidents)
-                  _buildRecentActivitySection(context, incidents),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
             ),
           ),

@@ -330,63 +330,37 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                       ),
                     ),
                   )
+                else if (MediaQuery.of(context).size.width >= 900)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 480,
+                        mainAxisExtent: 390,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildCameraCard(
+                          context,
+                          filteredCameras[index],
+                          canConfig,
+                        ),
+                        childCount: filteredCameras.length,
+                      ),
+                    ),
+                  )
                 else
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: SliverList.separated(
                       itemCount: filteredCameras.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 2),
-                      itemBuilder: (context, index) {
-                        final cam = filteredCameras[index];
-                        final id = cam['id'] as int? ?? 0;
-                        final name = cam['name']?.toString() ?? 'Camera #$id';
-                        final area = cam['area']?.toString() ?? 'Chưa xác định';
-                        final isOnline = (cam['status'] as Map?)?['online'] as bool?;
-                        final detectConfig = cam['detect_enabled'] as bool?;
-                        final statusMap = cam['status'] as Map?;
-                        final fpsVal = statusMap?['ai_fps'] ?? cam['ai_fps'];
-                        final fps = (fpsVal is num && fpsVal > 0) ? fpsVal.toDouble() : null;
-
-                        // Kích hoạt nạp snapshot nếu chưa có sau frame
-                        if (!_attemptedSnapshots.contains(id) &&
-                            !_loadingSnapshots.contains(id)) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) _loadSnapshotForCamera(id);
-                          });
-                        }
-
-                        final String aiLabel;
-                        final bool aiActive;
-                        if (detectConfig == false) {
-                          aiLabel = 'AI: TẮT';
-                          aiActive = false;
-                        } else if (isOnline == false) {
-                          aiLabel = 'AI: Ngoại tuyến';
-                          aiActive = false;
-                        } else if (detectConfig == true) {
-                          aiLabel = 'AI nhận diện: BẬT';
-                          aiActive = true;
-                        } else {
-                          aiLabel = 'AI: Chưa rõ';
-                          aiActive = false;
-                        }
-
-                        return CameraPreviewCard(
-                          name: name,
-                          area: area,
-                          model: cam['model']?.toString(),
-                          isOnline: isOnline,
-                          aiEnabled: aiActive,
-                          aiStatusText: aiLabel,
-                          aiFps: fps,
-                          snapshotBytes: _snapshots[id],
-                          isSnapshotLoading: _loadingSnapshots.contains(id),
-                          snapshotTime: _snapshots[id] != null ? 'Vừa xong' : null,
-                          canConfigure: canConfig,
-                          onTap: () => _navigateToLive(context, cam),
-                          onEdit: () => _openEditor(context, cam),
-                        );
-                      },
+                      itemBuilder: (context, index) => _buildCameraCard(
+                        context,
+                        filteredCameras[index],
+                        canConfig,
+                      ),
                     ),
                   ),
 
@@ -409,6 +383,61 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCameraCard(
+    BuildContext context,
+    Map<String, dynamic> cam,
+    bool canConfig,
+  ) {
+    final id = cam['id'] as int? ?? 0;
+    final name = cam['name']?.toString() ?? 'Camera #$id';
+    final area = cam['area']?.toString() ?? 'Chưa xác định';
+    final isOnline = (cam['status'] as Map?)?['online'] as bool?;
+    final detectConfig = cam['detect_enabled'] as bool?;
+    final statusMap = cam['status'] as Map?;
+    final fpsVal = statusMap?['ai_fps'] ?? cam['ai_fps'];
+    final fps = (fpsVal is num && fpsVal > 0) ? fpsVal.toDouble() : null;
+
+    // Kích hoạt nạp snapshot nếu chưa có sau frame
+    if (!_attemptedSnapshots.contains(id) &&
+        !_loadingSnapshots.contains(id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadSnapshotForCamera(id);
+      });
+    }
+
+    final String aiLabel;
+    final bool aiActive;
+    if (detectConfig == false) {
+      aiLabel = 'AI: TẮT';
+      aiActive = false;
+    } else if (isOnline == false) {
+      aiLabel = 'AI: Ngoại tuyến';
+      aiActive = false;
+    } else if (detectConfig == true) {
+      aiLabel = 'AI nhận diện: BẬT';
+      aiActive = true;
+    } else {
+      aiLabel = 'AI: Chưa rõ';
+      aiActive = false;
+    }
+
+    return CameraPreviewCard(
+      name: name,
+      area: area,
+      model: cam['model']?.toString(),
+      isOnline: isOnline,
+      aiEnabled: aiActive,
+      aiStatusText: aiLabel,
+      aiFps: fps,
+      snapshotBytes: _snapshots[id],
+      isSnapshotLoading: _loadingSnapshots.contains(id),
+      snapshotTime: _snapshots[id] != null ? 'Vừa xong' : null,
+      canConfigure: canConfig,
+      onTap: () => _navigateToLive(context, cam),
+      onEdit: () => _openEditor(context, cam),
     );
   }
 }

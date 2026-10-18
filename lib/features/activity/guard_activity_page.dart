@@ -94,9 +94,12 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
           ),
           child: RefreshIndicator(
             onRefresh: widget.monitoringController.refresh,
-            child: Column(
-              children: [
-                // Sticky Filter Bar
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: Column(
+                  children: [
+                    // Sticky Filter Bar
                 Container(
                   color: theme.scaffoldBackgroundColor,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -250,7 +253,9 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
               ],
             ),
           ),
-        );
+        ),
+      ),
+    );
       },
     );
   }

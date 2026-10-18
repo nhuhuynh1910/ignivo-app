@@ -139,8 +139,11 @@ class GuardSettingsPage extends StatelessWidget {
             );
           },
         ),
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             // 1. Account Info Section
             Card(
@@ -494,8 +497,10 @@ class GuardSettingsPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildLeadingIcon(BuildContext context, IconData icon) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
