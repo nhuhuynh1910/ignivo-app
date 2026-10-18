@@ -4,7 +4,6 @@ import '../../core/services/camera_snapshot_loader.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../../widgets/camera_preview_card.dart';
-import '../../widgets/edge_status_card.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/ignivo_sheet.dart';
 import '../../widgets/recent_incident_tile.dart';
@@ -182,29 +181,34 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   callConfigured:
                                       status?['stringee_configured'] == true,
                                 ),
+                                const SizedBox(height: 16),
+
+                                // 2. Smart Status Chips Row (Apple Home style)
+                                _buildStatusChipsBar(
+                                  context,
+                                  isStale: isStale,
+                                  isAiActive: isAiActive,
+                                  aiFps: aiFps,
+                                  totalCameras: totalCameras,
+                                  onlineCameras: onlineCameras,
+                                  unclosedIncidents: unclosedIncidents,
+                                  callConfigured:
+                                      status?['stringee_configured'] == true,
+                                  isDesktop: true,
+                                ),
                                 const SizedBox(height: 20),
 
-                                // 2. Bento 2-Column Dashboard Layout
+                                // 3. Bento 2-Column Dashboard Layout
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Left / Main Column (flex: 62)
+                                    // Left / Main Column (flex: 62) - Tường Camera ở ngay trên cùng
                                     Expanded(
                                       flex: 62,
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: [
-                                          EdgeStatusCard(
-                                            systemName: widget
-                                                .sessionController.systemName,
-                                            isStale: isStale,
-                                            aiActive: isAiActive,
-                                            totalCameras: totalCameras,
-                                            onlineCameras: onlineCameras,
-                                            onTap: widget.onOpenDiagnostics,
-                                          ),
-                                          const SizedBox(height: 20),
                                           _buildQuickCamerasSection(
                                               context, cameras,
                                               isGrid: true),
@@ -230,10 +234,6 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                                   unclosedIncidents.first,
                                               unclosedIncidents.length,
                                             ),
-                                            const SizedBox(height: 18),
-                                          ] else ...[
-                                            _buildSafeStateBanner(
-                                                context, isStale),
                                             const SizedBox(height: 18),
                                           ],
                                           _buildRecentActivitySection(
@@ -269,37 +269,33 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                     active ?? unclosedIncidents.first,
                                     unclosedIncidents.length,
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 14),
                                 ],
 
-                                // 2. Thẻ Hero: EdgeStatusCard (Stitch gradient xanh)
-                                EdgeStatusCard(
-                                  systemName:
-                                      widget.sessionController.systemName,
+                                // 2. Smart Status Chips Row (Apple Home style) - Siêu tinh gọn ~36px
+                                _buildStatusChipsBar(
+                                  context,
                                   isStale: isStale,
-                                  aiActive: isAiActive,
+                                  isAiActive: isAiActive,
+                                  aiFps: aiFps,
                                   totalCameras: totalCameras,
                                   onlineCameras: onlineCameras,
-                                  onTap: widget.onOpenDiagnostics,
+                                  unclosedIncidents: unclosedIncidents,
+                                  callConfigured:
+                                      status?['stringee_configured'] == true,
+                                  isDesktop: false,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 18),
 
-                                // 3. Calibrated Safe State Banner (khi không có sự cố đang diễn ra)
-                                if (unclosedIncidents.isEmpty &&
-                                    active == null) ...[
-                                  _buildSafeStateBanner(context, isStale),
-                                  const SizedBox(height: 16),
-                                ],
+                                // 3. Xem nhanh Camera (Quick Cameras Preview) - Đập ngay vào mắt!
+                                _buildQuickCamerasSection(context, cameras),
+                                const SizedBox(height: 20),
 
                                 // 4. Mức sẵn sàng giám sát (Monitoring Readiness)
                                 _buildReadinessCard(context, status, cameras),
                                 const SizedBox(height: 20),
 
-                                // 5. Xem nhanh Camera (Quick Cameras Preview với Stitch 16:9 cards)
-                                _buildQuickCamerasSection(context, cameras),
-                                const SizedBox(height: 20),
-
-                                // 6. Hoạt động gần đây (Recent Incidents)
+                                // 5. Hoạt động gần đây (Recent Incidents)
                                 _buildRecentActivitySection(context, incidents),
                                 const SizedBox(height: 24),
                               ],
@@ -724,75 +720,187 @@ class _GuardHomePageState extends State<GuardHomePage> {
   // Core Page Sections
   // ---------------------------------------------------------------------------
 
-  Widget _buildSafeStateBanner(BuildContext context, bool isStale) {
+  Widget _buildStatusChipsBar(
+    BuildContext context, {
+    required bool isStale,
+    required bool isAiActive,
+    required double aiFps,
+    required int totalCameras,
+    required int onlineCameras,
+    required List<Map<String, dynamic>> unclosedIncidents,
+    required bool callConfigured,
+    bool isDesktop = false,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final color = isStale ? Colors.amber.shade700 : const Color(0xFF007A3D);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isStale
-            ? Colors.amber.shade900.withValues(alpha: isDark ? 0.2 : 0.08)
-            : const Color(0xFF007A3D).withValues(alpha: isDark ? 0.18 : 0.08),
-        borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
-        boxShadow: BrandTokens.softShadow(isDark: isDark),
-        border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.45 : 0.35),
-          width: 0.8,
-        ),
+    final hasIncidents = unclosedIncidents.isNotEmpty;
+    final safeColor = hasIncidents
+        ? BrandTokens.stitchCritical
+        : (isStale ? Colors.amber.shade700 : const Color(0xFF007A3D));
+
+    final safeBg = hasIncidents
+        ? BrandTokens.stitchCritical.withValues(alpha: isDark ? 0.22 : 0.10)
+        : (isStale
+            ? Colors.amber.shade900.withValues(alpha: isDark ? 0.22 : 0.10)
+            : const Color(0xFF007A3D).withValues(alpha: isDark ? 0.20 : 0.10));
+
+    final safeBorder = safeColor.withValues(alpha: isDark ? 0.45 : 0.35);
+
+    final safeText = hasIncidents
+        ? '${unclosedIncidents.length} sự cố cần chú ý'
+        : (isStale
+            ? 'Dữ liệu giám sát cần đồng bộ lại'
+            : 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có');
+
+    final chips = <Widget>[
+      // 1. Safety Status Chip (Primary Calibrated Highlight)
+      _buildStatusPill(
+        context,
+        icon: hasIncidents
+            ? Icons.warning_amber_rounded
+            : (isStale ? Icons.sync_problem_rounded : Icons.shield_outlined),
+        label: safeText,
+        color: safeColor,
+        backgroundColor: safeBg,
+        borderColor: safeBorder,
+        hasPulseDot: true,
+        onTap: () {
+          if (hasIncidents) {
+            widget.onNavigateTab?.call(2);
+          } else {
+            widget.onOpenDiagnostics?.call();
+          }
+        },
       ),
+      const SizedBox(width: 8),
+
+      // 2. Edge Hardware Box Chip
+      _buildStatusPill(
+        context,
+        icon: Icons.developer_board_rounded,
+        label: isStale ? 'Edge Box: Đang kết nối' : 'Edge Box: Online',
+        color: isStale ? Colors.amber.shade700 : BrandTokens.stitchSafe,
+        onTap: widget.onOpenDiagnostics,
+      ),
+      const SizedBox(width: 8),
+
+      // 3. Hailo AI NPU Chip
+      _buildStatusPill(
+        context,
+        icon: Icons.psychology_outlined,
+        label: isAiActive
+            ? (aiFps > 0
+                ? 'Hailo AI: ${aiFps.toStringAsFixed(1)} FPS'
+                : 'Hailo AI: Sẵn sàng')
+            : 'AI: Tắt',
+        color: isAiActive ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+        onTap: widget.onOpenDiagnostics,
+      ),
+      const SizedBox(width: 8),
+
+      // 4. Cameras Online Chip
+      _buildStatusPill(
+        context,
+        icon: Icons.videocam_outlined,
+        label: totalCameras > 0
+            ? '$onlineCameras/$totalCameras Camera online'
+            : 'Chưa có camera',
+        color: (totalCameras > 0 && onlineCameras == totalCameras)
+            ? BrandTokens.stitchSafe
+            : (onlineCameras > 0
+                ? BrandTokens.stitchWarning
+                : theme.textTheme.bodySmall?.color ?? Colors.grey),
+        onTap: () => widget.onNavigateTab?.call(1),
+      ),
+      const SizedBox(width: 8),
+
+      // 5. Emergency Hotline / SOS Chip
+      _buildStatusPill(
+        context,
+        icon: Icons.phone_in_talk_outlined,
+        label: callConfigured ? 'SOS: Sẵn sàng' : 'SOS: Chưa cấu hình',
+        color: callConfigured
+            ? BrandTokens.stitchSafe
+            : BrandTokens.stitchWarning,
+        onTap: () => widget.onNavigateTab?.call(3),
+      ),
+    ];
+
+    if (isDesktop) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: chips,
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isStale ? Icons.info_outline : Icons.shield_outlined,
-              color: color,
-              size: 24,
-            ),
+        children: chips,
+      ),
+    );
+  }
+
+  Widget _buildStatusPill(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    Color? backgroundColor,
+    Color? borderColor,
+    bool hasPulseDot = false,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bg = backgroundColor ??
+        (isDark
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
+            : theme.cardColor);
+
+    final border = borderColor ?? theme.dividerColor.withValues(alpha: 0.08);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: border, width: 0.8),
+            boxShadow: BrandTokens.softShadow(isDark: isDark),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        isStale
-                            ? 'Dữ liệu giám sát cần đồng bộ lại'
-                            : 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    PulsingStatusDot(color: color, size: 8),
-                  ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? BrandTokens.darkTextPrimary
+                      : BrandTokens.textPrimary,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  isStale
-                      ? 'Hệ thống đang cố gắng kết nối lại với Pi để làm mới trạng thái.'
-                      : 'Các camera và mô hình nhận diện AI đang trong trạng thái hoạt động chủ động.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                  ),
-                ),
+              ),
+              if (hasPulseDot) ...[
+                const SizedBox(width: 6),
+                PulsingStatusDot(color: color, size: 6, pulseSize: 13),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
