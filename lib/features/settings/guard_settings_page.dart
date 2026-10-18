@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../widgets/ignivo_page_header.dart';
+import '../../widgets/ignivo_sheet.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../fireguard/monitoring_controller.dart';
 import 'diagnostics_page.dart';
 import 'emergency_contacts_page.dart';
 import 'emergency_location_page.dart';
+import 'ignivo_about_page.dart';
 
 class GuardSettingsPage extends StatelessWidget {
   const GuardSettingsPage({
@@ -99,12 +101,43 @@ class GuardSettingsPage extends StatelessWidget {
         ? BrandTokens.darkCriticalFg
         : BrandTokens.criticalFg;
 
+    final initials = name
+        .trim()
+        .split(' ')
+        .where((e) => e.isNotEmpty)
+        .map((e) => e[0])
+        .take(2)
+        .join('')
+        .toUpperCase();
+
     return Scaffold(
       body: IgnivoPageBody(
         header: IgnivoPageHeader(
           title: 'Cài đặt',
           subtitle: 'Tài khoản và hệ thống',
           systemName: sessionController.systemName,
+          avatarInitials: initials.isNotEmpty ? initials : 'MA',
+          onTapSystem: () {
+            showIgnivoSystemSheet(
+              context: context,
+              systemName: sessionController.systemName,
+              address: sessionController.guardUrl,
+              isConnected: !monitoringController.stale,
+              cameraCount: monitoringController.cameras.length,
+              onDiagnostics: onOpenDiagnostics ??
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => DiagnosticsPage(
+                          monitoringController: monitoringController,
+                          sessionController: sessionController,
+                        ),
+                      ),
+                    );
+                  },
+              onChangeConnection: () => _confirmDisconnect(context),
+            );
+          },
         ),
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -127,12 +160,15 @@ class GuardSettingsPage extends StatelessWidget {
                       backgroundColor: isDark
                           ? BrandTokens.darkBrandTint
                           : BrandTokens.brandTint,
-                      child: Icon(
-                        Icons.person,
-                        size: 28,
-                        color: isDark
-                            ? BrandTokens.darkPrimary
-                            : BrandTokens.brandPrimary,
+                      child: Text(
+                        initials.isNotEmpty ? initials : 'MA',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? BrandTokens.darkPrimary
+                              : BrandTokens.brandPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -270,6 +306,32 @@ class GuardSettingsPage extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (_) =>
                               EmergencyLocationPage(api: sessionController.api),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: _buildLeadingIcon(
+                      context,
+                      Icons.info_outline,
+                    ),
+                    title: const Text(
+                      'Giới thiệu IGNIVO',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Phát hiện sớm. Bảo vệ kịp thời.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const IgnivoAboutPage(),
                         ),
                       );
                     },
@@ -412,6 +474,19 @@ class GuardSettingsPage extends StatelessWidget {
                 label: const Text(
                   'Đăng xuất tài khoản',
                   style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
+                'IGNIVO · Smart Safety',
+                style: TextStyle(
+                  color: isDark
+                      ? BrandTokens.darkTextSecondary
+                      : BrandTokens.textSecondary,
+                  fontSize: 12,
+                  letterSpacing: 0.6,
                 ),
               ),
             ),

@@ -258,9 +258,9 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                           ),
                         ),
                     ],
-                    FilledButton(
+                    FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
+                        minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -276,12 +276,51 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                               HapticFeedback.heavyImpact();
                               _act('ack');
                             },
-                      child: const Text(
-                        'Nhận xử lý • Dừng gọi tiếp',
-                        style: TextStyle(
+                      icon: Icon(
+                        incident['status'] == 'acknowledged'
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.front_hand_rounded,
+                        size: 20,
+                      ),
+                      label: Text(
+                        incident['status'] == 'acknowledged'
+                            ? 'Đã nhận xử lý'
+                            : 'Nhận xử lý • Dừng gọi tiếp',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: _busy || _error != null
+                          ? null
+                          : () {
+                              setState(() {
+                                if (widget.coordinator?.isSilenced == true) {
+                                  widget.coordinator?.resumeAlarm();
+                                } else {
+                                  widget.coordinator?.silenceAlarm();
+                                }
+                              });
+                            },
+                      icon: Icon(
+                        (widget.coordinator?.isSilenced == true)
+                            ? Icons.volume_up_rounded
+                            : Icons.volume_off_rounded,
+                        size: 20,
+                      ),
+                      label: Text(
+                        (widget.coordinator?.isSilenced == true)
+                            ? 'Bật lại âm thanh'
+                            : 'Tắt âm trên thiết bị',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -290,7 +329,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 48),
+                              minimumSize: const Size(0, 46),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -307,7 +346,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                         const SizedBox(width: 8),
                         TextButton(
                           style: TextButton.styleFrom(
-                            minimumSize: const Size(80, 48),
+                            minimumSize: const Size(80, 46),
                             foregroundColor: Colors.red.shade400,
                           ),
                           onPressed: _busy || _error != null

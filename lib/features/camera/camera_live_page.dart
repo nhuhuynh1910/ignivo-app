@@ -252,37 +252,37 @@ class _CameraLivePageState extends State<CameraLivePage> {
                   const SizedBox(height: 16),
 
                   // Maintenance & Edge Box Note
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.dividerColor.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 20,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Luồng MJPEG được phân tích trực tiếp tại chỗ bởi bộ tăng tốc Hailo NPU trên Raspberry Pi. Bất kỳ thay đổi vật lý hoặc đổi cổng RTSP cần thực hiện trên Edge Box.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.textTheme.bodySmall?.color,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Container(
+                  //   padding: const EdgeInsets.all(14),
+                  //   decoration: BoxDecoration(
+                  //     color: theme.colorScheme.surfaceContainerHighest
+                  //         .withValues(alpha: 0.4),
+                  //     borderRadius: BorderRadius.circular(12),
+                  //     border: Border.all(
+                  //       color: theme.dividerColor.withValues(alpha: 0.1),
+                  //     ),
+                  //   ),
+                  //   child: Row(
+                  //     crossAxisAlignment: CrossAxisAlignment.start,
+                  //     children: [
+                  //       Icon(
+                  //         Icons.info_outline,
+                  //         size: 20,
+                  //         color: theme.colorScheme.primary,
+                  //       ),
+                  //       const SizedBox(width: 10),
+                  //       Expanded(
+                  //         child: Text(
+                  //           'Luồng MJPEG được phân tích trực tiếp tại chỗ bởi bộ tăng tốc Hailo NPU trên Raspberry Pi. Bất kỳ thay đổi vật lý hoặc đổi cổng RTSP cần thực hiện trên Edge Box.',
+                  //           style: TextStyle(
+                  //             fontSize: 12,
+                  //             color: theme.textTheme.bodySmall?.color,
+                  //           ),
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                 ],
               ),
             ),

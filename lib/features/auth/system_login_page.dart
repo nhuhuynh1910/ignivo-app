@@ -21,6 +21,13 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
 
   bool _obscureSecret = true;
   bool _obscureSystemSecret = true;
+  late bool _rememberMe;
+
+  @override
+  void initState() {
+    super.initState();
+    _rememberMe = widget.sessionController.rememberMe;
+  }
 
   @override
   void dispose() {
@@ -38,6 +45,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
       phoneNumber: _phoneController.text.trim(),
       secretKey: _secretController.text,
       systemSecretKey: _systemSecretController.text,
+      rememberMe: _rememberMe,
     );
 
     if (success && mounted) {
@@ -71,18 +79,18 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
                     const IgnivoAuthHeader(
                       title: 'Đăng nhập',
                       subtitle: 'Truy cập hệ thống giám sát của bạn',
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Connection card
                     Container(
@@ -146,7 +154,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
 
                     // Error banner
                     if (errorMessage != null && errorMessage.isNotEmpty) ...[
@@ -189,7 +197,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                     ],
 
                     // Phone number
@@ -212,7 +220,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Password (secret_key)
                     TextFormField(
@@ -227,8 +235,8 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureSecret
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           ),
                           onPressed: () =>
                               setState(() => _obscureSecret = !_obscureSecret),
@@ -241,7 +249,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // System key (system_secret_key)
                     TextFormField(
@@ -256,8 +264,8 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureSystemSecret
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           ),
                           onPressed: () => setState(
                             () => _obscureSystemSecret = !_obscureSystemSecret,
@@ -271,7 +279,51 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+
+                    // Remember me option
+                    InkWell(
+                      key: const Key('remember-me-toggle'),
+                      borderRadius: BorderRadius.circular(BrandTokens.space8),
+                      onTap: isAuthenticating
+                          ? null
+                          : () => setState(() => _rememberMe = !_rememberMe),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Checkbox(
+                                key: const Key('remember-me-checkbox'),
+                                value: _rememberMe,
+                                onChanged: isAuthenticating
+                                    ? null
+                                    : (val) => setState(
+                                          () => _rememberMe = val ?? false,
+                                        ),
+                                activeColor: theme.colorScheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Ghi nhớ đăng nhập trên thiết bị này',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     // Login button
                     FilledButton(

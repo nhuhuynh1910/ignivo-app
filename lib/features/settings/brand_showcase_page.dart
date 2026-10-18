@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../../widgets/ignivo_logo.dart';
+import '../../widgets/edge_status_card.dart';
+import '../../widgets/camera_preview_card.dart';
+import '../../widgets/camera_status_filters.dart';
+import '../../widgets/recent_incident_tile.dart';
 
 /// Trang trưng bày thư viện linh kiện và các màn hình mẫu giao diện IGNIVO Brand UI/UX.
 ///
@@ -212,6 +216,45 @@ class _BrandShowcasePageState extends State<BrandShowcasePage>
               label: const Text('Tắt âm còi'),
             ),
           ],
+        ),
+        const SizedBox(height: BrandTokens.space24),
+
+        _buildSectionHeader('5. Linh kiện Stitch Redesign (Bản 3)'),
+        const SizedBox(height: BrandTokens.space12),
+        const EdgeStatusCard(
+          systemName: 'Nhà (Demo)',
+          isOnline: true,
+          aiModel: 'Hailo-8L',
+          directAlertStatus: 'Kết nối',
+          totalCameras: 3,
+          onlineCameras: 2,
+        ),
+        const SizedBox(height: BrandTokens.space16),
+        CameraStatusFilters(
+          selected: CameraFilterCategory.all,
+          onSelected: (_) {},
+          totalCount: 3,
+          onlineCount: 2,
+          offlineCount: 1,
+        ),
+        const SizedBox(height: BrandTokens.space16),
+        const CameraPreviewCard(
+          name: 'Phòng khách',
+          area: 'Tầng trệt',
+          model: 'Hikvision IP-Cam',
+          isOnline: true,
+          aiStatusText: 'AI đang giám sát thời gian thực',
+          aiFps: 25,
+          snapshotTime: '10:42',
+        ),
+        const SizedBox(height: BrandTokens.space12),
+        const RecentIncidentTile(
+          id: 104,
+          title: 'Phát hiện nhiệt bất thường',
+          area: 'Nhà bếp',
+          timeStr: 'Vừa xong',
+          severity: 'high',
+          status: 'analyzing',
         ),
       ],
     );

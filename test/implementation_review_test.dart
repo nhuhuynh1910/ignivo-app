@@ -247,6 +247,8 @@ void main() {
       expect(find.textContaining('super_secret_pwd'), findsNothing);
       expect(find.textContaining('rtsp://'), findsNothing);
 
+      await tester.ensureVisible(find.text('Lưu camera'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Lưu camera'));
       await tester.pumpAndSettle();
 

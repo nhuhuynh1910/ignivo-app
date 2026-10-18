@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/ignivo_page_header.dart';
+import '../../widgets/recent_incident_tile.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../fireguard/incident_page.dart';
@@ -68,32 +69,6 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
     }
   }
 
-  Color _severityColor(String? severity) {
-    final s = severity?.toLowerCase().trim();
-    return switch (s) {
-      'critical' => BrandTokens.criticalFg,
-      'high' => BrandTokens.highFg,
-      'medium' => BrandTokens.mediumFg,
-      'low' => BrandTokens.lowFg,
-      _ => BrandTokens.staleFg,
-    };
-  }
-
-  IconData _triggerIcon(String? trigger) {
-    switch (trigger?.toLowerCase()) {
-      case 'fire':
-        return Icons.local_fire_department;
-      case 'smoke':
-        return Icons.cloud_outlined;
-      case 'thermal':
-        return Icons.thermostat;
-      case 'simulation':
-        return Icons.science_outlined;
-      default:
-        return Icons.warning_amber_rounded;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -106,8 +81,7 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
 
         return IgnivoPageBody(
           header: IgnivoPageHeader(
-            title: 'Hoạt động',
-            subtitle: 'Lịch sử sự cố và xử lý',
+            title: 'Cảnh báo',
             systemName: widget.sessionController?.systemName ?? 'IGNIVO',
             showSync: true,
             updatedAt: widget.monitoringController.updated,
@@ -253,157 +227,22 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
                             final area =
                                 inc['area']?.toString() ?? 'Chưa xác định';
                             final status = inc['status']?.toString();
-                            final statusLabel = incidentStatusLabel(status);
                             final severity = inc['severity']?.toString();
-                            final trigger = inc['trigger_type']?.toString();
                             final createdAt =
                                 inc['created_at']?.toString() ?? '';
-                            final isUnclosed = ![
-                              'resolved',
-                              'false_alarm',
-                            ].contains(status);
+                            final isSim = inc['is_simulation'] == true ||
+                                inc['trigger_type']?.toString().toLowerCase() ==
+                                    'simulation';
 
-                            return InkWell(
+                            return RecentIncidentTile(
+                              id: id,
+                              title: 'Sự cố #$id — $area',
+                              area: area,
+                              timeStr: createdAt.isNotEmpty ? createdAt : 'Vừa xong',
+                              severity: severity,
+                              status: status,
+                              isSimulation: isSim,
                               onTap: () => _navigateToDetail(context, id),
-                              borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: theme.cardColor,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: isUnclosed
-                                        ? _severityColor(
-                                            severity,
-                                          ).withValues(alpha: 0.5)
-                                        : theme.dividerColor.withValues(
-                                            alpha: 0.12,
-                                          ),
-                                    width: isUnclosed ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor: _severityColor(
-                                        severity,
-                                      ).withValues(alpha: 0.12),
-                                      child: Icon(
-                                        _triggerIcon(trigger),
-                                        color: _severityColor(severity),
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  'Sự cố #$id — $area',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              if (severity != null)
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: _severityColor(
-                                                      severity,
-                                                    ).withValues(alpha: 0.12),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    severity.toUpperCase(),
-                                                    style: TextStyle(
-                                                      color: _severityColor(
-                                                        severity,
-                                                      ),
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 7,
-                                                height: 7,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: isUnclosed
-                                                      ? Colors.red
-                                                      : Colors.grey,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                statusLabel,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: isUnclosed
-                                                      ? FontWeight.w600
-                                                      : FontWeight.normal,
-                                                  color: isUnclosed
-                                                      ? Colors.red.shade700
-                                                      : null,
-                                                ),
-                                              ),
-                                              if (createdAt.isNotEmpty) ...[
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    '· $createdAt',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: theme
-                                                          .textTheme
-                                                          .bodySmall
-                                                          ?.color,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      size: 20,
-                                      color: Colors.grey,
-                                    ),
-                                  ],
-                                ),
-                              ),
                             );
                           },
                         ),
@@ -428,12 +267,21 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
     return FilterChip(
       selected: selected,
       showCheckmark: false,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: selected
+              ? (highlight ? Colors.red.shade700 : BrandTokens.brandPrimary)
+              : theme.dividerColor.withValues(alpha: 0.15),
+          width: selected ? 1.5 : 1,
+        ),
+      ),
       avatar: count != null && count > 0
           ? CircleAvatar(
               radius: 8,
               backgroundColor: highlight
                   ? Colors.red.shade700
-                  : theme.colorScheme.primary,
+                  : BrandTokens.brandPrimary,
               child: Text(
                 '$count',
                 style: const TextStyle(
@@ -448,14 +296,14 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
       onSelected: (_) => setState(() => _filterIndex = index),
       selectedColor: highlight
           ? Colors.red.withValues(alpha: 0.15)
-          : theme.colorScheme.primaryContainer,
+          : BrandTokens.brandPrimary.withValues(alpha: 0.12),
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: selected ? FontWeight.bold : FontWeight.normal,
         color: selected
             ? (highlight
                   ? Colors.red.shade900
-                  : theme.colorScheme.onPrimaryContainer)
+                  : BrandTokens.brandPrimary)
             : null,
       ),
     );

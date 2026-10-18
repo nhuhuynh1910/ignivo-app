@@ -8,18 +8,35 @@ class BrandTokens {
   BrandTokens._();
 
   // ==========================================
-  // BRAND IDENTITY (LIGHT THEME)
+  // BRAND IDENTITY (LIGHT THEME) — STITCH
   // ==========================================
-  static const Color brandPrimary = Color(0xFF0757D8);
+  static const Color brandPrimary = Color(0xFF005CAF);
+  static const Color brandSecondary = Color(0xFF005AC4);
   static const Color brandCyan = Color(0xFF16B9EE);
   static const Color brandNavy = Color(0xFF102449);
   static const Color background = Color(0xFFF5F8FC);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF102449);
-  static const Color textSecondary = Color(0xFF53657D);
-  static const Color textTertiary = Color(0xFF8C93A1);
-  static const Color border = Color(0xFFDCE5F1);
-  static const Color brandTint = Color(0xFFEAF2FF);
+  static const Color textPrimary = Color(0xFF181C24);
+  static const Color textSecondary = Color(0xFF586678);
+  static const Color textTertiary = Color(0xFF717785);
+  static const Color border = Color(0xFFE2E8F0);
+  static const Color brandTint = Color(0xFFEAF3FF);
+
+  // Stitch Semantic Tokens
+  static const Color stitchSafe = Color(0xFF10B981);
+  static const Color stitchWarning = Color(0xFFF59E0B);
+  static const Color stitchCritical = Color(0xFFEF4444);
+
+  // Stitch Demo Status Palette (Light)
+  static const Color stitchOnlineFg = Color(0xFF087C59);
+  static const Color stitchOnlineBg = Color(0xFFE5F7EF);
+  static const Color stitchCriticalFg = Color(0xFFB72832);
+  static const Color stitchCriticalBg = Color(0xFFFFF0F0);
+  static const Color stitchCriticalBorder = Color(0xFFF4BBC0);
+  static const Color stitchWarningFg = Color(0xFF925700);
+  static const Color stitchWarningBg = Color(0xFFFFF4DC);
+  static const Color stitchOfflineFg = Color(0xFF586678);
+  static const Color stitchOfflineBg = Color(0xFFF5F8FC);
 
   // ==========================================
   // BRAND IDENTITY (DARK THEME)
@@ -31,9 +48,21 @@ class BrandTokens {
   static const Color darkTextSecondary = Color(0xFFB4C3D8);
   static const Color darkTextTertiary = Color(0xFF64748B);
   static const Color darkPrimary = Color(0xFF63CBFF);
+  static const Color stitchDarkPrimary = Color(0xFF83C9FF);
   static const Color darkOnPrimary = Color(0xFF06152F);
-  static const Color darkBorder = Color(0xFF1E2E48);
-  static const Color darkBrandTint = Color(0xFF14284B);
+  static const Color darkBorder = Color(0xFF283B57);
+  static const Color darkBrandTint = Color(0xFF183150);
+
+  // Stitch Demo Status Palette (Dark)
+  static const Color stitchDarkOnlineFg = Color(0xFF6EE7B7);
+  static const Color stitchDarkOnlineBg = Color(0xFF123B32);
+  static const Color stitchDarkCriticalFg = Color(0xFFFFB4B8);
+  static const Color stitchDarkCriticalBg = Color(0xFF40202C);
+  static const Color stitchDarkCriticalBorder = Color(0xFF8A4556);
+  static const Color stitchDarkWarningFg = Color(0xFFFFD37A);
+  static const Color stitchDarkWarningBg = Color(0xFF3C301F);
+  static const Color stitchDarkOfflineFg = Color(0xFFB4C3D8);
+  static const Color stitchDarkOfflineBg = Color(0xFF091426);
 
   // ==========================================
   // STATUS & ALERT SEMANTIC COLORS (LIGHT MODE)
@@ -98,6 +127,11 @@ class BrandTokens {
   static const double badgeRadius = 20.0;
   static const double logoBadgeRadius = 14.0;
   static const double sheetRadius = 24.0;
+
+  // Stitch Spec Radii
+  static const double stitchCardRadius = 20.0;
+  static const double stitchSmallCardRadius = 16.0;
+  static const double stitchInputRadius = 14.0;
 
   // ==========================================
   // SPACING TOKENS

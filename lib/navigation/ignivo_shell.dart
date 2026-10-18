@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/services/camera_snapshot_loader.dart';
 import '../../core/services/system_session_controller.dart';
 import '../features/activity/guard_activity_page.dart';
 import '../features/camera/camera_live_page.dart';
@@ -26,12 +27,14 @@ class IgnivoShell extends StatefulWidget {
 
 class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   late final MonitoringController _monitoring;
+  late final CameraSnapshotLoader _snapshotLoader;
   final Set<int> _snackBarAnnounced = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _snapshotLoader = CameraSnapshotLoader(api: widget.sessionController.api);
     _monitoring =
         widget.monitoringController ??
         MonitoringController(api: widget.sessionController.api);
@@ -96,6 +99,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
     if (widget.monitoringController == null) {
       _monitoring.dispose();
     }
+    _snapshotLoader.dispose();
     super.dispose();
   }
 
@@ -145,6 +149,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         0 => GuardHomePage(
           sessionController: widget.sessionController,
           monitoringController: _monitoring,
+          snapshotLoader: _snapshotLoader,
           onNavigateTab: (idx) => setState(() => _selectedTab = idx),
           onOpenIncident: _openIncident,
           onOpenLiveView: _openCameraLive,
@@ -153,6 +158,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         1 => GuardCamerasPage(
           monitoringController: _monitoring,
           sessionController: widget.sessionController,
+          snapshotLoader: _snapshotLoader,
           onOpenLiveView: _openCameraLive,
         ),
         2 => GuardActivityPage(
@@ -182,9 +188,9 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
             label: 'Camera',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'Hoạt động',
+            icon: Icon(Icons.warning_amber_rounded),
+            selectedIcon: Icon(Icons.warning_rounded),
+            label: 'Cảnh báo',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/brand_tokens.dart';
-import 'ignivo_logo.dart';
+import 'ignivo_brand_logo.dart';
+import 'ignivo_sheet.dart';
 
 /// Shared, layered header for the four primary destinations.
 /// Connection freshness is deliberately separate from incident severity.
@@ -9,21 +10,27 @@ class IgnivoPageHeader extends StatelessWidget {
   const IgnivoPageHeader({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.systemName,
     this.action,
     this.showSync = false,
     this.updatedAt,
     this.stale = true,
+    this.onTapSystem,
+    this.onTapAvatar,
+    this.avatarInitials,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final String systemName;
   final Widget? action;
   final bool showSync;
   final DateTime? updatedAt;
   final bool stale;
+  final VoidCallback? onTapSystem;
+  final VoidCallback? onTapAvatar;
+  final String? avatarInitials;
 
   @override
   Widget build(BuildContext context) {
@@ -45,31 +52,88 @@ class IgnivoPageHeader extends StatelessWidget {
           children: [
             Row(
               children: [
-                const IgnivoLogo.header(width: 88, excludeFromSemantics: false),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Tooltip(
-                    message: systemName,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 16,
-                          color: muted,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            systemName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: muted,
+                const IgnivoBrandLogo.wordmarkOnly(excludeFromSemantics: false),
+                const Spacer(),
+                Tooltip(
+                  message: systemName,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      if (onTapSystem != null) {
+                        onTapSystem!();
+                      } else {
+                        showIgnivoSystemSheet(
+                          context: context,
+                          systemName: systemName,
+                          address: 'Hệ thống FireGuard Edge',
+                          isConnected: !stale,
+                          cameraCount: 3,
+                        );
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.router_rounded,
+                            size: 17,
+                            color: isDark
+                                ? BrandTokens.darkPrimary
+                                : BrandTokens.brandPrimary,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 110),
+                              child: Text(
+                                systemName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? BrandTokens.darkTextPrimary
+                                      : BrandTokens.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Cài đặt & Tài khoản',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: onTapAvatar,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: isDark
+                          ? BrandTokens.darkBrandTint
+                          : BrandTokens.brandTint,
+                      child: avatarInitials != null && avatarInitials != 'MA'
+                          ? Text(
+                              avatarInitials!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? BrandTokens.darkPrimary
+                                    : BrandTokens.brandPrimary,
+                              ),
+                            )
+                          : Icon(
+                              Icons.person_rounded,
+                              size: 18,
+                              color: isDark
+                                  ? BrandTokens.darkPrimary
+                                  : BrandTokens.brandPrimary,
+                            ),
                     ),
                   ),
                 ),
@@ -94,13 +158,15 @@ class IgnivoPageHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: muted,
+                      if (subtitle != null && subtitle!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: muted,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -300,30 +366,64 @@ class IgnivoAuthHeader extends StatelessWidget {
   final String subtitle;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      const IgnivoLogo.wordmark(width: 154),
-      const SizedBox(height: 24),
-      Semantics(
-        header: true,
-        child: Text(
-          title,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Column(
+      children: [
+        // Biểu tượng Logo thương hiệu IGNIVO ở giữa phóng to
+        Center(
+          child: Container(
+            width: 76,
+            height: 82,
+            padding: const EdgeInsets.all(7.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                width: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Image.asset(
+              BrandTokens.markAsset,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.local_fire_department_rounded,
+                color: BrandTokens.brandPrimary,
+                size: 36,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
           textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: isDark
+                ? BrandTokens.darkTextSecondary
+                : BrandTokens.textSecondary,
+          ),
         ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        subtitle,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? BrandTokens.darkTextSecondary
-              : BrandTokens.textSecondary,
-        ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

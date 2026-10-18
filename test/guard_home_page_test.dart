@@ -168,5 +168,102 @@ void main() {
       coordinator.dispose();
       monitoring.dispose();
     });
+
+    testWidgets('renders quick cameras and recent incident tiles with Stitch cards', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      int? openedCamId;
+      int? openedIncId;
+
+      final cam = {
+        'id': 10,
+        'name': 'Camera Sân Vườn',
+        'area': 'Sân Vườn',
+        'enabled': true,
+        'detect_enabled': true,
+        'ai_fps': 12,
+        'status': {'online': true},
+      };
+
+      final inc = {
+        'id': 50,
+        'trigger_type': 'smoke',
+        'status': 'acknowledged',
+        'severity': 'medium',
+        'area': 'Gara Xe',
+        'created_at': '2026-10-18 10:00:00',
+      };
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/me')) return jsonResp({'role': 'OWNER'});
+          if (r.url.path.endsWith('/system/info')) return jsonResp({'hostname': 'pi'});
+          if (r.url.path.endsWith('/status')) return jsonResp({'vision': {'ready': true}});
+          if (r.url.path.endsWith('/cameras')) return jsonResp([cam]);
+          if (r.url.path.endsWith('/incidents/active')) return jsonResp(null);
+          if (r.url.path.endsWith('/incidents')) return jsonResp([inc]);
+          return jsonResp({});
+        }),
+      );
+
+      final session = SystemSessionController(
+        api: api,
+        initialProfile: PiConnectionProfile.fromGuardUrl(
+          'http://pi:8080',
+          systemName: 'Biệt Thự Vườn',
+        ),
+      );
+      await api.setAuthToken('test-token');
+
+      final realtime = TestRealtime(api);
+      final coordinator = IncidentAlertCoordinator(
+        api: api,
+        realtime: realtime,
+        feedbackAdapter: MockAlertFeedbackAdapter(),
+      );
+
+      final monitoring = MonitoringController(
+        api: api,
+        realtime: realtime,
+        coordinator: coordinator,
+      );
+
+      monitoring.start();
+      await monitoring.refresh();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GuardHomePage(
+              sessionController: session,
+              monitoringController: monitoring,
+              onOpenLiveView: (id) => openedCamId = id,
+              onOpenIncident: (id) => openedIncId = id,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Camera Sân Vườn'), findsOneWidget);
+      expect(find.text('Gara Xe'), findsOneWidget);
+
+      await tester.tap(find.text('Camera Sân Vườn'));
+      expect(openedCamId, 10);
+
+      await tester.tap(find.text('Gara Xe'));
+      expect(openedIncId, 50);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      monitoring.stop();
+      coordinator.dispose();
+      monitoring.dispose();
+    });
   });
 }

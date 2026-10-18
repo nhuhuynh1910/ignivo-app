@@ -144,6 +144,11 @@ void main() {
         coordinator: coordinator,
       );
 
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       monitoring.start();
       await monitoring.refresh();
 
@@ -173,6 +178,8 @@ void main() {
       expect(find.text('Sửa'), findsNWidgets(2));
 
       // Tap on Live View
+      await tester.ensureVisible(find.text('Xem trực tiếp (Live View)').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Xem trực tiếp (Live View)').first);
       expect(openedCamId, 1);
 

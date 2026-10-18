@@ -9,7 +9,7 @@ void main() {
 
   group('Gói B1: BrandTokens & StatusStyle Unit Tests', () {
     test('BrandTokens defines proper primary and contrast tokens', () {
-      expect(BrandTokens.brandPrimary, const Color(0xFF0757D8));
+      expect(BrandTokens.brandPrimary, const Color(0xFF005CAF));
       expect(BrandTokens.brandNavy, const Color(0xFF102449));
       expect(BrandTokens.brandCyan, const Color(0xFF16B9EE));
       expect(BrandTokens.darkBackground, const Color(0xFF091426));

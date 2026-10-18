@@ -25,18 +25,23 @@ class SystemSessionController extends ChangeNotifier {
     }
   }
 
+  static const prefSavedAuthTokenKey = 'ignivo_saved_auth_token';
+  static const prefRememberMeKey = 'ignivo_remember_me';
+
   final FireguardApiService api;
   PiConnectionProfile _profile;
   SessionStatus _status = SessionStatus.unconfigured;
   Map<String, dynamic>? _currentUser;
   String? _lastError;
   int _sessionRevision = 0;
+  bool _rememberMe = true;
 
   PiConnectionProfile get profile => _profile;
   SessionStatus get status => _status;
   Map<String, dynamic>? get currentUser => _currentUser;
   String? get lastError => _lastError;
   int get sessionRevision => _sessionRevision;
+  bool get rememberMe => _rememberMe;
 
   String get systemName => _profile.systemName;
   String get guardUrl => _profile.guardUrl;
@@ -63,11 +68,100 @@ class SystemSessionController extends ChangeNotifier {
 
   Future<void> initialize(SharedPreferences prefs) async {
     _profile = await PiConnectionProfile.load(prefs);
+    _rememberMe = prefs.getBool(prefRememberMeKey) ?? true;
+
     if (!_profile.isConfigured || _profile.guardUrl.isEmpty) {
       _status = SessionStatus.unconfigured;
-    } else {
-      await api.setBaseUrl(_profile.guardUrl);
-      _status = SessionStatus.unauthenticated;
+      notifyListeners();
+      return;
+    }
+
+    await api.setBaseUrl(_profile.guardUrl);
+
+    // If rememberMe is enabled, check for a persisted session token
+    final savedToken = prefs.getString(prefSavedAuthTokenKey);
+    if (_rememberMe && savedToken != null && savedToken.isNotEmpty) {
+      _status = SessionStatus.authenticating;
+      notifyListeners();
+
+      await api.setAuthToken(savedToken);
+      try {
+        final user = await api.getCurrentUser().timeout(
+              const Duration(seconds: 8),
+            );
+        if (user.isNotEmpty) {
+          _currentUser = user;
+          _sessionRevision++;
+          _status = SessionStatus.authenticated;
+
+          // Cache device_id from /system/info if not already in profile
+          if (_profile.deviceId == null) {
+            try {
+              final info = await api.getSystemInfo();
+              final devId = info?['device_id']?.toString();
+              if (devId != null && devId.isNotEmpty) {
+                _profile = _profile.copyWith(deviceId: devId);
+                await _profile.save(prefs);
+              }
+            } catch (_) {}
+          }
+
+          notifyListeners();
+          return;
+        } else {
+          // Empty user object received
+          await clearSavedSession(prefs);
+          await api.setAuthToken(null);
+          _currentUser = null;
+          _status = SessionStatus.unauthenticated;
+          _lastError =
+              'Thông tin người dùng không hợp lệ. Vui lòng đăng nhập lại.';
+          notifyListeners();
+          return;
+        }
+      } catch (e) {
+        if (e is FireguardException && e.statusCode == 401) {
+          // Token expired or invalid on server
+          await clearSavedSession(prefs);
+          await api.setAuthToken(null);
+          _currentUser = null;
+          _status = SessionStatus.sessionExpired;
+          _lastError = 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.';
+          notifyListeners();
+          return;
+        } else {
+          // Network failure or temporary Pi unreachability
+          await api.setAuthToken(null);
+          _currentUser = null;
+          _status = SessionStatus.unauthenticated;
+          _lastError = e is FireguardException
+              ? e.message
+              : 'Không thể kết nối đến hệ thống FireGuard để xác thực phiên.';
+          notifyListeners();
+          return;
+        }
+      }
+    } else if (!_rememberMe) {
+      await clearSavedSession(prefs);
+    }
+
+    _status = SessionStatus.unauthenticated;
+    notifyListeners();
+  }
+
+  Future<void> clearSavedSession([SharedPreferences? prefs]) async {
+    final sp = prefs ?? await SharedPreferences.getInstance();
+    await sp.remove(prefSavedAuthTokenKey);
+  }
+
+  Future<void> setRememberMe(bool value, [SharedPreferences? prefs]) async {
+    _rememberMe = value;
+    final sp = prefs ?? await SharedPreferences.getInstance();
+    await sp.setBool(prefRememberMeKey, value);
+    if (!value) {
+      await clearSavedSession(sp);
+    } else if (api.authToken != null && api.authToken!.isNotEmpty) {
+      await sp.setString(prefSavedAuthTokenKey, api.authToken!);
     }
     notifyListeners();
   }
@@ -78,6 +172,7 @@ class SystemSessionController extends ChangeNotifier {
     required String systemSecretKey,
     String deviceName = 'IGNIVO Mobile App',
     SharedPreferences? prefs,
+    bool rememberMe = true,
   }) async {
     _lastError = null;
     _status = SessionStatus.authenticating;
@@ -123,6 +218,16 @@ class SystemSessionController extends ChangeNotifier {
       _currentUser = user;
       _sessionRevision++;
       _status = SessionStatus.authenticated;
+      _rememberMe = rememberMe;
+
+      // Persist session if rememberMe is enabled
+      final sp = prefs ?? await SharedPreferences.getInstance();
+      await sp.setBool(prefRememberMeKey, rememberMe);
+      if (rememberMe && api.authToken != null && api.authToken!.isNotEmpty) {
+        await sp.setString(prefSavedAuthTokenKey, api.authToken!);
+      } else {
+        await sp.remove(prefSavedAuthTokenKey);
+      }
 
       // Read device_id from /system/info if not already cached in profile
       if (_profile.deviceId == null) {
@@ -131,7 +236,6 @@ class SystemSessionController extends ChangeNotifier {
           final devId = info?['device_id']?.toString();
           if (devId != null && devId.isNotEmpty) {
             _profile = _profile.copyWith(deviceId: devId);
-            final sp = prefs ?? await SharedPreferences.getInstance();
             await _profile.save(sp);
           }
         } catch (_) {}
@@ -147,13 +251,15 @@ class SystemSessionController extends ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout([SharedPreferences? prefs]) async {
     _sessionRevision++;
     try {
       await api.logout();
     } catch (_) {}
     await api.setAuthToken(null);
     _currentUser = null;
+    final sp = prefs ?? await SharedPreferences.getInstance();
+    await clearSavedSession(sp);
     _status = SessionStatus.unauthenticated;
     _lastError = null;
     notifyListeners();
@@ -169,6 +275,7 @@ class SystemSessionController extends ChangeNotifier {
     _profile = PiConnectionProfile.createUnconfigured();
     final sp = prefs ?? await SharedPreferences.getInstance();
     await _profile.save(sp);
+    await clearSavedSession(sp);
     _status = SessionStatus.unconfigured;
     _lastError = null;
     notifyListeners();
@@ -183,6 +290,7 @@ class SystemSessionController extends ChangeNotifier {
       _sessionRevision++;
       await api.setAuthToken(null);
       _currentUser = null;
+      await clearSavedSession(prefs);
     }
 
     _profile = newProfile;
@@ -198,7 +306,7 @@ class SystemSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void handleSessionExpired([String? reason]) {
+  void handleSessionExpired([String? reason, SharedPreferences? prefs]) {
     if (_status == SessionStatus.sessionExpired) return;
     _sessionRevision++;
     api.setAuthToken(null);
@@ -206,6 +314,11 @@ class SystemSessionController extends ChangeNotifier {
     _status = SessionStatus.sessionExpired;
     _lastError = reason ??
         'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại để tiếp tục giám sát.';
+    if (prefs != null) {
+      prefs.remove(prefSavedAuthTokenKey);
+    } else {
+      SharedPreferences.getInstance().then((sp) => clearSavedSession(sp));
+    }
     notifyListeners();
   }
 

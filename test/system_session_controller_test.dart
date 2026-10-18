@@ -234,5 +234,158 @@ void main() {
       expect(controller.api.authToken, isNull);
       expect(controller.lastError, 'Token signature expired');
     });
+
+    test('login with rememberMe: true persists token to preferences', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/login')) {
+            return jsonResp({'token': 'jwt-persistent-token'});
+          }
+          if (r.url.path.endsWith('/auth/me')) {
+            return jsonResp({'id': 1, 'username': 'admin', 'role': 'ADMIN'});
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      final controller = SystemSessionController(
+        api: api,
+        initialProfile: PiConnectionProfile.fromGuardUrl('http://pi:8080'),
+      );
+
+      final ok = await controller.login(
+        phoneNumber: '0901112233',
+        secretKey: 'pass',
+        systemSecretKey: 'sys',
+        prefs: prefs,
+        rememberMe: true,
+      );
+
+      expect(ok, isTrue);
+      expect(controller.isAuthenticated, isTrue);
+      expect(prefs.getBool(SystemSessionController.prefRememberMeKey), isTrue);
+      expect(
+        prefs.getString(SystemSessionController.prefSavedAuthTokenKey),
+        'jwt-persistent-token',
+      );
+
+      // Logging out removes saved token
+      await controller.logout(prefs);
+      expect(
+        prefs.getString(SystemSessionController.prefSavedAuthTokenKey),
+        isNull,
+      );
+    });
+
+    test('login with rememberMe: false does not persist token', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        SystemSessionController.prefSavedAuthTokenKey,
+        'old-token',
+      );
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/login')) {
+            return jsonResp({'token': 'jwt-no-remember'});
+          }
+          if (r.url.path.endsWith('/auth/me')) {
+            return jsonResp({'id': 2, 'username': 'user', 'role': 'STAFF'});
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      final controller = SystemSessionController(
+        api: api,
+        initialProfile: PiConnectionProfile.fromGuardUrl('http://pi:8080'),
+      );
+
+      final ok = await controller.login(
+        phoneNumber: '0909998877',
+        secretKey: 'pass',
+        systemSecretKey: 'sys',
+        prefs: prefs,
+        rememberMe: false,
+      );
+
+      expect(ok, isTrue);
+      expect(controller.isAuthenticated, isTrue);
+      expect(prefs.getBool(SystemSessionController.prefRememberMeKey), isFalse);
+      expect(
+        prefs.getString(SystemSessionController.prefSavedAuthTokenKey),
+        isNull,
+      );
+    });
+
+    test('initialize auto-authenticates if savedToken exists and /auth/me succeeds', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final profile = PiConnectionProfile.fromGuardUrl(
+        'http://pi-farm:8080',
+        systemName: 'Trang Trại B',
+      );
+      await profile.save(prefs);
+      await prefs.setString(
+        SystemSessionController.prefSavedAuthTokenKey,
+        'jwt-saved-auto',
+      );
+      await prefs.setBool(SystemSessionController.prefRememberMeKey, true);
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/me')) {
+            expect(r.headers['authorization'], 'Bearer jwt-saved-auto');
+            return jsonResp({
+              'id': 15,
+              'username': 'chu_nhiem',
+              'role': 'OWNER',
+              'full_name': 'Trần Chủ Nhiệm',
+            });
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      final controller = SystemSessionController(api: api);
+      await controller.initialize(prefs);
+
+      expect(controller.isConfigured, isTrue);
+      expect(controller.isAuthenticated, isTrue);
+      expect(controller.status, SessionStatus.authenticated);
+      expect(controller.fullName, 'Trần Chủ Nhiệm');
+      expect(controller.role, 'OWNER');
+    });
+
+    test('initialize clears savedToken and sets sessionExpired when /auth/me returns 401', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final profile = PiConnectionProfile.fromGuardUrl('http://pi-farm:8080');
+      await profile.save(prefs);
+      await prefs.setString(
+        SystemSessionController.prefSavedAuthTokenKey,
+        'jwt-expired-token',
+      );
+      await prefs.setBool(SystemSessionController.prefRememberMeKey, true);
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/me')) {
+            return jsonResp({'detail': 'Token signature has expired'}, 401);
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      final controller = SystemSessionController(api: api);
+      await controller.initialize(prefs);
+
+      expect(controller.isAuthenticated, isFalse);
+      expect(controller.status, SessionStatus.sessionExpired);
+      expect(
+        prefs.getString(SystemSessionController.prefSavedAuthTokenKey),
+        isNull,
+      );
+      expect(controller.lastError, contains('Phiên làm việc đã hết hạn'));
+    });
   });
 }

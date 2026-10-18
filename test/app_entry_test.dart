@@ -163,5 +163,85 @@ void main() {
       expect(find.byType(SystemLoginPage), findsOneWidget);
       expect(find.textContaining('Sai số điện thoại hoặc mật khẩu'), findsOneWidget);
     });
+
+    testWidgets('remember-me checkbox is present, defaults to checked and can be toggled', (
+      tester,
+    ) async {
+      final profile = PiConnectionProfile.fromGuardUrl(
+        'http://pi-test:8080',
+        systemName: 'Xưởng Gỗ B',
+      );
+      SharedPreferences.setMockInitialValues({
+        PiConnectionProfile.prefProfileKey: jsonEncode(profile.toJson()),
+      });
+
+      final controller = SystemSessionController(initialProfile: profile);
+
+      await tester.pumpWidget(IgnivoApp(sessionController: controller));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('remember-me-checkbox')), findsOneWidget);
+      expect(find.text('Ghi nhớ đăng nhập trên thiết bị này'), findsOneWidget);
+
+      final checkbox = tester.widget<Checkbox>(
+        find.byKey(const Key('remember-me-checkbox')),
+      );
+      expect(checkbox.value, isTrue);
+
+      // Toggle off via tap on text/toggle row
+      await tester.tap(find.byKey(const Key('remember-me-toggle')));
+      await tester.pumpAndSettle();
+
+      final toggledCheckbox = tester.widget<Checkbox>(
+        find.byKey(const Key('remember-me-checkbox')),
+      );
+      expect(toggledCheckbox.value, isFalse);
+    });
+
+    testWidgets('persisted session token automatically enters monitoring shell without login prompt', (
+      tester,
+    ) async {
+      final profile = PiConnectionProfile.fromGuardUrl(
+        'http://pi-auto:8080',
+        systemName: 'Trạm Xăng C',
+      );
+      SharedPreferences.setMockInitialValues({
+        PiConnectionProfile.prefProfileKey: jsonEncode(profile.toJson()),
+        SystemSessionController.prefSavedAuthTokenKey: 'saved-persistent-jwt-token',
+        SystemSessionController.prefRememberMeKey: true,
+      });
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/me')) {
+            expect(r.headers['authorization'], 'Bearer saved-persistent-jwt-token');
+            return jsonResp({
+              'id': 88,
+              'username': 'quan_ly',
+              'role': 'OWNER',
+              'full_name': 'Trần Quản Lý',
+            });
+          }
+          return jsonResp({}, 404);
+        }),
+      );
+
+      final controller = SystemSessionController(api: api);
+
+      await tester.pumpWidget(IgnivoApp(
+        sessionController: controller,
+        authenticatedBuilder: (context, c) => Scaffold(
+          body: Center(
+            child: Text('DASHBOARD TỰ ĐỘNG: ${c.fullName}'),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // SystemLoginPage must not be shown
+      expect(find.byType(SystemLoginPage), findsNothing);
+      expect(find.text('DASHBOARD TỰ ĐỘNG: Trần Quản Lý'), findsOneWidget);
+      expect(controller.isAuthenticated, isTrue);
+    });
   });
 }

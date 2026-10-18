@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../navigation/ignivo_shell.dart';
 import '../settings/connection_setup_page.dart';
+import 'ignivo_startup_view.dart';
 import 'system_login_page.dart';
 
 class AppEntryGate extends StatefulWidget {
@@ -23,6 +24,7 @@ class AppEntryGate extends StatefulWidget {
 class _AppEntryGateState extends State<AppEntryGate> {
   late final SystemSessionController _controller;
   bool _initialized = false;
+  String? _initError;
 
   @override
   void initState() {
@@ -33,10 +35,17 @@ class _AppEntryGateState extends State<AppEntryGate> {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    await _controller.initialize(prefs);
-    if (mounted) {
-      setState(() => _initialized = true);
+    setState(() => _initError = null);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _controller.initialize(prefs);
+      if (mounted) {
+        setState(() => _initialized = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _initError = 'Lỗi khởi tạo hệ thống: $e');
+      }
     }
   }
 
@@ -56,10 +65,12 @@ class _AppEntryGateState extends State<AppEntryGate> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+      return IgnivoStartupView(
+        statusMessage: _controller.status == SessionStatus.authenticating
+            ? 'Đang xác thực phiên đăng nhập...'
+            : 'Đang kết nối hệ sinh thái IGNIVO...',
+        errorMessage: _initError,
+        onRetry: _initError != null ? _init : null,
       );
     }
 
