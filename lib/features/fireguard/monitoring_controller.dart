@@ -61,6 +61,8 @@ class MonitoringController extends ChangeNotifier {
   List<Map<String, dynamic>> get detailedCallLogs => _detailedCallLogs;
   Set<int> get announcedIncidentIds => _announced;
 
+  bool get isWsConnected => realtime.state == FireguardConnection.connected;
+
   String get connectionLabel => switch (realtime.state) {
         FireguardConnection.connected => 'Đã kết nối cảnh báo trực tiếp',
         FireguardConnection.connecting => 'Đang kết nối cảnh báo…',

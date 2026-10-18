@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../core/theme/brand_tokens.dart';
+import 'interactive_card.dart';
+import 'pulsing_status_dot.dart';
 
 /// Thẻ xem camera theo phong cách Stitch với tỷ lệ khung hình 16:9
 ///
@@ -45,34 +47,18 @@ class CameraPreviewCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final cardBg = isDark ? BrandTokens.darkSurface : BrandTokens.surface;
-    final cardBorder = isDark ? BrandTokens.darkBorder : BrandTokens.border;
-
     return Material(
       color: Colors.transparent,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
-          child: Container(
+          child: InteractiveCard(
             margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
-          border: Border.all(color: cardBorder, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+            borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // 1. Khung hình tỷ lệ 16:8.7 (theo CSS demo)
               AspectRatio(
                 aspectRatio: 16 / 8.7,
@@ -244,8 +230,7 @@ class CameraPreviewCard extends StatelessWidget {
         ),
       ),
     ),
-  ),
-);
+  );
 }
 
   Widget _buildImageContent(bool isDark) {
@@ -351,7 +336,11 @@ class CameraPreviewCard extends StatelessWidget {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.fiber_manual_record, size: 8, color: Colors.white),
+                  PulsingStatusDot(
+                    color: Colors.white,
+                    size: 6,
+                    pulseSize: 12,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'LIVE',

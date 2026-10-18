@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/brand_tokens.dart';
+import 'pulsing_status_dot.dart';
 
 /// Thẻ tổng quan trạng thái IGNIVO Edge Box theo phong cách Stitch
 ///
@@ -201,13 +202,10 @@ class EdgeStatusCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: BrandTokens.stitchSafe,
-              shape: BoxShape.circle,
-            ),
+          const PulsingStatusDot(
+            color: BrandTokens.stitchSafe,
+            size: 7,
+            pulseSize: 14,
           ),
           const SizedBox(width: 5),
           const Text(
@@ -238,15 +236,13 @@ class EdgeStatusCard extends StatelessWidget {
               valueWidget: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: isOnline
-                          ? BrandTokens.stitchSafe
-                          : BrandTokens.stitchCritical,
-                      shape: BoxShape.circle,
-                    ),
+                  PulsingStatusDot(
+                    color: isOnline
+                        ? BrandTokens.stitchSafe
+                        : BrandTokens.stitchCritical,
+                    size: 6,
+                    pulseSize: 12,
+                    isPulsing: isOnline,
                   ),
                   const SizedBox(width: 4),
                   Text(

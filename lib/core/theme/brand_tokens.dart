@@ -145,6 +145,46 @@ class BrandTokens {
   static const double space32 = 32.0;
 
   // ==========================================
+  // SHADOW & ELEVATION TOKENS (SOFT AMBIENT)
+  // ==========================================
+  static List<BoxShadow> softShadow({bool isDark = false}) => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
+        ),
+        BoxShadow(
+          color: (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+              .withValues(alpha: isDark ? 0.04 : 0.02),
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+      ];
+
+  static List<BoxShadow> hoverShadow({bool isDark = false}) => [
+        BoxShadow(
+          color: (isDark ? Colors.black : BrandTokens.brandNavy)
+              .withValues(alpha: isDark ? 0.45 : 0.08),
+          blurRadius: 22,
+          offset: const Offset(0, 8),
+        ),
+        BoxShadow(
+          color: (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+              .withValues(alpha: isDark ? 0.12 : 0.05),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ];
+
+  static List<BoxShadow> glowShadow(Color color, {double opacity = 0.25}) => [
+        BoxShadow(
+          color: color.withValues(alpha: opacity),
+          blurRadius: 10,
+          spreadRadius: 1,
+        ),
+      ];
+
+  // ==========================================
   // ASSET PATHS
   // ==========================================
   static const String markAsset = 'assets/images/ignivo_mark.jpg';

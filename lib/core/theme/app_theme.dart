@@ -57,7 +57,10 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-          side: const BorderSide(color: BrandTokens.border),
+          side: BorderSide(
+            color: BrandTokens.border.withValues(alpha: 0.6),
+            width: 0.8,
+          ),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -75,7 +78,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: BrandTokens.brandPrimary,
           foregroundColor: Colors.white,
-          elevation: 0,
+          elevation: 1.5,
+          shadowColor: BrandTokens.brandPrimary.withValues(alpha: 0.25),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
@@ -131,7 +135,10 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-          side: const BorderSide(color: BrandTokens.darkBorder),
+          side: BorderSide(
+            color: BrandTokens.darkBorder.withValues(alpha: 0.7),
+            width: 0.8,
+          ),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -149,7 +156,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: BrandTokens.darkPrimary,
           foregroundColor: BrandTokens.darkOnPrimary, // Chữ navy đậm trên nền primary sáng
-          elevation: 0,
+          elevation: 1.5,
+          shadowColor: BrandTokens.darkPrimary.withValues(alpha: 0.25),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),

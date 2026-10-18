@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme/brand_tokens.dart';
 import '../features/fireguard/monitor_widgets.dart';
+import 'interactive_card.dart';
 
 /// Thẻ sự cố gần đây theo phong cách Stitch
 ///
@@ -39,30 +40,13 @@ class RecentIncidentTile extends StatelessWidget {
     );
 
     final statusLabel = AlertPresentationMapping.statusLabel(status);
-    final cardBg = isDark ? BrandTokens.darkSurface : BrandTokens.surface;
-    final cardBorder = isDark ? BrandTokens.darkBorder : BrandTokens.border;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
-        child: Container(
-          padding: const EdgeInsets.all(BrandTokens.space12),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
-            border: Border.all(color: cardBorder, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+    return InteractiveCard(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+      padding: const EdgeInsets.all(BrandTokens.space12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Icon chỉ báo mức độ
               Container(
@@ -198,8 +182,6 @@ class RecentIncidentTile extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 }

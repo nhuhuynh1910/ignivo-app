@@ -8,6 +8,8 @@ import '../../widgets/edge_status_card.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/ignivo_sheet.dart';
 import '../../widgets/recent_incident_tile.dart';
+import '../../widgets/pulsing_status_dot.dart';
+import '../../widgets/interactive_card.dart';
 import 'monitoring_controller.dart';
 import 'monitor_widgets.dart';
 
@@ -109,6 +111,12 @@ class _GuardHomePageState extends State<GuardHomePage> {
 
         final isAiActive = status?['vision']?['ready'] == true ||
             status?['vision']?['active'] == true;
+        final vision = status?['vision'] as Map?;
+        final aiFps = (vision?['total_ai_fps'] ??
+                status?['total_ai_fps'] ??
+                status?['ai_fps'] as num?)
+            ?.toDouble() ??
+            0.0;
 
         return IgnivoPageBody(
           header: IgnivoPageHeader(
@@ -139,66 +147,168 @@ class _GuardHomePageState extends State<GuardHomePage> {
                     onPressed: widget.onOpenDiagnostics,
                   ),
           ),
-          child: RefreshIndicator(
-            onRefresh: () async {
-              _snapshotLoader.clearCache();
-              _snapshots.clear();
-              _attemptedSnapshots.clear();
-              _loadingSnapshots.clear();
-              await widget.monitoringController.refresh();
-            },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 1. Priority Alert Banner (khi có sự cố cần chú ý)
-                      if (unclosedIncidents.isNotEmpty || active != null) ...[
-                        _buildActiveIncidentBanner(
-                          context,
-                          active ?? unclosedIncidents.first,
-                          unclosedIncidents.length,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 960;
+
+              return RefreshIndicator(
+                onRefresh: () async {
+                  _snapshotLoader.clearCache();
+                  _snapshots.clear();
+                  _attemptedSnapshots.clear();
+                  _loadingSnapshots.clear();
+                  await widget.monitoringController.refresh();
+                },
+                child: isDesktop
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 20),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1380),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // 1. Desktop KPI Metric Summary Row
+                                _buildDesktopKpiRow(
+                                  context,
+                                  isAiActive: isAiActive,
+                                  aiFps: aiFps,
+                                  totalCameras: totalCameras,
+                                  onlineCameras: onlineCameras,
+                                  unclosedIncidents: unclosedIncidents,
+                                  isStale: isStale,
+                                  callConfigured:
+                                      status?['stringee_configured'] == true,
+                                ),
+                                const SizedBox(height: 20),
+
+                                // 2. Bento 2-Column Dashboard Layout
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Left / Main Column (flex: 62)
+                                    Expanded(
+                                      flex: 62,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          EdgeStatusCard(
+                                            systemName: widget
+                                                .sessionController.systemName,
+                                            isStale: isStale,
+                                            aiActive: isAiActive,
+                                            totalCameras: totalCameras,
+                                            onlineCameras: onlineCameras,
+                                            onTap: widget.onOpenDiagnostics,
+                                          ),
+                                          const SizedBox(height: 20),
+                                          _buildQuickCamerasSection(
+                                              context, cameras,
+                                              isGrid: true),
+                                          const SizedBox(height: 20),
+                                          _buildReadinessCard(
+                                              context, status, cameras),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    // Right / Sidebar Column (flex: 38)
+                                    Expanded(
+                                      flex: 38,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          if (unclosedIncidents.isNotEmpty ||
+                                              active != null) ...[
+                                            _buildActiveIncidentBanner(
+                                              context,
+                                              active ??
+                                                  unclosedIncidents.first,
+                                              unclosedIncidents.length,
+                                            ),
+                                            const SizedBox(height: 18),
+                                          ] else ...[
+                                            _buildSafeStateBanner(
+                                                context, isStale),
+                                            const SizedBox(height: 18),
+                                          ],
+                                          _buildRecentActivitySection(
+                                              context, incidents),
+                                          const SizedBox(height: 20),
+                                          _buildDesktopQuickActions(context),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
+                      )
+                    : SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1000),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // 1. Priority Alert Banner (khi có sự cố cần chú ý)
+                                if (unclosedIncidents.isNotEmpty ||
+                                    active != null) ...[
+                                  _buildActiveIncidentBanner(
+                                    context,
+                                    active ?? unclosedIncidents.first,
+                                    unclosedIncidents.length,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
 
-                      // 2. Thẻ Hero: EdgeStatusCard (Stitch gradient xanh)
-                      EdgeStatusCard(
-                        systemName: widget.sessionController.systemName,
-                        isStale: isStale,
-                        aiActive: isAiActive,
-                        totalCameras: totalCameras,
-                        onlineCameras: onlineCameras,
-                        onTap: widget.onOpenDiagnostics,
+                                // 2. Thẻ Hero: EdgeStatusCard (Stitch gradient xanh)
+                                EdgeStatusCard(
+                                  systemName:
+                                      widget.sessionController.systemName,
+                                  isStale: isStale,
+                                  aiActive: isAiActive,
+                                  totalCameras: totalCameras,
+                                  onlineCameras: onlineCameras,
+                                  onTap: widget.onOpenDiagnostics,
+                                ),
+                                const SizedBox(height: 16),
+
+                                // 3. Calibrated Safe State Banner (khi không có sự cố đang diễn ra)
+                                if (unclosedIncidents.isEmpty &&
+                                    active == null) ...[
+                                  _buildSafeStateBanner(context, isStale),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                // 4. Mức sẵn sàng giám sát (Monitoring Readiness)
+                                _buildReadinessCard(context, status, cameras),
+                                const SizedBox(height: 20),
+
+                                // 5. Xem nhanh Camera (Quick Cameras Preview với Stitch 16:9 cards)
+                                _buildQuickCamerasSection(context, cameras),
+                                const SizedBox(height: 20),
+
+                                // 6. Hoạt động gần đây (Recent Incidents)
+                                _buildRecentActivitySection(context, incidents),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // 3. Calibrated Safe State Banner (khi không có sự cố đang diễn ra)
-                      if (unclosedIncidents.isEmpty && active == null) ...[
-                        _buildSafeStateBanner(context, isStale),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // 4. Mức sẵn sàng giám sát (Monitoring Readiness)
-                      _buildReadinessCard(context, status, cameras),
-                      const SizedBox(height: 20),
-
-                      // 5. Xem nhanh Camera (Quick Cameras Preview với Stitch 16:9 cards)
-                      _buildQuickCamerasSection(context, cameras),
-                      const SizedBox(height: 20),
-
-                      // 6. Hoạt động gần đây (Recent Incidents)
-                      _buildRecentActivitySection(context, incidents),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+              );
+            },
           ),
         );
       },
@@ -357,40 +467,317 @@ class _GuardHomePageState extends State<GuardHomePage> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Desktop Command Center Helpers
+  // ---------------------------------------------------------------------------
+
+  Widget _buildDesktopKpiRow(
+    BuildContext context, {
+    required bool isAiActive,
+    required double aiFps,
+    required int totalCameras,
+    required int onlineCameras,
+    required List<Map<String, dynamic>> unclosedIncidents,
+    required bool isStale,
+    required bool callConfigured,
+  }) {
+    return Row(
+      children: [
+        // KPI 1: AI Vision / Hailo-8
+        Expanded(
+          child: _buildKpiCard(
+            context,
+            title: 'HAILO AI NPU',
+            value: isAiActive
+                ? (aiFps > 0 ? '${aiFps.toStringAsFixed(1)} FPS' : 'Sẵn sàng')
+                : 'Chưa kích hoạt',
+            subtitle: isAiActive
+                ? 'Nhận diện thị giác chủ động'
+                : 'Cần kiểm tra service',
+            icon: Icons.memory,
+            color:
+                isAiActive ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+            isPulsing: isAiActive,
+            onTap: widget.onOpenDiagnostics,
+          ),
+        ),
+        const SizedBox(width: 14),
+        // KPI 2: Giám sát Camera
+        Expanded(
+          child: _buildKpiCard(
+            context,
+            title: 'CAMERA TRỰC TUYẾN',
+            value: totalCameras > 0
+                ? '$onlineCameras/$totalCameras Online'
+                : '0 Camera',
+            subtitle: totalCameras > 0 && onlineCameras == totalCameras
+                ? 'Tất cả kết nối ổn định'
+                : 'Có camera ngắt kết nối',
+            icon: Icons.videocam_rounded,
+            color: (totalCameras > 0 && onlineCameras == totalCameras)
+                ? BrandTokens.stitchSafe
+                : (onlineCameras > 0
+                    ? BrandTokens.stitchWarning
+                    : BrandTokens.stitchCritical),
+            onTap: () => widget.onNavigateTab?.call(1),
+          ),
+        ),
+        const SizedBox(width: 14),
+        // KPI 3: Tình trạng an toàn / sự cố
+        Expanded(
+          child: _buildKpiCard(
+            context,
+            title: 'CẢNH BÁO / SỰ CỐ',
+            value: unclosedIncidents.isEmpty
+                ? '0 Sự cố'
+                : '${unclosedIncidents.length} Cần xử lý',
+            subtitle: unclosedIncidents.isEmpty
+                ? 'Khu vực đang an toàn'
+                : 'Yêu cầu kiểm tra ngay',
+            icon: Icons.warning_amber_rounded,
+            color: unclosedIncidents.isEmpty
+                ? BrandTokens.stitchSafe
+                : BrandTokens.stitchCritical,
+            isPulsing: unclosedIncidents.isNotEmpty,
+            onTap: () => widget.onNavigateTab?.call(2),
+          ),
+        ),
+        const SizedBox(width: 14),
+        // KPI 4: Trạng thái còi / liên hệ PCCC
+        Expanded(
+          child: _buildKpiCard(
+            context,
+            title: 'LIÊN HỆ KHẨN CẤP',
+            value: callConfigured ? 'Sẵn sàng gọi' : 'Chưa thiết lập',
+            subtitle: isStale ? 'Đang kết nối lại Pi' : 'Stringee & SOS active',
+            icon: Icons.phone_in_talk_rounded,
+            color: callConfigured
+                ? BrandTokens.stitchSafe
+                : BrandTokens.stitchWarning,
+            onTap: () => widget.onNavigateTab?.call(3),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKpiCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    bool isPulsing = false,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InteractiveCard(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isPulsing) ...[
+                const SizedBox(width: 4),
+                PulsingStatusDot(color: color, size: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              color: color,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopQuickActions(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InteractiveCard(
+      borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+      padding: const EdgeInsets.all(BrandTokens.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded,
+                  size: 18, color: BrandTokens.brandPrimary),
+              const SizedBox(width: 8),
+              Text(
+                'Lệnh thao tác nhanh',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildQuickActionBtn(
+            context,
+            icon: Icons.grid_view_rounded,
+            label: 'Mở tường Camera toàn cảnh',
+            onTap: () => widget.onNavigateTab?.call(1),
+          ),
+          const SizedBox(height: 8),
+          _buildQuickActionBtn(
+            context,
+            icon: Icons.history_edu_rounded,
+            label: 'Tra cứu nhật ký sự cố',
+            onTap: () => widget.onNavigateTab?.call(2),
+          ),
+          const SizedBox(height: 8),
+          _buildQuickActionBtn(
+            context,
+            icon: Icons.monitor_heart_outlined,
+            label: 'Kiểm tra phần cứng & NPU',
+            onTap: widget.onOpenDiagnostics,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionBtn(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                size: 16, color: theme.disabledColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Core Page Sections
+  // ---------------------------------------------------------------------------
+
   Widget _buildSafeStateBanner(BuildContext context, bool isStale) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final color = isStale ? Colors.amber.shade700 : const Color(0xFF007A3D);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isStale
-            ? Colors.amber.shade900.withValues(alpha: 0.12)
-            : const Color(0xFF007A3D).withValues(alpha: 0.10),
+            ? Colors.amber.shade900.withValues(alpha: isDark ? 0.2 : 0.08)
+            : const Color(0xFF007A3D).withValues(alpha: isDark ? 0.18 : 0.08),
         borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+        boxShadow: BrandTokens.softShadow(isDark: isDark),
         border: Border.all(
-          color: isStale ? Colors.amber.shade600 : const Color(0xFF007A3D),
-          width: 1.2,
+          color: color.withValues(alpha: isDark ? 0.45 : 0.35),
+          width: 0.8,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isStale ? Icons.info_outline : Icons.shield_outlined,
-            color: isStale ? Colors.amber.shade700 : const Color(0xFF007A3D),
-            size: 32,
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isStale ? Icons.info_outline : Icons.shield_outlined,
+              color: color,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isStale
-                      ? 'Dữ liệu giám sát cần đồng bộ lại'
-                      : 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isStale
+                            ? 'Dữ liệu giám sát cần đồng bộ lại'
+                            : 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    PulsingStatusDot(color: color, size: 8),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -416,6 +803,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
     List<Map<String, dynamic>> cameras,
   ) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final totalCameras = cameras.length;
     final onlineCameras = cameras
         .where((c) => (c['status'] as Map?)?['online'] == true)
@@ -429,8 +817,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+        boxShadow: BrandTokens.softShadow(isDark: isDark),
         border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.12),
+          color: theme.dividerColor.withValues(alpha: 0.08),
+          width: 0.8,
         ),
       ),
       child: Column(
@@ -488,7 +878,8 @@ class _GuardHomePageState extends State<GuardHomePage> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
+          width: 0.8,
         ),
       ),
       child: Column(
@@ -529,10 +920,41 @@ class _GuardHomePageState extends State<GuardHomePage> {
     );
   }
 
+  Widget _buildCameraCardItem(Map<String, dynamic> cam) {
+    final id = cam['id'] as int? ?? 0;
+    final name = cam['name']?.toString() ?? 'Camera #$id';
+    final area = cam['area']?.toString() ?? 'Chưa xác định';
+    final isOnline = (cam['status'] as Map?)?['online'] as bool?;
+    final detectEnabled = cam['detect_enabled'] != false;
+    final fps = (cam['ai_fps'] is num)
+        ? (cam['ai_fps'] as num).toDouble()
+        : 8.0;
+
+    if (!_attemptedSnapshots.contains(id) &&
+        !_loadingSnapshots.contains(id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadSnapshotForCamera(id);
+      });
+    }
+
+    return CameraPreviewCard(
+      name: name,
+      area: area,
+      isOnline: isOnline,
+      aiEnabled: detectEnabled,
+      aiStatusText: detectEnabled ? 'AI nhận diện: BẬT' : 'AI: TẮT',
+      aiFps: fps,
+      snapshotBytes: _snapshots[id],
+      isSnapshotLoading: _loadingSnapshots.contains(id),
+      onTap: () => widget.onOpenLiveView?.call(id),
+    );
+  }
+
   Widget _buildQuickCamerasSection(
     BuildContext context,
-    List<Map<String, dynamic>> cameras,
-  ) {
+    List<Map<String, dynamic>> cameras, {
+    bool isGrid = false,
+  }) {
     final theme = Theme.of(context);
 
     return Column(
@@ -562,8 +984,11 @@ class _GuardHomePageState extends State<GuardHomePage> {
             decoration: BoxDecoration(
               color: theme.cardColor,
               borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+              boxShadow: BrandTokens.softShadow(
+                  isDark: theme.brightness == Brightness.dark),
               border: Border.all(
-                color: theme.dividerColor.withValues(alpha: 0.12),
+                color: theme.dividerColor.withValues(alpha: 0.08),
+                width: 0.8,
               ),
             ),
             child: Column(
@@ -581,38 +1006,35 @@ class _GuardHomePageState extends State<GuardHomePage> {
               ],
             ),
           ),
+        ] else if (isGrid && cameras.length >= 2) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildCameraCardItem(cameras[0])),
+              const SizedBox(width: 14),
+              Expanded(child: _buildCameraCardItem(cameras[1])),
+            ],
+          ),
+          if (cameras.length > 2) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => widget.onNavigateTab?.call(1),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                label: Text('Xem thêm ${cameras.length - 2} camera khác'),
+              ),
+            ),
+          ],
         ] else ...[
-          // Hiển thị tối đa 2 camera đầu tiên dạng thẻ 16:9 Stitch
           ...cameras.take(2).map((cam) {
-            final id = cam['id'] as int? ?? 0;
-            final name = cam['name']?.toString() ?? 'Camera #$id';
-            final area = cam['area']?.toString() ?? 'Chưa xác định';
-            final isOnline = (cam['status'] as Map?)?['online'] as bool?;
-            final detectEnabled = cam['detect_enabled'] != false;
-            final fps = (cam['ai_fps'] is num)
-                ? (cam['ai_fps'] as num).toDouble()
-                : 8.0;
-
-            if (!_attemptedSnapshots.contains(id) &&
-                !_loadingSnapshots.contains(id)) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _loadSnapshotForCamera(id);
-              });
-            }
-
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: CameraPreviewCard(
-                name: name,
-                area: area,
-                isOnline: isOnline,
-                aiEnabled: detectEnabled,
-                aiStatusText: detectEnabled ? 'AI nhận diện: BẬT' : 'AI: TẮT',
-                aiFps: fps,
-                snapshotBytes: _snapshots[id],
-                isSnapshotLoading: _loadingSnapshots.contains(id),
-                onTap: () => widget.onOpenLiveView?.call(id),
-              ),
+              child: _buildCameraCardItem(cam),
             );
           }),
           if (cameras.length > 2)

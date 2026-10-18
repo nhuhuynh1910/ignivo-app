@@ -11,6 +11,7 @@ import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
 import '../features/settings/guard_settings_page.dart';
 import '../features/settings/diagnostics_page.dart';
+import '../widgets/desktop_top_bar.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
@@ -365,7 +366,29 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                 color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
               ),
               Expanded(
-                child: tabContent,
+                child: Column(
+                  children: [
+                    DesktopTopBar(
+                      title: switch (_selectedTab) {
+                        0 => 'Trung tâm Giám sát',
+                        1 => 'Quản lý Camera',
+                        2 => 'Nhật ký & Cảnh báo',
+                        3 => 'Cài đặt Hệ thống',
+                        _ => 'IGNIVO',
+                      },
+                      systemName: widget.sessionController.systemName,
+                      role: widget.sessionController.role,
+                      isWsConnected: _monitoring.isWsConnected,
+                      isStale: _monitoring.stale,
+                      onRefresh: () async {
+                        _snapshotLoader.clearCache();
+                        await _monitoring.refresh();
+                      },
+                      onOpenDiagnostics: _openDiagnostics,
+                    ),
+                    Expanded(child: tabContent),
+                  ],
+                ),
               ),
             ],
           ),
