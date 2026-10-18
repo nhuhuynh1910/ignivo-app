@@ -91,9 +91,12 @@ class DiagnosticsPage extends StatelessWidget {
               ? BrandTokens.darkBorder
               : BrandTokens.border;
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
               // System Health Summary Card
               Card(
                 elevation: 0,
@@ -307,7 +310,9 @@ class DiagnosticsPage extends StatelessWidget {
                 ),
               ],
             ],
-          );
+          ),
+        ),
+      );
         },
       ),
     );

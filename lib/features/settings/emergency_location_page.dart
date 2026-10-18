@@ -124,8 +124,11 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 860),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
               children: [
                 if (_error != null) Text(_error!),
                 // HƯỚNG DẪN
@@ -292,6 +295,8 @@ class _EmergencyLocationPageState extends State<EmergencyLocationPage> {
                 ),
               ],
             ),
+          ),
+        ),
     );
   }
 }

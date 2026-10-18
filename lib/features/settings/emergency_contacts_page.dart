@@ -336,8 +336,11 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                 ],
               ),
             )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 860),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
               itemCount: _contacts.length,
               separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
@@ -462,6 +465,8 @@ class _EmergencyContactsPageState extends State<EmergencyContactsPage> {
                 );
               },
             ),
+          ),
+        ),
     );
   }
 }

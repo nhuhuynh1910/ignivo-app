@@ -204,10 +204,15 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
       bottomNavigationBar: incident == null || closed
           ? null
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                heightFactor: 1.0,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isAlarmActive) ...[
                       if (!coordinator!.isSilenced)
@@ -363,6 +368,8 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                 ),
               ),
             ),
+          ),
+        ),
       appBar: ignivoDetailAppBar(
         context,
         title: 'Sự cố #${widget.incidentId}',
@@ -370,8 +377,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
         children: [
           if (_error != null) Text('Không thể cập nhật. $_error'),
           if (incident == null && _error == null)
@@ -579,7 +589,9 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
           ],
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

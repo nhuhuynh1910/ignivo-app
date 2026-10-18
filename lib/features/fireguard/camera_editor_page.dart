@@ -78,8 +78,11 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
       ),
       body: Form(
         key: _form,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: ListView(
+              padding: const EdgeInsets.all(20),
           children: [
             if (widget.camera == null) ...[
               Card(
@@ -234,6 +237,8 @@ class _GuardCameraEditorState extends State<GuardCameraEditor> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

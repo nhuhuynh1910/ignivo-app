@@ -145,9 +145,12 @@ class _CameraLivePageState extends State<CameraLivePage> {
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Video MJPEG Player
             Container(
@@ -289,7 +292,9 @@ class _CameraLivePageState extends State<CameraLivePage> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildDetailRow(
