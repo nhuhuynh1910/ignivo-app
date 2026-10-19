@@ -182,29 +182,62 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
           _ => const SizedBox.shrink(),
         };
 
+        final unclosedIncidents = _monitoring.incidents.where((inc) {
+          final s = inc['status'];
+          return s != 'resolved' && s != 'false_alarm';
+        }).toList();
+        final unclosedCount = unclosedIncidents.length;
+        final hasUrgent = unclosedIncidents.any((inc) {
+          final s = inc['status'];
+          final sev = inc['severity']?.toString().toLowerCase();
+          return s == 'analyzing' ||
+              s == 'notifying' ||
+              sev == 'critical' ||
+              sev == 'high';
+        });
+
+        Widget buildAlertNavIcon({required bool isSelected}) {
+          final icon = Icon(
+            isSelected ? Icons.warning_rounded : Icons.warning_amber_rounded,
+          );
+          if (unclosedCount <= 0) return icon;
+          return Badge.count(
+            count: unclosedCount,
+            backgroundColor: hasUrgent
+                ? BrandTokens.stitchCriticalFg
+                : BrandTokens.stitchWarningFg,
+            textColor: Colors.white,
+            textStyle: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+            child: icon,
+          );
+        }
+
         if (!isDesktop) {
           return Scaffold(
             body: tabContent,
             bottomNavigationBar: NavigationBar(
               selectedIndex: _selectedTab,
               onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
-              destinations: const [
-                NavigationDestination(
+              destinations: [
+                const NavigationDestination(
                   icon: Icon(Icons.home_outlined),
                   selectedIcon: Icon(Icons.home),
                   label: 'Trang chủ',
                 ),
-                NavigationDestination(
+                const NavigationDestination(
                   icon: Icon(Icons.videocam_outlined),
                   selectedIcon: Icon(Icons.videocam),
                   label: 'Camera',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.warning_amber_rounded),
-                  selectedIcon: Icon(Icons.warning_rounded),
+                  icon: buildAlertNavIcon(isSelected: false),
+                  selectedIcon: buildAlertNavIcon(isSelected: true),
                   label: 'Cảnh báo',
                 ),
-                NavigationDestination(
+                const NavigationDestination(
                   icon: Icon(Icons.settings_outlined),
                   selectedIcon: Icon(Icons.settings),
                   label: 'Cài đặt',
@@ -337,23 +370,23 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-                destinations: const [
-                  NavigationRailDestination(
+                destinations: [
+                  const NavigationRailDestination(
                     icon: Icon(Icons.home_outlined),
                     selectedIcon: Icon(Icons.home),
                     label: Text('Trang chủ'),
                   ),
-                  NavigationRailDestination(
+                  const NavigationRailDestination(
                     icon: Icon(Icons.videocam_outlined),
                     selectedIcon: Icon(Icons.videocam),
                     label: Text('Camera'),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.warning_amber_rounded),
-                    selectedIcon: Icon(Icons.warning_rounded),
-                    label: Text('Cảnh báo'),
+                    icon: buildAlertNavIcon(isSelected: false),
+                    selectedIcon: buildAlertNavIcon(isSelected: true),
+                    label: const Text('Cảnh báo'),
                   ),
-                  NavigationRailDestination(
+                  const NavigationRailDestination(
                     icon: Icon(Icons.settings_outlined),
                     selectedIcon: Icon(Icons.settings),
                     label: Text('Cài đặt'),

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../core/theme/brand_tokens.dart';
+import 'ignivo_shimmer.dart';
 import 'interactive_card.dart';
 import 'pulsing_status_dot.dart';
 
@@ -235,24 +236,43 @@ class CameraPreviewCard extends StatelessWidget {
 
   Widget _buildImageContent(bool isDark) {
     if (snapshotBytes != null && snapshotBytes!.isNotEmpty) {
-      return Image.memory(
-        snapshotBytes!,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _buildPlaceholder(isDark, errorText: 'Không đọc được ảnh'),
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        child: Image.memory(
+          snapshotBytes!,
+          key: ValueKey<int>(snapshotBytes!.hashCode),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildPlaceholder(isDark, errorText: 'Không đọc được ảnh'),
+        ),
       );
     }
 
     if (isSnapshotLoading) {
-      return Container(
-        color: const Color(0xFF1E293B),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+      return IgnivoShimmer(
+        child: Container(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.videocam_outlined,
+                  color: isDark ? Colors.white24 : Colors.black26,
+                  size: 32,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Đang đồng bộ ảnh...',
+                  style: TextStyle(
+                    color: isDark ? Colors.white54 : Colors.black45,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
