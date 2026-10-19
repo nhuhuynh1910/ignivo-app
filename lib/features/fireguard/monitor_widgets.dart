@@ -279,8 +279,54 @@ class IncidentPresentationHelper {
     return switch (t) {
       'fire' => 'Phát hiện Lửa',
       'smoke' => 'Phát hiện Khói',
+      'simulation' => 'Sự cố mô phỏng',
       _ => '${trigger ?? 'Cảnh báo'}',
     };
+  }
+
+  /// Tạo tiêu đề sự cố người dùng dễ quét nhanh theo chuẩn:
+  /// "[Loại sự cố] · [Tên Camera] · [Khu vực]"
+  /// Ví dụ: "Phát hiện lửa · Camera phòng khách · Tầng 1"
+  static String formatIncidentTitle(Map<String, dynamic> incident) {
+    final trigger = triggerLabel(incident['trigger_type']);
+    final cam = cameraName(incident);
+    final rawArea = incident['area']?.toString().trim();
+    final hasArea = rawArea != null &&
+        rawArea.isNotEmpty &&
+        rawArea != 'Chưa xác định khu vực';
+
+    if (hasArea && !cam.toLowerCase().contains(rawArea.toLowerCase())) {
+      return '$trigger · $cam · $rawArea';
+    }
+    return '$trigger · $cam';
+  }
+
+  /// Định dạng thời gian sự cố ngắn gọn, dễ quét cho người dùng
+  static String formatTimestamp(dynamic rawTime) {
+    if (rawTime == null) return '';
+    final str = rawTime.toString().trim();
+    if (str.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(str).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+
+      if (diff.inSeconds >= 0 && diff.inMinutes < 1) {
+        return 'Vừa xong';
+      } else if (diff.inMinutes < 60 && diff.inMinutes >= 1) {
+        return '${diff.inMinutes} phút trước';
+      } else if (diff.inHours < 24 && diff.inHours >= 1) {
+        return '${diff.inHours} giờ trước';
+      } else {
+        final d = dt.day.toString().padLeft(2, '0');
+        final m = dt.month.toString().padLeft(2, '0');
+        final h = dt.hour.toString().padLeft(2, '0');
+        final min = dt.minute.toString().padLeft(2, '0');
+        return '$h:$min $d/$m';
+      }
+    } catch (_) {
+      return str.replaceAll('T', ' ').split('.').first;
+    }
   }
 }
 

@@ -1229,19 +1229,15 @@ class _GuardHomePageState extends State<GuardHomePage> {
               final area = item['area']?.toString() ?? 'Chưa xác định';
               final time = item['created_at']?.toString() ?? '';
               final status = item['status']?.toString();
-              final triggerType = item['trigger_type']?.toString();
-
-              final title = triggerType == 'fire'
-                  ? 'Phát hiện ngọn lửa (Fire)'
-                  : triggerType == 'smoke'
-                      ? 'Phát hiện khói dày (Smoke)'
-                      : 'Sự cố #$id — $area';
+              final title = IncidentPresentationHelper.formatIncidentTitle(item);
+              final timeFormatted =
+                  IncidentPresentationHelper.formatTimestamp(time);
 
               return RecentIncidentTile(
                 id: id,
                 title: title,
                 area: area,
-                timeStr: time.isNotEmpty ? time : 'Vừa xong',
+                timeStr: timeFormatted.isNotEmpty ? timeFormatted : 'Vừa xong',
                 severity: severity,
                 status: status,
                 onTap: () => widget.onOpenIncident?.call(id),

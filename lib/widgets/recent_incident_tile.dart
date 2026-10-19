@@ -74,7 +74,7 @@ class RecentIncidentTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            title.contains('#$id') ? title : '$title (#$id)',
+                            title,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -109,6 +109,30 @@ class RecentIncidentTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
+                        if (!title.contains('#$id')) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: isDark ? 0.6 : 0.8),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '#$id',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? BrandTokens.darkTextSecondary
+                                    : BrandTokens.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                        ],
                         Icon(
                           Icons.location_on_outlined,
                           size: 13,

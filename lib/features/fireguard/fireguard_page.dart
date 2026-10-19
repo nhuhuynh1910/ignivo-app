@@ -14,6 +14,7 @@ import 'incident_page.dart';
 import 'monitor_widgets.dart';
 import 'camera_editor_page.dart';
 import '../../core/services/incident_alert_coordinator.dart';
+import '../../core/theme/brand_tokens.dart';
 
 /// Uses FireGuard data directly, without Firebase pairing or ID conversion.
 class FireguardPage extends StatefulWidget {
@@ -217,6 +218,8 @@ class _FireguardPageState extends State<FireguardPage>
   }
 
   bool get _stale => _error != null || !_fresh;
+  String _formatTime(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   List<dynamic> get _classes =>
       (_status?['vision']?['model_classes'] as List?) ?? [];
   String get _connectionLabel => switch (_realtime.state) {
@@ -246,55 +249,77 @@ class _FireguardPageState extends State<FireguardPage>
     ),
   );
 
-  Widget _incidentCard(Map<String, dynamic> incident) => Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(16),
-      leading: Icon(
-        incident['trigger_type'].toString().toLowerCase() == 'smoke'
-            ? Icons.cloud_outlined
-            : Icons.local_fire_department_outlined,
-        color: Colors.deepOrange,
-      ),
-      title: Text(
-        '#${incident['id']} · ${IncidentPresentationHelper.cameraName(incident)} · ${incident['trigger_type']}',
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              GuardBadge(
-                incidentStatusLabel(incident['status']),
-                color: ['resolved', 'false_alarm'].contains(incident['status'])
-                    ? Colors.teal
-                    : Colors.deepOrange,
+  Widget _incidentCard(Map<String, dynamic> incident) {
+    final isSmoke =
+        incident['trigger_type'].toString().toLowerCase() == 'smoke';
+    final id = incident['id'];
+    final title = IncidentPresentationHelper.formatIncidentTitle(incident);
+    final timeFormatted =
+        IncidentPresentationHelper.formatTimestamp(incident['created_at']);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Icon(
+          isSmoke ? Icons.cloud_outlined : Icons.local_fire_department_outlined,
+          color: isSmoke ? Colors.blueGrey : BrandTokens.stitchCriticalFg,
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                GuardBadge(
+                  incidentStatusLabel(incident['status']),
+                  color: ['resolved', 'false_alarm'].contains(incident['status'])
+                      ? Colors.teal
+                      : BrandTokens.stitchCriticalFg,
+                ),
+                GuardBadge('#$id', color: Colors.blueGrey),
+                if (incident['is_simulation'] == true)
+                  const GuardBadge('Mô phỏng', color: Colors.amber),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${incident['analysis']?['summary_vi'] ?? incident['analysis_error'] ?? 'Chưa có phân tích Gemini.'}',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (timeFormatted.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    timeFormatted,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
               ),
-              if (incident['is_simulation'] == true)
-                const GuardBadge('Mô phỏng', color: Colors.amber),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${incident['analysis']?['summary_vi'] ?? incident['analysis_error'] ?? 'Chưa có phân tích Gemini.'}',
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${incident['created_at'] ?? ''}'.replaceAll('T', ' '),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _openIncident(incident['id'] as int),
       ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => _openIncident(incident['id'] as int),
-    ),
-  );
+    );
+  }
 
   List<Widget> _live() {
     final enabled = _cameras.where((c) => c['enabled'] != false).toList();
@@ -547,19 +572,60 @@ class _FireguardPageState extends State<FireguardPage>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withValues(alpha: 0.15),
+                    color: _stale
+                        ? BrandTokens.stitchWarning.withValues(alpha: 0.15)
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.verified_user_outlined, color: Colors.teal, size: 26),
+                  child: Icon(
+                    _stale
+                        ? Icons.cloud_off_outlined
+                        : Icons.filter_list_off_rounded,
+                    color: _stale
+                        ? BrandTokens.stitchWarningFg
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Hệ thống an toàn', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      SizedBox(height: 2),
-                      Text('Không có sự cố trong nhóm này.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                      Text(
+                        _stale
+                            ? 'Mất kết nối hoặc dữ liệu cũ'
+                            : 'Không có sự cố trong bộ lọc này',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Không có sự cố trong nhóm này.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (_updated != null || _stale) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          _stale
+                              ? 'Dữ liệu cũ · Đang kết nối lại Pi'
+                              : 'Cập nhật lần cuối: ${_formatTime(_updated!)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _stale
+                                ? BrandTokens.stitchWarningFg
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -859,9 +925,12 @@ class _FireguardPageState extends State<FireguardPage>
                 ),
               ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Thông báo trong app tạm dừng khi khóa màn hình hoặc chuyển app. Pi vẫn xử lý theo cấu hình riêng.',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             if (hasIssues) ...[
               const SizedBox(height: 8),
@@ -979,18 +1048,18 @@ class _FireguardPageState extends State<FireguardPage>
                               ),
                             )
                           else ...[
-                            const Icon(
+                            Icon(
                               Icons.volume_mute,
                               size: 16,
-                              color: Colors.black54,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 6),
-                            const Expanded(
+                            Expanded(
                               child: Text(
                                 'Đã tắt chuông trên máy này',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.black54,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
