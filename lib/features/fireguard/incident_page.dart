@@ -7,6 +7,7 @@ import '../../core/services/fireguard_realtime_service.dart';
 import '../../core/services/incident_alert_coordinator.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../camera/mjpeg_stream_view.dart';
+import '../../widgets/incident_timeline_stepper.dart';
 import 'monitor_widgets.dart';
 
 String callStatusLabel(dynamic value) =>
@@ -410,24 +411,23 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                   incidentStatusLabel(incident['status']),
                   color:
                       ['resolved', 'false_alarm'].contains(incident['status'])
-                      ? Colors.teal
-                      : Colors.deepOrange,
+                          ? BrandTokens.stitchOnlineFg
+                          : BrandTokens.stitchCriticalFg,
                 ),
                 GuardBadge(
                   IncidentPresentationHelper.severityLabel(
                     incident['severity'],
                   ),
-                  color: Colors.red.shade700,
+                  color: BrandTokens.criticalFg,
                 ),
                 GuardBadge(
                   '${incident['trigger_type']}'.toUpperCase(),
-                  color: Colors.blueGrey,
+                  color: BrandTokens.textSecondary,
                 ),
                 if (incident['is_simulation'] == true)
-                  const GuardBadge('Mô phỏng', color: Colors.amber),
+                  const GuardBadge('Mô phỏng', color: BrandTokens.stitchWarningFg),
               ],
             ),
-            const SizedBox(height: 12),
             if (incident['status'] == 'ai_dismissed') ...[
               Card(
                 color: Colors.amber.shade50,
@@ -457,6 +457,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
               ),
               const SizedBox(height: 12),
             ],
+            IncidentTimelineStepper(incident: incident),
             if (imageName != null) ...[
               GuardIncidentImage(
                 key: ValueKey(imageName),

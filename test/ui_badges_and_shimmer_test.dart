@@ -12,6 +12,7 @@ import 'package:ignivo_app/features/fireguard/monitoring_controller.dart';
 import 'package:ignivo_app/navigation/ignivo_shell.dart';
 import 'package:ignivo_app/widgets/camera_preview_card.dart';
 import 'package:ignivo_app/widgets/ignivo_shimmer.dart';
+import 'package:ignivo_app/widgets/incident_timeline_stepper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'alarm_coordinator_test.dart' show MockAlertFeedbackAdapter;
@@ -158,6 +159,87 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       monitoring.dispose();
       coordinator.dispose();
+    });
+
+    testWidgets('IncidentTimelineStepper displays 4 steps and updates based on incident status', (tester) async {
+      final incidentAnalyzing = {
+        'id': 10,
+        'status': 'analyzing',
+        'trigger_type': 'flame',
+        'is_simulation': false,
+        'calls': [],
+      };
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IncidentTimelineStepper(incident: incidentAnalyzing),
+          ),
+        ),
+      );
+
+      expect(find.text('Tiến trình xử lý sự cố'), findsOneWidget);
+      expect(find.text('Phát hiện'), findsOneWidget);
+      expect(find.text('AI Xác thực'), findsOneWidget);
+      expect(find.text('Báo động'), findsOneWidget);
+      expect(find.text('Hiện trường'), findsOneWidget);
+      expect(find.text('Đang quét'), findsOneWidget);
+      expect(find.text('Chờ xử lý'), findsOneWidget);
+
+      // Status: notifying with calls
+      final incidentNotifying = {
+        'id': 10,
+        'status': 'notifying',
+        'trigger_type': 'fire',
+        'calls': [
+          {'contact_name': 'Bảo vệ', 'status': 'ringing'}
+        ],
+      };
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IncidentTimelineStepper(incident: incidentNotifying),
+          ),
+        ),
+      );
+
+      expect(find.text('Đang gọi'), findsOneWidget);
+
+      // Status: resolved
+      final incidentResolved = {
+        'id': 10,
+        'status': 'resolved',
+        'trigger_type': 'fire',
+      };
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IncidentTimelineStepper(incident: incidentResolved),
+          ),
+        ),
+      );
+
+      expect(find.text('Đã xử lý'), findsOneWidget);
+      expect(find.text('Sự cố đã được kiểm soát và kết thúc an toàn.'), findsOneWidget);
+
+      // Status: ai_dismissed
+      final incidentDismissed = {
+        'id': 10,
+        'status': 'ai_dismissed',
+        'trigger_type': 'smoke',
+      };
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IncidentTimelineStepper(incident: incidentDismissed),
+          ),
+        ),
+      );
+
+      expect(find.text('Không phải cháy'), findsOneWidget);
     });
   });
 }
