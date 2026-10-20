@@ -221,6 +221,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                             aiFps: aiFps,
                                             isStale: isStale,
                                             cpuTemp: status?['cpu_temp_c'],
+                                            unclosedIncidents: unclosedIncidents,
                                           ),
                                         ],
                                       ),
@@ -279,30 +280,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   const SizedBox(height: 14),
                                 ],
 
-                                // 2. Smart Status Chips Row (Apple Home style) - Siêu tinh gọn ~36px
-                                _buildStatusChipsBar(
-                                  context,
-                                  isStale: isStale,
-                                  isAiActive: isAiActive,
-                                  aiFps: aiFps,
-                                  totalCameras: totalCameras,
-                                  onlineCameras: onlineCameras,
-                                  unclosedIncidents: unclosedIncidents,
-                                  callConfigured:
-                                      status?['stringee_configured'] == true,
-                                  isDesktop: false,
-                                ),
-                                const SizedBox(height: 18),
-
-                                // 3. Xem nhanh Camera (Quick Cameras Preview) - Đập ngay vào mắt!
-                                _buildQuickCamerasSection(context, cameras),
-                                const SizedBox(height: 20),
-
-                                // 4. Hoạt động gần đây (Recent Incidents) - Đặt ngay dưới Camera để quét nhanh
-                                _buildRecentActivitySection(context, incidents),
-                                const SizedBox(height: 20),
-
-                                // 5. Mức sẵn sàng giám sát & Thiết bị (Monitoring Readiness)
+                                // 2. Thẻ Hero IGNIVO Edge Box - Giám sát toàn diện & Sẵn sàng (ngay đầu trang)
                                 _buildReadinessCard(
                                   context,
                                   status,
@@ -311,7 +289,16 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   aiFps: aiFps,
                                   isStale: isStale,
                                   cpuTemp: status?['cpu_temp_c'],
+                                  unclosedIncidents: unclosedIncidents,
                                 ),
+                                const SizedBox(height: 20),
+
+                                // 3. Xem nhanh Camera (Quick Cameras Preview)
+                                _buildQuickCamerasSection(context, cameras),
+                                const SizedBox(height: 20),
+
+                                // 4. Hoạt động gần đây (Recent Incidents)
+                                _buildRecentActivitySection(context, incidents),
                                 const SizedBox(height: 24),
                               ],
                             ),
@@ -930,6 +917,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
     double aiFps = 0.0,
     bool isStale = false,
     dynamic cpuTemp,
+    List<Map<String, dynamic>> unclosedIncidents = const [],
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -955,285 +943,454 @@ class _GuardHomePageState extends State<GuardHomePage> {
     final isAllReady = readyCount == 4;
 
     return Container(
-      padding: const EdgeInsets.all(BrandTokens.space16),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? const [Color(0xFF123A6C), Color(0xFF10264B)]
+              : const [Color(0xFF005CAF), Color(0xFF1277CD)],
+        ),
         borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
-        boxShadow: BrandTokens.softShadow(isDark: isDark),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? const Color(0xFF0A192F) : const Color(0xFF005CAF))
+                .withValues(alpha: isDark ? 0.45 : 0.24),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
         border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.08),
+          color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.22),
           width: 0.8,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Đề xuất C: Header với Nhịp tim hệ thống và Huy hiệu sức khỏe tổng thể
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Mức sẵn sàng giám sát',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        PulsingStatusDot(
-                          color: isStale
-                              ? Colors.amber.shade800
-                              : BrandTokens.stitchSafe,
-                          size: 6,
-                          pulseSize: 12,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            isStale
-                                ? 'Mất kết nối đồng bộ'
-                                : 'Đang quét an toàn thời gian thực',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isStale
-                                  ? Colors.amber.shade800
-                                  : (isDark
-                                      ? BrandTokens.darkTextSecondary
-                                      : BrandTokens.textSecondary),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+        child: Stack(
+          children: [
+            // Decorative subtle top-right radial glow (matching ignivo-stitch-demo .ig-edge:after)
+            Positioned(
+              top: -35,
+              right: -35,
+              child: IgnorePointer(
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: isDark ? 0.12 : 0.18),
+                        Colors.white.withValues(alpha: 0.0),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: isAllReady
-                      ? BrandTokens.stitchSafe.withValues(alpha: isDark ? 0.2 : 0.1)
-                      : (isStale
-                          ? Colors.amber.shade900.withValues(alpha: isDark ? 0.2 : 0.1)
-                          : BrandTokens.stitchWarning.withValues(alpha: isDark ? 0.2 : 0.1)),
-                  borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
-                  border: Border.all(
-                    color: isAllReady
-                        ? BrandTokens.stitchSafe.withValues(alpha: 0.4)
-                        : (isStale
-                            ? Colors.amber.shade800.withValues(alpha: 0.4)
-                            : BrandTokens.stitchWarning.withValues(alpha: 0.4)),
-                    width: 0.8,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isAllReady
-                          ? Icons.verified_user_rounded
-                          : (isStale ? Icons.sync_problem_rounded : Icons.info_outline),
-                      size: 13,
-                      color: isAllReady
-                          ? BrandTokens.stitchSafe
-                          : (isStale ? Colors.amber.shade800 : BrandTokens.stitchWarning),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      isAllReady
-                          ? '100% Sẵn sàng'
-                          : (isStale ? 'Cần đồng bộ' : '$readyCount/4 Sẵn sàng'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isAllReady
-                            ? BrandTokens.stitchSafe
-                            : (isStale ? Colors.amber.shade800 : BrandTokens.stitchWarning),
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
+            ),
 
-          // Đề xuất A & B: Lưới 4 trụ cột an toàn 2x2 với tương tác 1 chạm
-          Row(
-            children: [
-              Expanded(
-                child: _buildReadinessItem(
-                  context,
-                  icon: Icons.videocam_outlined,
-                  title: 'Camera giám sát',
-                  subtitle: totalCameras > 0
-                      ? '$onlineCameras/$totalCameras trực tuyến'
-                      : 'Chưa có camera',
-                  isOk: isCamerasOk,
-                  onTap: () => widget.onNavigateTab?.call(1),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildReadinessItem(
-                  context,
-                  icon: Icons.psychology_outlined,
-                  title: 'AI Thị giác & Hailo',
-                  subtitle: isAiActive
-                      ? (aiFps > 0
-                          ? '${aiFps.toStringAsFixed(1)} FPS · Đang bảo vệ'
-                          : 'Sẵn sàng nhận diện')
-                      : 'Chưa kích hoạt',
-                  isOk: isAiOk,
-                  onTap: widget.onOpenDiagnostics,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildReadinessItem(
-                  context,
-                  icon: Icons.developer_board_rounded,
-                  title: 'Thiết bị biên (Pi)',
-                  subtitle: isStale
-                      ? 'Đang kết nối lại...'
-                      : (cpuTemp != null ? 'Trực tuyến · $cpuTemp°C' : 'Trực tuyến'),
-                  isOk: isEdgeOk,
-                  onTap: widget.onOpenDiagnostics,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildReadinessItem(
-                  context,
-                  icon: Icons.phone_in_talk_outlined,
-                  title: 'Gọi người liên hệ',
-                  subtitle: callConfigured
-                      ? '$familyCount người thân · $fireDeptCount PCCC'
-                      : 'Chưa sẵn sàng gọi',
-                  isOk: isSosOk,
-                  onTap: () => widget.onNavigateTab?.call(3),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          Theme(
-            data: theme.copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              key: const ValueKey('hardware_telemetry_expansion_tile'),
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(top: 8),
-              title: Text(
-                'Thông số phần cứng & AI Edge',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.textTheme.bodySmall?.color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.black.withValues(alpha: 0.2)
-                        : Colors.grey.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(
-                      BrandTokens.stitchSmallCardRadius,
-                    ),
-                  ),
-                  child: Column(
+            Padding(
+              padding: const EdgeInsets.all(BrandTokens.space16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top section: Kicker, Title, Heartbeat status & Shield Badge
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Bộ tăng tốc Hailo AI NPU',
-                              style: theme.textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            aiFps > 0
-                                ? '${aiFps.toStringAsFixed(1)} FPS'
-                                : (isAiActive ? 'Sẵn sàng' : 'Không khả dụng'),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Thiết bị biên (Edge Box)',
-                              style: theme.textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            isStale
-                                ? 'Đang kết nối lại'
-                                : (cpuTemp != null ? 'Trực tuyến · $cpuTemp°C' : 'Trực tuyến'),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isStale
-                                  ? BrandTokens.stitchWarning
-                                  : BrandTokens.stitchSafe,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (widget.onOpenDiagnostics != null) ...[
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'IGNIVO EDGE BOX',
+                              style: TextStyle(
+                                fontSize: 11,
+                                letterSpacing: 0.8,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.85),
                               ),
                             ),
-                            onPressed: widget.onOpenDiagnostics,
-                            icon: const Icon(
-                              Icons.monitor_heart_outlined,
-                              size: 14,
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.home_outlined,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'Mức sẵn sàng giám sát',
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                            label: const Text(
-                              'Xem chẩn đoán chi tiết',
-                              style: TextStyle(fontSize: 12),
+                            const SizedBox(height: 5),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PulsingStatusDot(
+                                  color: isStale
+                                      ? const Color(0xFFFFB74D)
+                                      : const Color(0xFF4ADE80),
+                                  size: 6,
+                                  pulseSize: 12,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    isStale
+                                        ? 'Mất kết nối đồng bộ'
+                                        : 'Đang quét an toàn thời gian thực',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withValues(alpha: 0.92),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (!isStale && unclosedIncidents.isEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.78),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Shield health badge (.ig-badge-shield)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.32),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isAllReady
+                                  ? Icons.verified_user_rounded
+                                  : (isStale
+                                      ? Icons.sync_problem_rounded
+                                      : Icons.info_outline),
+                              size: 15,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              isAllReady
+                                  ? '100% Sẵn sàng'
+                                  : (isStale
+                                      ? 'Cần đồng bộ'
+                                      : '$readyCount/4 Sẵn sàng'),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // 2x2 Glassmorphism Metrics Grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildReadinessItem(
+                          context,
+                          icon: Icons.videocam_outlined,
+                          title: 'Camera giám sát',
+                          subtitle: totalCameras > 0
+                              ? '$onlineCameras/$totalCameras trực tuyến'
+                              : 'Chưa có camera',
+                          isOk: isCamerasOk,
+                          onTap: () => widget.onNavigateTab?.call(1),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildReadinessItem(
+                          context,
+                          icon: Icons.psychology_outlined,
+                          title: 'AI Thị giác & Hailo',
+                          subtitle: isAiActive
+                              ? (aiFps > 0
+                                  ? '${aiFps.toStringAsFixed(1)} FPS · Đang bảo vệ'
+                                  : 'Sẵn sàng nhận diện')
+                              : 'Chưa kích hoạt',
+                          isOk: isAiOk,
+                          onTap: widget.onOpenDiagnostics,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildReadinessItem(
+                          context,
+                          icon: Icons.developer_board_rounded,
+                          title: 'Thiết bị biên (Pi)',
+                          subtitle: isStale
+                              ? 'Đang kết nối lại...'
+                              : (cpuTemp != null
+                                  ? 'Trực tuyến · $cpuTemp°C'
+                                  : 'Trực tuyến'),
+                          isOk: isEdgeOk,
+                          onTap: widget.onOpenDiagnostics,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildReadinessItem(
+                          context,
+                          icon: Icons.phone_in_talk_outlined,
+                          title: 'Gọi người liên hệ',
+                          subtitle: callConfigured
+                              ? '$familyCount người thân · $fireDeptCount PCCC'
+                              : 'Chưa sẵn sàng gọi',
+                          isOk: isSosOk,
+                          onTap: () => widget.onNavigateTab?.call(3),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Footer: Processing note & System Sheet management link (matching .ig-edge-foot)
+                  Container(
+                    padding: const EdgeInsets.only(top: 10),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          width: 0.8,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.hub_outlined,
+                              size: 14,
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Xử lý hình ảnh tại Edge Box',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Colors.white.withValues(alpha: 0.88),
+                              ),
+                            ),
+                          ],
+                        ),
+                        InkWell(
+                          onTap: () {
+                            showIgnivoSystemSheet(
+                              context: context,
+                              systemName: widget.sessionController.systemName,
+                              address: widget.sessionController.profile.guardUrl,
+                              isConnected: !isStale,
+                              cameraCount: totalCameras,
+                              onDiagnostics: widget.onOpenDiagnostics,
+                              onChangeConnection: () =>
+                                  widget.sessionController.disconnect(),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 2,
+                              horizontal: 4,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Quản lý hệ thống >',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withValues(alpha: 0.95),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
+
+                  // Expandable Hardware Telemetry
+                  Theme(
+                    data: theme.copyWith(
+                      dividerColor: Colors.transparent,
+                      unselectedWidgetColor: Colors.white70,
+                      colorScheme: theme.colorScheme.copyWith(
+                        primary: Colors.white,
+                      ),
+                    ),
+                    child: ExpansionTile(
+                      key: const ValueKey('hardware_telemetry_expansion_tile'),
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(top: 6),
+                      iconColor: Colors.white,
+                      collapsedIconColor: Colors.white70,
+                      title: Text(
+                        'Thông số phần cứng & AI Edge',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.20),
+                            borderRadius: BorderRadius.circular(
+                              BrandTokens.stitchSmallCardRadius,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Bộ tăng tốc Hailo AI NPU',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white.withValues(alpha: 0.85),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    aiFps > 0
+                                        ? '${aiFps.toStringAsFixed(1)} FPS'
+                                        : (isAiActive ? 'Sẵn sàng' : 'Không khả dụng'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Thiết bị biên (Edge Box)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white.withValues(alpha: 0.85),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isStale
+                                        ? 'Đang kết nối lại'
+                                        : (cpuTemp != null
+                                            ? 'Trực tuyến · $cpuTemp°C'
+                                            : 'Trực tuyến'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isStale
+                                          ? const Color(0xFFFFB74D)
+                                          : const Color(0xFF4ADE80),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (widget.onOpenDiagnostics != null) ...[
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                    ),
+                                    onPressed: widget.onOpenDiagnostics,
+                                    icon: const Icon(
+                                      Icons.monitor_heart_outlined,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text(
+                                      'Xem chẩn đoán chi tiết',
+                                      style: TextStyle(fontSize: 12, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1250,19 +1407,17 @@ class _GuardHomePageState extends State<GuardHomePage> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Material(
-      color: theme.cardColor,
-      borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.14),
             borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
             border: Border.all(
-              color: isOk
-                  ? theme.dividerColor.withValues(alpha: 0.10)
-                  : BrandTokens.stitchWarning.withValues(alpha: 0.35),
+              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.24),
               width: 0.8,
             ),
           ),
@@ -1274,21 +1429,20 @@ class _GuardHomePageState extends State<GuardHomePage> {
                   Container(
                     padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: (isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning)
-                          .withValues(alpha: isDark ? 0.2 : 0.1),
+                      color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
                       icon,
-                      size: 16,
-                      color: isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+                      size: 15,
+                      color: Colors.white,
                     ),
                   ),
                   const Spacer(),
                   Icon(
                     isOk ? Icons.check_circle : Icons.warning_amber_rounded,
                     size: 14,
-                    color: isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+                    color: isOk ? const Color(0xFF4ADE80) : const Color(0xFFFFB74D),
                   ),
                 ],
               ),
@@ -1298,7 +1452,11 @@ class _GuardHomePageState extends State<GuardHomePage> {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1307,7 +1465,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                     Icon(
                       Icons.chevron_right,
                       size: 14,
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
+                      color: Colors.white.withValues(alpha: 0.6),
                     ),
                 ],
               ),
@@ -1316,7 +1474,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 11,
-                  color: theme.textTheme.bodySmall?.color,
+                  color: Colors.white.withValues(alpha: 0.85),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

@@ -159,13 +159,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // 1. Verify Recent Activity appears before Readiness Card on Mobile
+      // 1. Verify Hero Edge Card appears at the top, followed by Quick Cameras and Recent Activity (matching ignivo-stitch-demo.html)
+      final readinessTop = tester.getTopLeft(find.text('Mức sẵn sàng giám sát')).dy;
       final cameraTop = tester.getTopLeft(find.text('Xem nhanh Camera')).dy;
       final recentTop = tester.getTopLeft(find.text('Hoạt động gần đây')).dy;
-      final readinessTop = tester.getTopLeft(find.text('Mức sẵn sàng giám sát')).dy;
 
-      expect(cameraTop < recentTop, isTrue, reason: 'Cameras preview must appear before Recent Activity');
-      expect(recentTop < readinessTop, isTrue, reason: 'Recent Activity must appear before Readiness Card on mobile');
+      expect(readinessTop < cameraTop, isTrue, reason: 'Hero Edge Box card must appear before Camera preview');
+      expect(cameraTop < recentTop, isTrue, reason: 'Camera preview must appear before Recent Activity');
 
       // 2. Verify expandable hardware telemetry section
       await tester.scrollUntilVisible(
