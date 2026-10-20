@@ -546,8 +546,8 @@ class _FireguardPageState extends State<FireguardPage>
           label: const Text('Lịch sử khuôn mặt và sự kiện FireEye'),
         ),
       _heading(
-        'Sự kiện',
-        'Lịch sử và tiến trình xử lý · tối đa 50 sự cố gần nhất',
+        'Lịch sử nhận diện',
+        'Nhật ký phát hiện và tiến trình xử lý · tối đa 50 sự cố gần nhất',
       ),
       Padding(
         padding: const EdgeInsets.only(bottom: 16),

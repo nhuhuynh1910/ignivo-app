@@ -239,23 +239,23 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                           ),
                         )
                       else
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
                                 Icons.volume_mute,
                                 size: 16,
-                                color: Colors.black54,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   'Đã tắt chuông cảnh báo trên máy này',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.black54,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),

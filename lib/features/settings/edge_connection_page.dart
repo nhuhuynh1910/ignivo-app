@@ -339,6 +339,41 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
                         'Địa chỉ: ${_profile.piHost}${_profile.isCustomAdvanced ? ' (URL tùy chỉnh)' : ''}',
                         style: const TextStyle(fontSize: 12),
                       ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            _authenticated
+                                ? (_flowState == ConnectionFlowState.ready
+                                    ? Icons.check_circle
+                                    : Icons.warning_amber_rounded)
+                                : Icons.radio_button_unchecked,
+                            size: 13,
+                            color: _authenticated
+                                ? (_flowState == ConnectionFlowState.ready
+                                    ? Colors.green
+                                    : Colors.orange)
+                                : Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _authenticated
+                                ? (_flowState == ConnectionFlowState.ready
+                                    ? 'Đã kết nối giám sát'
+                                    : 'Chưa kết nối FireGuard')
+                                : 'Chưa kết nối',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _authenticated
+                                  ? (_flowState == ConnectionFlowState.ready
+                                      ? Colors.green.shade800
+                                      : Colors.orange.shade800)
+                                  : Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -351,42 +386,20 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         const Text(
-          'Một tài khoản cho toàn bộ hệ thống',
+          'Đăng nhập giám sát',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'FireEye xác thực tài khoản. FireGuard phụ trách camera, phát hiện lửa/khói, phân tích Gemini, gọi Stringee và cảnh báo trực tiếp.',
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          key: const Key('fireeye-url'),
-          controller: _eyeUrl,
-          enabled: !_busy,
-          keyboardType: TextInputType.url,
-          onChanged: (_) => setState(() => _flowState = ConnectionFlowState.signedOut),
-          decoration: const InputDecoration(
-            labelText: 'FireEye — xác thực (8000)',
-            hintText: 'http://100.95.189.60:8000',
-            isDense: true,
+        Text(
+          'Nhập thông tin xác thực để kết nối giám sát an toàn phòng cháy.',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
-        TextField(
-          key: const Key('fireguard-url'),
-          controller: _guardUrl,
-          enabled: !_busy,
-          keyboardType: TextInputType.url,
-          onChanged: (_) => setState(() => _flowState = ConnectionFlowState.signedOut),
-          decoration: const InputDecoration(
-            labelText: 'FireGuard — giám sát (8080)',
-            hintText: 'http://100.95.189.60:8080',
-            isDense: true,
-          ),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextField(
           key: const Key('phone'),
           controller: _phone,
@@ -436,6 +449,63 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
           icon: const Icon(Icons.login),
           label: const Text('Đăng nhập hệ thống'),
         ),
+        const SizedBox(height: 8),
+        ExpansionTile(
+          key: const ValueKey('advanced_connection_settings'),
+          title: const Text('Thiết lập máy chủ nâng cao'),
+          subtitle: Text(
+            'URL & cổng dịch vụ FireEye (8000) và FireGuard (8080)',
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Text(
+                'FireEye xác thực tài khoản. FireGuard phụ trách camera, phát hiện lửa/khói, phân tích AI, gọi Stringee và cảnh báo trực tiếp.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: TextField(
+                key: const Key('fireeye-url'),
+                controller: _eyeUrl,
+                enabled: !_busy,
+                keyboardType: TextInputType.url,
+                onChanged: (_) => setState(() => _flowState = ConnectionFlowState.signedOut),
+                decoration: const InputDecoration(
+                  labelText: 'FireEye — xác thực (8000)',
+                  hintText: 'http://100.95.189.60:8000',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: TextField(
+                key: const Key('fireguard-url'),
+                controller: _guardUrl,
+                enabled: !_busy,
+                keyboardType: TextInputType.url,
+                onChanged: (_) => setState(() => _flowState = ConnectionFlowState.signedOut),
+                decoration: const InputDecoration(
+                  labelText: 'FireGuard — giám sát (8080)',
+                  hintText: 'http://100.95.189.60:8080',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
         ExpansionTile(
           key: const ValueKey('edge_connection_token_tile'),
           title: const Text('Đã có token FireEye'),
@@ -450,11 +520,14 @@ class _EdgeConnectionPageState extends State<EdgeConnectionPage> {
               onPressed: _busy ? null : () => _connect(withToken: true),
               child: const Text('Kiểm tra và sử dụng token'),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
                 'Lưu ý: Dán token chỉ có hiệu lực cho phiên hiện tại và không tự động làm mới khi hết hạn.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],

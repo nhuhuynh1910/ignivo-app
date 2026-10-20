@@ -178,11 +178,14 @@ class _PiSetupPageState extends State<PiSetupPage> {
             setState(() => _isAdvanced = exp);
           },
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
                 'Dành cho trường hợp dịch vụ chạy trên các port khác hoặc qua reverse proxy HTTPS riêng.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             Padding(

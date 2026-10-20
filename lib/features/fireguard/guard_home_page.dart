@@ -214,7 +214,13 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                               isGrid: true),
                                           const SizedBox(height: 20),
                                           _buildReadinessCard(
-                                              context, status, cameras),
+                                            context,
+                                            status,
+                                            cameras,
+                                            isAiActive: isAiActive,
+                                            aiFps: aiFps,
+                                            isStale: isStale,
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -291,12 +297,19 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                 _buildQuickCamerasSection(context, cameras),
                                 const SizedBox(height: 20),
 
-                                // 4. Mức sẵn sàng giám sát (Monitoring Readiness)
-                                _buildReadinessCard(context, status, cameras),
+                                // 4. Hoạt động gần đây (Recent Incidents) - Đặt ngay dưới Camera để quét nhanh
+                                _buildRecentActivitySection(context, incidents),
                                 const SizedBox(height: 20),
 
-                                // 5. Hoạt động gần đây (Recent Incidents)
-                                _buildRecentActivitySection(context, incidents),
+                                // 5. Mức sẵn sàng giám sát & Thiết bị (Monitoring Readiness)
+                                _buildReadinessCard(
+                                  context,
+                                  status,
+                                  cameras,
+                                  isAiActive: isAiActive,
+                                  aiFps: aiFps,
+                                  isStale: isStale,
+                                ),
                                 const SizedBox(height: 24),
                               ],
                             ),
@@ -483,14 +496,16 @@ class _GuardHomePageState extends State<GuardHomePage> {
         Expanded(
           child: _buildKpiCard(
             context,
-            title: 'HAILO AI NPU',
+            title: 'TRẠNG THÁI AI GIÁM SÁT',
             value: isAiActive
-                ? (aiFps > 0 ? '${aiFps.toStringAsFixed(1)} FPS' : 'Sẵn sàng')
+                ? (aiFps > 0 ? 'Đang bảo vệ' : 'Sẵn sàng')
                 : 'Chưa kích hoạt',
             subtitle: isAiActive
-                ? 'Nhận diện thị giác chủ động'
+                ? (aiFps > 0
+                    ? 'Xử lý hình ảnh: ${aiFps.toStringAsFixed(1)} FPS'
+                    : 'Nhận diện thị giác chủ động')
                 : 'Cần kiểm tra service',
-            icon: Icons.memory,
+            icon: Icons.psychology_rounded,
             color:
                 isAiActive ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
             isPulsing: isAiActive,
@@ -664,7 +679,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
           _buildQuickActionBtn(
             context,
             icon: Icons.history_edu_rounded,
-            label: 'Tra cứu nhật ký sự cố',
+            label: 'Lịch sử nhận diện & sự cố',
             onTap: () => widget.onNavigateTab?.call(2),
           ),
           const SizedBox(height: 8),
@@ -785,14 +800,14 @@ class _GuardHomePageState extends State<GuardHomePage> {
       ),
       const SizedBox(width: 8),
 
-      // 3. Hailo AI NPU Chip
+      // 3. AI Monitoring Chip
       _buildStatusPill(
         context,
         icon: Icons.psychology_outlined,
         label: isAiActive
             ? (aiFps > 0
-                ? 'Hailo AI: ${aiFps.toStringAsFixed(1)} FPS'
-                : 'Hailo AI: Sẵn sàng')
+                ? 'AI: Đang giám sát (${aiFps.toStringAsFixed(1)} FPS)'
+                : 'AI: Sẵn sàng')
             : 'AI: Tắt',
         color: isAiActive ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
         onTap: widget.onOpenDiagnostics,
@@ -908,8 +923,11 @@ class _GuardHomePageState extends State<GuardHomePage> {
   Widget _buildReadinessCard(
     BuildContext context,
     Map<String, dynamic>? status,
-    List<Map<String, dynamic>> cameras,
-  ) {
+    List<Map<String, dynamic>> cameras, {
+    bool isAiActive = false,
+    double aiFps = 0.0,
+    bool isStale = false,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final totalCameras = cameras.length;
@@ -967,6 +985,106 @@ class _GuardHomePageState extends State<GuardHomePage> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Theme(
+            data: theme.copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              key: const ValueKey('hardware_telemetry_expansion_tile'),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(top: 8),
+              title: Text(
+                'Thông số phần cứng & AI Edge',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.textTheme.bodySmall?.color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.2)
+                        : Colors.grey.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(
+                      BrandTokens.stitchSmallCardRadius,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Bộ tăng tốc Hailo AI NPU',
+                              style: theme.textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            aiFps > 0
+                                ? '${aiFps.toStringAsFixed(1)} FPS'
+                                : (isAiActive ? 'Sẵn sàng' : 'Không khả dụng'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Thiết bị biên (Edge Box)',
+                              style: theme.textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isStale ? 'Đang kết nối lại' : 'Trực tuyến',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isStale
+                                  ? BrandTokens.stitchWarning
+                                  : BrandTokens.stitchSafe,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (widget.onOpenDiagnostics != null) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                            ),
+                            onPressed: widget.onOpenDiagnostics,
+                            icon: const Icon(
+                              Icons.monitor_heart_outlined,
+                              size: 14,
+                            ),
+                            label: const Text(
+                              'Xem chẩn đoán chi tiết',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
