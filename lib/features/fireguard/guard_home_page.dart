@@ -220,6 +220,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                             isAiActive: isAiActive,
                                             aiFps: aiFps,
                                             isStale: isStale,
+                                            cpuTemp: status?['cpu_temp_c'],
                                           ),
                                         ],
                                       ),
@@ -309,6 +310,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   isAiActive: isAiActive,
                                   aiFps: aiFps,
                                   isStale: isStale,
+                                  cpuTemp: status?['cpu_temp_c'],
                                 ),
                                 const SizedBox(height: 24),
                               ],
@@ -927,6 +929,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
     bool isAiActive = false,
     double aiFps = 0.0,
     bool isStale = false,
+    dynamic cpuTemp,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -937,6 +940,19 @@ class _GuardHomePageState extends State<GuardHomePage> {
     final callConfigured = status?['stringee_configured'] == true;
     final familyCount = status?['family_contacts'] as int? ?? 0;
     final fireDeptCount = status?['fire_dept_contacts'] as int? ?? 0;
+
+    final isCamerasOk = totalCameras > 0 && onlineCameras == totalCameras;
+    final isAiOk = isAiActive;
+    final isEdgeOk = !isStale;
+    final isSosOk = callConfigured && (familyCount + fireDeptCount > 0);
+
+    int readyCount = 0;
+    if (isCamerasOk) readyCount++;
+    if (isAiOk) readyCount++;
+    if (isEdgeOk) readyCount++;
+    if (isSosOk) readyCount++;
+
+    final isAllReady = readyCount == 4;
 
     return Container(
       padding: const EdgeInsets.all(BrandTokens.space16),
@@ -952,13 +968,107 @@ class _GuardHomePageState extends State<GuardHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Mức sẵn sàng giám sát',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          // Đề xuất C: Header với Nhịp tim hệ thống và Huy hiệu sức khỏe tổng thể
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mức sẵn sàng giám sát',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PulsingStatusDot(
+                          color: isStale
+                              ? Colors.amber.shade800
+                              : BrandTokens.stitchSafe,
+                          size: 6,
+                          pulseSize: 12,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            isStale
+                                ? 'Mất kết nối đồng bộ'
+                                : 'Đang quét an toàn thời gian thực',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isStale
+                                  ? Colors.amber.shade800
+                                  : (isDark
+                                      ? BrandTokens.darkTextSecondary
+                                      : BrandTokens.textSecondary),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isAllReady
+                      ? BrandTokens.stitchSafe.withValues(alpha: isDark ? 0.2 : 0.1)
+                      : (isStale
+                          ? Colors.amber.shade900.withValues(alpha: isDark ? 0.2 : 0.1)
+                          : BrandTokens.stitchWarning.withValues(alpha: isDark ? 0.2 : 0.1)),
+                  borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+                  border: Border.all(
+                    color: isAllReady
+                        ? BrandTokens.stitchSafe.withValues(alpha: 0.4)
+                        : (isStale
+                            ? Colors.amber.shade800.withValues(alpha: 0.4)
+                            : BrandTokens.stitchWarning.withValues(alpha: 0.4)),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isAllReady
+                          ? Icons.verified_user_rounded
+                          : (isStale ? Icons.sync_problem_rounded : Icons.info_outline),
+                      size: 13,
+                      color: isAllReady
+                          ? BrandTokens.stitchSafe
+                          : (isStale ? Colors.amber.shade800 : BrandTokens.stitchWarning),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isAllReady
+                          ? '100% Sẵn sàng'
+                          : (isStale ? 'Cần đồng bộ' : '$readyCount/4 Sẵn sàng'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isAllReady
+                            ? BrandTokens.stitchSafe
+                            : (isStale ? Colors.amber.shade800 : BrandTokens.stitchWarning),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
+          // Đề xuất A & B: Lưới 4 trụ cột an toàn 2x2 với tương tác 1 chạm
           Row(
             children: [
               Expanded(
@@ -969,10 +1079,43 @@ class _GuardHomePageState extends State<GuardHomePage> {
                   subtitle: totalCameras > 0
                       ? '$onlineCameras/$totalCameras trực tuyến'
                       : 'Chưa có camera',
-                  isOk: totalCameras > 0 && onlineCameras == totalCameras,
+                  isOk: isCamerasOk,
+                  onTap: () => widget.onNavigateTab?.call(1),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildReadinessItem(
+                  context,
+                  icon: Icons.psychology_outlined,
+                  title: 'AI Thị giác & Hailo',
+                  subtitle: isAiActive
+                      ? (aiFps > 0
+                          ? '${aiFps.toStringAsFixed(1)} FPS · Đang bảo vệ'
+                          : 'Sẵn sàng nhận diện')
+                      : 'Chưa kích hoạt',
+                  isOk: isAiOk,
+                  onTap: widget.onOpenDiagnostics,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildReadinessItem(
+                  context,
+                  icon: Icons.developer_board_rounded,
+                  title: 'Thiết bị biên (Pi)',
+                  subtitle: isStale
+                      ? 'Đang kết nối lại...'
+                      : (cpuTemp != null ? 'Trực tuyến · $cpuTemp°C' : 'Trực tuyến'),
+                  isOk: isEdgeOk,
+                  onTap: widget.onOpenDiagnostics,
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: _buildReadinessItem(
                   context,
@@ -981,12 +1124,14 @@ class _GuardHomePageState extends State<GuardHomePage> {
                   subtitle: callConfigured
                       ? '$familyCount người thân · $fireDeptCount PCCC'
                       : 'Chưa sẵn sàng gọi',
-                  isOk: callConfigured && (familyCount + fireDeptCount > 0),
+                  isOk: isSosOk,
+                  onTap: () => widget.onNavigateTab?.call(3),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
+
           Theme(
             data: theme.copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -1047,7 +1192,9 @@ class _GuardHomePageState extends State<GuardHomePage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            isStale ? 'Đang kết nối lại' : 'Trực tuyến',
+                            isStale
+                                ? 'Đang kết nối lại'
+                                : (cpuTemp != null ? 'Trực tuyến · $cpuTemp°C' : 'Trực tuyến'),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: isStale
@@ -1097,51 +1244,86 @@ class _GuardHomePageState extends State<GuardHomePage> {
     required String title,
     required String subtitle,
     required bool isOk,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Material(
+      color: theme.cardColor,
+      borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
-          width: 0.8,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+            border: Border.all(
+              color: isOk
+                  ? theme.dividerColor.withValues(alpha: 0.10)
+                  : BrandTokens.stitchWarning.withValues(alpha: 0.35),
+              width: 0.8,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: (isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning)
+                          .withValues(alpha: isDark ? 0.2 : 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 16,
+                      color: isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    isOk ? Icons.check_circle : Icons.warning_amber_rounded,
+                    size: 14,
+                    color: isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+                  ),
+                ],
               ),
-              const Spacer(),
-              Icon(
-                isOk ? Icons.check_circle : Icons.warning_amber_rounded,
-                size: 16,
-                color: isOk ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (onTap != null)
+                    Icon(
+                      Icons.chevron_right,
+                      size: 14,
+                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: theme.textTheme.bodySmall?.color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+        ),
       ),
     );
   }

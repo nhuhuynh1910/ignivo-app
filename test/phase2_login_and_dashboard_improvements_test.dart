@@ -300,4 +300,116 @@ void main() {
       );
     });
   });
+
+  group('Đề xuất A, B, C: Thẻ trạng thái hệ thống và 4 trụ cột an toàn', () {
+    testWidgets('renders 4 safety pillars, live heartbeat, 100% health badge and routes direct taps', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      int? navigatedTab;
+      var openedDiagnostics = false;
+
+      final cam = {
+        'id': 1,
+        'name': 'Camera Cổng',
+        'area': 'Cổng',
+        'enabled': true,
+        'detect_enabled': true,
+        'status': {'online': true},
+      };
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/me')) return _utf8Json({'role': 'OWNER'});
+          if (r.url.path.endsWith('/system/info')) return _utf8Json({'hostname': 'EdgePi'});
+          if (r.url.path.endsWith('/status')) {
+            return _utf8Json({
+              'stringee_configured': true,
+              'family_contacts': 2,
+              'fire_dept_contacts': 1,
+              'cpu_temp_c': 48,
+              'vision': {'ready': true, 'total_ai_fps': 15.0},
+            });
+          }
+          if (r.url.path.endsWith('/cameras')) return _utf8Json([cam]);
+          if (r.url.path.endsWith('/incidents/active')) return _utf8Json(null);
+          if (r.url.path.endsWith('/incidents')) return _utf8Json([]);
+          return _utf8Json({});
+        }),
+      );
+
+      final session = SystemSessionController(
+        api: api,
+        initialProfile: PiConnectionProfile.fromGuardUrl(
+          'http://pi:8080',
+          systemName: 'Biệt Thự Vườn',
+        ),
+      );
+      await api.setAuthToken('mock-tok');
+
+      final realtime = TestRealtime(api);
+      final coordinator = IncidentAlertCoordinator(
+        api: api,
+        realtime: realtime,
+        feedbackAdapter: MockAlertFeedbackAdapter(),
+      );
+      final monitoring = MonitoringController(
+        api: api,
+        realtime: realtime,
+        coordinator: coordinator,
+      );
+
+      monitoring.start();
+      await monitoring.refresh();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GuardHomePage(
+              sessionController: session,
+              monitoringController: monitoring,
+              onNavigateTab: (tab) => navigatedTab = tab,
+              onOpenDiagnostics: () => openedDiagnostics = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Đề xuất C: Live heartbeat
+      expect(find.text('Đang quét an toàn thời gian thực'), findsOneWidget);
+
+      // Đề xuất A: Overall health badge & 4 Pillars
+      expect(find.text('100% Sẵn sàng'), findsOneWidget);
+      expect(find.text('Camera giám sát'), findsWidgets);
+      expect(find.text('AI Thị giác & Hailo'), findsOneWidget);
+      expect(find.text('15.0 FPS · Đang bảo vệ'), findsOneWidget);
+      expect(find.text('Thiết bị biên (Pi)'), findsOneWidget);
+      expect(find.text('Trực tuyến · 48°C'), findsOneWidget);
+      expect(find.text('Gọi người liên hệ'), findsOneWidget);
+
+      // Đề xuất B: Direct 1-tap actions
+      // Tap Camera pillar -> navigates to Cameras tab (index 1)
+      await tester.tap(find.text('Camera giám sát').first);
+      expect(navigatedTab, 1);
+
+      // Tap AI pillar -> opens diagnostics
+      await tester.tap(find.text('AI Thị giác & Hailo'));
+      expect(openedDiagnostics, isTrue);
+
+      // Tap SOS pillar -> navigates to Settings tab (index 3)
+      await tester.tap(find.text('Gọi người liên hệ'));
+      expect(navigatedTab, 3);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      monitoring.stop();
+      coordinator.dispose();
+      monitoring.dispose();
+    });
+  });
 }
