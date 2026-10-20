@@ -956,8 +956,8 @@ class _GuardHomePageState extends State<GuardHomePage> {
           BoxShadow(
             color: (isDark ? const Color(0xFF0A192F) : const Color(0xFF005CAF))
                 .withValues(alpha: isDark ? 0.45 : 0.24),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
         border: Border.all(
@@ -969,7 +969,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
         borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
         child: Stack(
           children: [
-            // Decorative subtle top-right radial glow (matching ignivo-stitch-demo .ig-edge:after)
+            // Decorative subtle top-right radial glow
             Positioned(
               top: -35,
               right: -35,
@@ -991,11 +991,11 @@ class _GuardHomePageState extends State<GuardHomePage> {
             ),
 
             Padding(
-              padding: const EdgeInsets.all(BrandTokens.space16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top section: Kicker, Title, Heartbeat status & Shield Badge
+                  // Top section: Kicker, Title, Heartbeat status & Shield Badge (Streamlined)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1006,10 +1006,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
                             Text(
                               'IGNIVO EDGE BOX',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10.5,
                                 letterSpacing: 0.8,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white.withValues(alpha: 0.85),
+                                color: Colors.white.withValues(alpha: 0.82),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -1018,15 +1018,15 @@ class _GuardHomePageState extends State<GuardHomePage> {
                               children: [
                                 const Icon(
                                   Icons.home_outlined,
-                                  size: 18,
+                                  size: 17,
                                   color: Colors.white,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 5),
                                 Flexible(
                                   child: Text(
                                     'Mức sẵn sàng giám sát',
                                     style: const TextStyle(
-                                      fontSize: 17,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.white,
                                     ),
@@ -1036,7 +1036,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 5),
+                            const SizedBox(height: 4),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -1044,17 +1044,17 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   color: isStale
                                       ? const Color(0xFFFFB74D)
                                       : const Color(0xFF4ADE80),
-                                  size: 6,
-                                  pulseSize: 12,
+                                  size: 5,
+                                  pulseSize: 11,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 5),
                                 Flexible(
                                   child: Text(
                                     isStale
                                         ? 'Mất kết nối đồng bộ'
                                         : 'Đang quét an toàn thời gian thực',
                                     style: TextStyle(
-                                      fontSize: 11.5,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.white.withValues(alpha: 0.92),
                                     ),
@@ -1065,11 +1065,11 @@ class _GuardHomePageState extends State<GuardHomePage> {
                               ],
                             ),
                             if (!isStale && unclosedIncidents.isEmpty) ...[
-                              const SizedBox(height: 3),
+                              const SizedBox(height: 2),
                               Text(
                                 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   color: Colors.white.withValues(alpha: 0.78),
                                 ),
                               ),
@@ -1081,8 +1081,8 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       // Shield health badge (.ig-badge-shield)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 9,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.18),
@@ -1101,10 +1101,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   : (isStale
                                       ? Icons.sync_problem_rounded
                                       : Icons.info_outline),
-                              size: 15,
+                              size: 14,
                               color: Colors.white,
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 4),
                             Text(
                               isAllReady
                                   ? '100% Sẵn sàng'
@@ -1112,7 +1112,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                       ? 'Cần đồng bộ'
                                       : '$readyCount/4 Sẵn sàng'),
                               style: const TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                               ),
@@ -1122,9 +1122,9 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
 
-                  // 2x2 Glassmorphism Metrics Grid
+                  // 2x2 Glassmorphism Metrics Grid (Streamlined & Compact)
                   Row(
                     children: [
                       Expanded(
@@ -1139,7 +1139,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                           onTap: () => widget.onNavigateTab?.call(1),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _buildReadinessItem(
                           context,
@@ -1156,7 +1156,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -1173,7 +1173,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                           onTap: widget.onOpenDiagnostics,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _buildReadinessItem(
                           context,
@@ -1188,11 +1188,11 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
-                  // Footer: Processing note & System Sheet management link (matching .ig-edge-foot)
+                  // Footer: Processing note & System Sheet management link
                   Container(
-                    padding: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(
@@ -1209,14 +1209,14 @@ class _GuardHomePageState extends State<GuardHomePage> {
                           children: [
                             Icon(
                               Icons.hub_outlined,
-                              size: 14,
+                              size: 13,
                               color: Colors.white.withValues(alpha: 0.85),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 5),
                             Text(
                               'Xử lý hình ảnh tại Edge Box',
                               style: TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 color: Colors.white.withValues(alpha: 0.88),
                               ),
                             ),
@@ -1247,7 +1247,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                 Text(
                                   'Quản lý hệ thống >',
                                   style: TextStyle(
-                                    fontSize: 11.5,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white.withValues(alpha: 0.95),
                                   ),
@@ -1272,7 +1272,8 @@ class _GuardHomePageState extends State<GuardHomePage> {
                     child: ExpansionTile(
                       key: const ValueKey('hardware_telemetry_expansion_tile'),
                       tilePadding: EdgeInsets.zero,
-                      childrenPadding: const EdgeInsets.only(top: 6),
+                      childrenPadding: const EdgeInsets.only(top: 4),
+                      visualDensity: VisualDensity.compact,
                       iconColor: Colors.white,
                       collapsedIconColor: Colors.white70,
                       title: Text(
@@ -1280,12 +1281,15 @@ class _GuardHomePageState extends State<GuardHomePage> {
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.88),
                           fontWeight: FontWeight.w600,
-                          fontSize: 12,
+                          fontSize: 11.5,
                         ),
                       ),
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.20),
                             borderRadius: BorderRadius.circular(
@@ -1305,7 +1309,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                     child: Text(
                                       'Bộ tăng tốc Hailo AI NPU',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                         color: Colors.white.withValues(alpha: 0.85),
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -1317,14 +1321,14 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                         ? '${aiFps.toStringAsFixed(1)} FPS'
                                         : (isAiActive ? 'Sẵn sàng' : 'Không khả dụng'),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11.5,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 5),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -1332,7 +1336,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                     child: Text(
                                       'Thiết bị biên (Edge Box)',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                         color: Colors.white.withValues(alpha: 0.85),
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -1346,7 +1350,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                             ? 'Trực tuyến · $cpuTemp°C'
                                             : 'Trực tuyến'),
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11.5,
                                       fontWeight: FontWeight.bold,
                                       color: isStale
                                           ? const Color(0xFFFFB74D)
@@ -1356,7 +1360,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                 ],
                               ),
                               if (widget.onOpenDiagnostics != null) ...[
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton.icon(
@@ -1370,12 +1374,12 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                     onPressed: widget.onOpenDiagnostics,
                                     icon: const Icon(
                                       Icons.monitor_heart_outlined,
-                                      size: 14,
+                                      size: 13,
                                       color: Colors.white,
                                     ),
                                     label: const Text(
                                       'Xem chẩn đoán chi tiết',
-                                      style: TextStyle(fontSize: 12, color: Colors.white),
+                                      style: TextStyle(fontSize: 11.5, color: Colors.white),
                                     ),
                                   ),
                                 ),
@@ -1412,7 +1416,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.14),
             borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
@@ -1423,57 +1427,47 @@ class _GuardHomePageState extends State<GuardHomePage> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(5),
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                     child: Icon(
                       icon,
-                      size: 15,
+                      size: 13,
                       color: Colors.white,
                     ),
                   ),
-                  const Spacer(),
-                  Icon(
-                    isOk ? Icons.check_circle : Icons.warning_amber_rounded,
-                    size: 14,
-                    color: isOk ? const Color(0xFF4ADE80) : const Color(0xFFFFB74D),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: 12,
                         color: Colors.white,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (onTap != null)
-                    Icon(
-                      Icons.chevron_right,
-                      size: 14,
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
+                  Icon(
+                    isOk ? Icons.check_circle : Icons.warning_amber_rounded,
+                    size: 13,
+                    color: isOk ? const Color(0xFF4ADE80) : const Color(0xFFFFB74D),
+                  ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 subtitle,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   color: Colors.white.withValues(alpha: 0.85),
                 ),
                 maxLines: 1,
@@ -1486,7 +1480,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
     );
   }
 
-  Widget _buildCameraCardItem(Map<String, dynamic> cam) {
+  Widget _buildCameraCardItem(
+    Map<String, dynamic> cam, {
+    EdgeInsetsGeometry? margin,
+  }) {
     final id = cam['id'] as int? ?? 0;
     final name = cam['name']?.toString() ?? 'Camera #$id';
     final area = cam['area']?.toString() ?? 'Chưa xác định';
@@ -1512,6 +1509,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
       aiFps: fps,
       snapshotBytes: _snapshots[id],
       isSnapshotLoading: _loadingSnapshots.contains(id),
+      margin: margin,
       onTap: () => widget.onOpenLiveView?.call(id),
     );
   }
@@ -1529,11 +1527,34 @@ class _GuardHomePageState extends State<GuardHomePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Xem nhanh Camera',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Xem nhanh Camera',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (cameras.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${cameras.length}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             if (cameras.isNotEmpty)
               TextButton(
@@ -1572,7 +1593,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
               ],
             ),
           ),
-        ] else if (isGrid && cameras.length >= 2) ...[
+        ] else if (isGrid && cameras.length == 2) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1581,41 +1602,87 @@ class _GuardHomePageState extends State<GuardHomePage> {
               Expanded(child: _buildCameraCardItem(cameras[1])),
             ],
           ),
-          if (cameras.length > 2) ...[
-            const SizedBox(height: 12),
-            Center(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () => widget.onNavigateTab?.call(1),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                label: Text('Xem thêm ${cameras.length - 2} camera khác'),
-              ),
-            ),
-          ],
         ] else ...[
-          ...cameras.take(2).map((cam) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildCameraCardItem(cam),
-            );
-          }),
-          if (cameras.length > 2)
-            Center(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          // Horizontal Carousel: shows all cameras horizontally without occupying vertical space
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            clipBehavior: Clip.none,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...cameras.map((cam) {
+                  return SizedBox(
+                    width: isGrid ? 300 : 275,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _buildCameraCardItem(cam, margin: EdgeInsets.zero),
+                    ),
+                  );
+                }),
+                if (cameras.length > 1)
+                  SizedBox(
+                    width: 130,
+                    height: 236,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Material(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                          onTap: () => widget.onNavigateTab?.call(1),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                              border: Border.all(
+                                color: theme.dividerColor.withValues(alpha: 0.12),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: theme.colorScheme.primary,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Xem tất cả',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  '${cameras.length} camera',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    color: theme.textTheme.bodySmall?.color,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                onPressed: () => widget.onNavigateTab?.call(1),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                label: Text('Xem thêm ${cameras.length - 2} camera khác'),
-              ),
+              ],
             ),
+          ),
         ],
       ],
     );

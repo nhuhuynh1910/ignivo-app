@@ -24,6 +24,7 @@ class CameraPreviewCard extends StatelessWidget {
     this.snapshotTime,
     this.isLive = false,
     this.canConfigure = false,
+    this.margin,
     this.onTap,
     this.onEdit,
   });
@@ -40,6 +41,7 @@ class CameraPreviewCard extends StatelessWidget {
   final String? snapshotTime;
   final bool isLive;
   final bool canConfigure;
+  final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
 
@@ -54,7 +56,7 @@ class CameraPreviewCard extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: InteractiveCard(
-            margin: const EdgeInsets.only(bottom: 14),
+            margin: margin ?? const EdgeInsets.only(bottom: 14),
             borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
             onTap: onTap,
             child: Column(
