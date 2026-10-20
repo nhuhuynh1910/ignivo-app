@@ -43,6 +43,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
   final Set<int> _attemptedSnapshots = {};
   final Set<int> _loadingSnapshots = {};
 
+  final Map<int, Uint8List> _incidentSnapshots = {};
+  final Set<int> _attemptedIncidentSnapshots = {};
+  final Set<int> _loadingIncidentSnapshots = {};
+
   @override
   void initState() {
     super.initState();
@@ -84,6 +88,60 @@ class _GuardHomePageState extends State<GuardHomePage> {
         });
       }
     });
+  }
+
+  void _loadSnapshotForIncident(int id, String imageName) {
+    if (_attemptedIncidentSnapshots.contains(id) ||
+        _loadingIncidentSnapshots.contains(id)) {
+      return;
+    }
+    _loadingIncidentSnapshots.add(id);
+    _attemptedIncidentSnapshots.add(id);
+
+    widget.monitoringController.api
+        .getIncidentImage(id, imageName)
+        .then((bytes) {
+      if (!mounted) return;
+      setState(() {
+        _loadingIncidentSnapshots.remove(id);
+        _incidentSnapshots[id] = bytes;
+      });
+    }).catchError((_) {
+      if (mounted) {
+        setState(() {
+          _loadingIncidentSnapshots.remove(id);
+        });
+      }
+    });
+  }
+
+  String? _extractIncidentImageName(Map<String, dynamic> item) {
+    final analysisUrl = item['analysis_image_url'] as String?;
+    if (analysisUrl != null && analysisUrl.isNotEmpty) {
+      final uri = Uri.tryParse(analysisUrl);
+      if (uri != null && uri.pathSegments.isNotEmpty) {
+        var last = uri.pathSegments.last;
+        if (RegExp(r'^\d+$').hasMatch(last)) {
+          last = '${last.padLeft(2, '0')}.jpg';
+        }
+        if (RegExp(r'^(\d{2}|analysis_\d+)\.jpg$').hasMatch(last)) {
+          return last;
+        }
+      }
+    }
+    final images = item['images'];
+    if (images is List && images.isNotEmpty) {
+      var first = images.first?.toString();
+      if (first != null && first.isNotEmpty) {
+        if (RegExp(r'^\d+$').hasMatch(first)) {
+          first = '${first.padLeft(2, '0')}.jpg';
+        }
+        if (RegExp(r'^(\d{2}|analysis_\d+)\.jpg$').hasMatch(first)) {
+          return first;
+        }
+      }
+    }
+    return null;
   }
 
   @override
@@ -1757,6 +1815,22 @@ class _GuardHomePageState extends State<GuardHomePage> {
               final title = IncidentPresentationHelper.formatIncidentTitle(item);
               final timeFormatted =
                   IncidentPresentationHelper.formatTimestamp(time);
+              final isSimulation = item['is_simulation'] == true;
+              final triggerType = item['trigger_type']?.toString();
+
+              final directBytes = item['image_bytes'] as Uint8List?;
+              final imageBytes = directBytes ?? _incidentSnapshots[id];
+              final imageName =
+                  directBytes == null ? _extractIncidentImageName(item) : null;
+
+              if (directBytes == null &&
+                  imageName != null &&
+                  !_attemptedIncidentSnapshots.contains(id) &&
+                  !_loadingIncidentSnapshots.contains(id)) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _loadSnapshotForIncident(id, imageName);
+                });
+              }
 
               return RecentIncidentTile(
                 id: id,
@@ -1765,6 +1839,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
                 timeStr: timeFormatted.isNotEmpty ? timeFormatted : 'Vừa xong',
                 severity: severity,
                 status: status,
+                isSimulation: isSimulation,
+                imageBytes: imageBytes,
+                isImageLoading: _loadingIncidentSnapshots.contains(id),
+                triggerType: triggerType,
                 onTap: () => widget.onOpenIncident?.call(id),
               );
             },

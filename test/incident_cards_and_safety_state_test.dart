@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:ignivo_app/core/services/fireguard_api_service.dart';
 import 'package:ignivo_app/features/fireguard/fireguard_page.dart';
 import 'package:ignivo_app/features/fireguard/monitor_widgets.dart';
+import 'package:ignivo_app/widgets/ignivo_shimmer.dart';
 import 'package:ignivo_app/widgets/recent_incident_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -112,6 +114,80 @@ void main() {
       expect(find.text('#42'), findsOneWidget);
       expect(find.text('Tầng 1'), findsOneWidget);
       expect(find.text('5 phút trước'), findsOneWidget);
+    });
+
+    testWidgets('renders thumbnail image and trigger overlay badge when imageBytes provided', (tester) async {
+      final fakeBytes = Uint8List.fromList([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+        0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+        0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+        0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+      ]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RecentIncidentTile(
+              id: 55,
+              title: 'Cảnh báo Khói · Bếp',
+              area: 'Bếp',
+              timeStr: 'Vừa xong',
+              severity: 'warning',
+              status: 'active',
+              imageBytes: fakeBytes,
+              triggerType: 'smoke',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_outlined), findsOneWidget);
+    });
+
+    testWidgets('renders shimmer loading when isImageLoading is true', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RecentIncidentTile(
+              id: 56,
+              title: 'Cảnh báo Lửa · Kho',
+              area: 'Kho',
+              timeStr: '1 phút trước',
+              severity: 'critical',
+              status: 'notifying',
+              isImageLoading: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(IgnivoShimmerBox), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
+    });
+
+    testWidgets('renders fallback icon with trigger type when no image and not loading', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RecentIncidentTile(
+              id: 57,
+              title: 'Cảnh báo Camera · Cổng',
+              area: 'Cổng',
+              timeStr: '2 phút trước',
+              severity: 'info',
+              status: 'resolved',
+              triggerType: 'camera',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
+      expect(find.byType(IgnivoShimmerBox), findsNothing);
     });
   });
 

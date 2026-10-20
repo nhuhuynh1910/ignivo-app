@@ -1,12 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../core/theme/brand_tokens.dart';
 import '../features/fireguard/monitor_widgets.dart';
+import 'ignivo_shimmer.dart';
 import 'interactive_card.dart';
 
 /// Thẻ sự cố gần đây theo phong cách Stitch
 ///
-/// Trình bày loại sự cố, mức độ nghiêm trọng (severity), khu vực, thời gian
-/// và trạng thái xử lý đồng bộ với AlertPresentationMapping.
+/// Trình bày ảnh snapshot bằng chứng (nếu có), loại sự cố, mức độ nghiêm trọng (severity),
+/// khu vực, thời gian và trạng thái xử lý đồng bộ với AlertPresentationMapping.
 class RecentIncidentTile extends StatelessWidget {
   const RecentIncidentTile({
     super.key,
@@ -17,6 +19,9 @@ class RecentIncidentTile extends StatelessWidget {
     this.severity,
     this.status,
     this.isSimulation = false,
+    this.imageBytes,
+    this.isImageLoading = false,
+    this.triggerType,
     this.onTap,
   });
 
@@ -27,7 +32,139 @@ class RecentIncidentTile extends StatelessWidget {
   final String? severity;
   final String? status;
   final bool isSimulation;
+  final Uint8List? imageBytes;
+  final bool isImageLoading;
+  final String? triggerType;
   final VoidCallback? onTap;
+
+  static IconData getTriggerIcon(String? trigger) {
+    final t = (trigger ?? '').toLowerCase();
+    if (t.contains('fire') || t.contains('flame') || t.contains('cháy') || t.contains('lửa')) {
+      return Icons.local_fire_department_rounded;
+    }
+    if (t.contains('smoke') || t.contains('khói')) {
+      return Icons.cloud_outlined;
+    }
+    if (t.contains('camera') || t.contains('vision') || t.contains('motion') || t.contains('ai')) {
+      return Icons.videocam_outlined;
+    }
+    if (t.contains('heat') || t.contains('temp') || t.contains('nhiệt')) {
+      return Icons.thermostat_rounded;
+    }
+    if (t.contains('gas') || t.contains('khí')) {
+      return Icons.air_rounded;
+    }
+    return Icons.local_fire_department_rounded;
+  }
+
+  Widget _buildLeadingThumbnail(
+    BuildContext context,
+    StatusStyle statusStyle,
+    bool isDark,
+  ) {
+    final triggerIcon = getTriggerIcon(triggerType);
+
+    if (imageBytes != null && imageBytes!.isNotEmpty) {
+      return SizedBox(
+        width: 48,
+        height: 48,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.memory(
+                imageBytes!,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: statusStyle.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: statusStyle.border, width: 1),
+                  ),
+                  child: Icon(
+                    triggerIcon,
+                    color: statusStyle.foreground,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+            IgnorePointer(
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: statusStyle.border.withValues(alpha: 0.7),
+                    width: 1,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -2,
+              right: -2,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: statusStyle.foreground,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    triggerIcon,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isImageLoading) {
+      return IgnivoShimmerBox(
+        width: 48,
+        height: 48,
+        borderRadius: BorderRadius.circular(12),
+      );
+    }
+
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: statusStyle.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusStyle.border, width: 1),
+      ),
+      child: Icon(
+        triggerIcon,
+        color: statusStyle.foreground,
+        size: 24,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,23 +184,10 @@ class RecentIncidentTile extends StatelessWidget {
       padding: const EdgeInsets.all(BrandTokens.space12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Icon chỉ báo mức độ
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: statusStyle.background,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: statusStyle.border, width: 1),
-                ),
-                child: Icon(
-                  Icons.local_fire_department_rounded,
-                  color: statusStyle.foreground,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
+        children: [
+          // Thumbnail ảnh bằng chứng / Shimmer / Icon chỉ báo
+          _buildLeadingThumbnail(context, statusStyle, isDark),
+          const SizedBox(width: 12),
 
               // Thông tin sự cố
               Expanded(

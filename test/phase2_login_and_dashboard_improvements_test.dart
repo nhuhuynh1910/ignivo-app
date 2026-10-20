@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +13,7 @@ import 'package:ignivo_app/features/fireguard/fireguard_page.dart';
 import 'package:ignivo_app/features/fireguard/guard_home_page.dart';
 import 'package:ignivo_app/features/fireguard/monitoring_controller.dart';
 import 'package:ignivo_app/features/settings/edge_connection_page.dart';
+import 'package:ignivo_app/widgets/recent_incident_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'alarm_coordinator_test.dart' show MockAlertFeedbackAdapter;
@@ -180,6 +182,104 @@ void main() {
 
       expect(find.text('Bộ tăng tốc Hailo AI NPU'), findsOneWidget);
       expect(find.text('Thiết bị biên (Edge Box)'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      monitoring.stop();
+      coordinator.dispose();
+      monitoring.dispose();
+    });
+
+    testWidgets('GuardHomePage recent activity loads and displays incident evidence snapshot', (
+      tester,
+    ) async {
+      final fakeBytes = Uint8List.fromList([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+        0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+        0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+        0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+      ]);
+
+      final inc = {
+        'id': 10,
+        'status': 'notifying',
+        'severity': 'critical',
+        'trigger_type': 'smoke',
+        'area': 'Phòng ngủ',
+        'created_at': '2026-10-19T10:00:00Z',
+        'analysis_image_url': 'http://pi:8080/api/v1/emergency/incidents/10/images/analysis_01.jpg',
+      };
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/auth/me')) return _utf8Json({'role': 'OWNER'});
+          if (r.url.path.endsWith('/system/info')) return _utf8Json({'hostname': 'EdgePi'});
+          if (r.url.path.endsWith('/status')) {
+            return _utf8Json({
+              'vision': {'ready': true, 'total_ai_fps': 15.0},
+            });
+          }
+          if (r.url.path.endsWith('/cameras')) return _utf8Json([]);
+          if (r.url.path.endsWith('/incidents/active')) return _utf8Json(null);
+          if (r.url.path.endsWith('/incidents')) return _utf8Json([inc]);
+          if (r.url.path.contains('/incidents/10/images/analysis_01.jpg')) {
+            return http.Response.bytes(fakeBytes, 200, headers: {'content-type': 'image/jpeg'});
+          }
+          return _utf8Json({});
+        }),
+      );
+
+      final session = SystemSessionController(
+        api: api,
+        initialProfile: PiConnectionProfile.fromGuardUrl(
+          'http://pi:8080',
+          systemName: 'Nhà Riêng',
+        ),
+      );
+      await api.setAuthToken('mock-tok');
+
+      final realtime = TestRealtime(api);
+      final coordinator = IncidentAlertCoordinator(
+        api: api,
+        realtime: realtime,
+        feedbackAdapter: MockAlertFeedbackAdapter(),
+      );
+      final monitoring = MonitoringController(
+        api: api,
+        realtime: realtime,
+        coordinator: coordinator,
+      );
+
+      monitoring.start();
+      await monitoring.refresh();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GuardHomePage(
+              sessionController: session,
+              monitoringController: monitoring,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Verify RecentIncidentTile exists and has loaded Image
+      expect(find.byType(RecentIncidentTile), findsOneWidget);
+      final tile = tester.widget<RecentIncidentTile>(find.byType(RecentIncidentTile));
+      expect(tile.imageBytes, isNotNull);
+      expect(tile.triggerType, 'smoke');
+      expect(
+        find.descendant(
+          of: find.byType(RecentIncidentTile),
+          matching: find.byType(Image),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.cloud_outlined), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       monitoring.stop();
