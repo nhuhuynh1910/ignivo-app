@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../core/services/camera_snapshot_loader.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/services/system_session_manager.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../../widgets/camera_preview_card.dart';
 import '../../widgets/ignivo_page_header.dart';
@@ -9,6 +10,7 @@ import '../../widgets/ignivo_sheet.dart';
 import '../../widgets/recent_incident_tile.dart';
 import '../../widgets/pulsing_status_dot.dart';
 import '../../widgets/interactive_card.dart';
+import '../systems/systems_page.dart';
 import 'monitoring_controller.dart';
 import 'monitor_widgets.dart';
 
@@ -17,6 +19,7 @@ class GuardHomePage extends StatefulWidget {
     super.key,
     required this.sessionController,
     required this.monitoringController,
+    this.sessionManager,
     this.snapshotLoader,
     this.onNavigateTab,
     this.onOpenIncident,
@@ -26,6 +29,7 @@ class GuardHomePage extends StatefulWidget {
 
   final SystemSessionController sessionController;
   final MonitoringController monitoringController;
+  final SystemSessionManager? sessionManager;
   final CameraSnapshotLoader? snapshotLoader;
   final void Function(int tabIndex)? onNavigateTab;
   final void Function(int incidentId)? onOpenIncident;
@@ -186,15 +190,32 @@ class _GuardHomePageState extends State<GuardHomePage> {
                 ? () => widget.onNavigateTab!(3)
                 : null,
             onTapSystem: () {
-              showIgnivoSystemSheet(
-                context: context,
-                systemName: widget.sessionController.systemName,
-                address: widget.sessionController.profile.guardUrl,
-                isConnected: !isStale,
-                cameraCount: totalCameras,
-                onDiagnostics: widget.onOpenDiagnostics,
-                onChangeConnection: () => widget.sessionController.disconnect(),
-              );
+              if (widget.sessionManager != null) {
+                showIgnivoQuickSystemSwitcherSheet(
+                  context: context,
+                  sessionManager: widget.sessionManager!,
+                  onOpenSystemsPage: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SystemsPage(
+                          sessionManager: widget.sessionManager!,
+                          canPop: true,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              } else {
+                showIgnivoSystemSheet(
+                  context: context,
+                  systemName: widget.sessionController.systemName,
+                  address: widget.sessionController.profile.guardUrl,
+                  isConnected: !isStale,
+                  cameraCount: totalCameras,
+                  onDiagnostics: widget.onOpenDiagnostics,
+                  onChangeConnection: () => widget.sessionController.disconnect(),
+                );
+              }
             },
             action: widget.onOpenDiagnostics == null
                 ? null

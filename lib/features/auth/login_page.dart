@@ -4,7 +4,6 @@ import '../../core/services/app_auth_controller.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'register_page.dart';
-import '../settings/edge_connection_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, this.authController});
@@ -202,7 +201,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 8),
 
                   const Text(
-                    'Giám sát an toàn ngôi nhà của bạn',
+                    'Tài khoản Cloud để quản lý và giám sát đa hệ thống',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -330,20 +329,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
-
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.sensors),
-                    label: const Text('Kết nối hệ thống Pi'),
-                    onPressed: _loading
-                        ? null
-                        : () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const EdgeConnectionPage(),
-                            ),
-                          ),
-                  ),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

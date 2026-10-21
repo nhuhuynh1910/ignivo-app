@@ -190,6 +190,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         final tabContent = switch (_selectedTab) {
           0 => GuardHomePage(
             sessionController: widget.sessionController,
+            sessionManager: widget.sessionManager,
             monitoringController: _monitoring,
             snapshotLoader: _snapshotLoader,
             onNavigateTab: (idx) => setState(() => _selectedTab = idx),

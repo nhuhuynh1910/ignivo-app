@@ -180,17 +180,7 @@ class _SystemsPageState extends State<SystemsPage> {
           IconButton(
             icon: const Icon(Icons.mail_outline_rounded),
             tooltip: 'Lời mời tham gia hệ thống',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => InvitationsPage(
-                    sessionManager: widget.sessionManager,
-                    userEmail: widget.authController?.currentUserEmail,
-                  ),
-                ),
-              );
-            },
+            onPressed: _openInvitationsPage,
           ),
           if (widget.authController != null)
             IconButton(
@@ -312,15 +302,27 @@ class _SystemsPageState extends State<SystemsPage> {
     );
   }
 
+  void _openInvitationsPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvitationsPage(
+          sessionManager: widget.sessionManager,
+          userEmail: widget.authController?.currentUserEmail,
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(BuildContext context, bool isDark) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(26),
               decoration: BoxDecoration(
                 color: BrandTokens.brandPrimary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
@@ -331,17 +333,17 @@ class _SystemsPageState extends State<SystemsPage> {
                 color: BrandTokens.brandPrimary,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
             Text(
-              'Chưa có hệ thống giám sát nào',
+              'Chào mừng bạn đến với IGNIVO!',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
-              'Liên kết bộ xử lý Edge Box (FireGuard / Raspberry Pi) đầu tiên để bắt đầu theo dõi an toàn cháy nổ và camera thời gian thực.',
+              'Tài khoản Cloud của bạn hiện chưa có hệ thống nào. Bạn có thể ghép nối thiết bị mới hoặc kiểm tra các lời mời quản lý được chia sẻ.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: isDark
                         ? BrandTokens.darkTextSecondary
@@ -349,15 +351,33 @@ class _SystemsPageState extends State<SystemsPage> {
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _openAddSystem,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Liên kết hệ thống Edge Box'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _openAddSystem,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Ghép nối Edge Box mới'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _openInvitationsPage,
+                icon: const Icon(Icons.mail_outline_rounded),
+                label: const Text('Xem lời mời được chia sẻ'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                  ),
                 ),
               ),
             ),

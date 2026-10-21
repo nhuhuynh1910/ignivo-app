@@ -100,6 +100,14 @@ class IgnivoPageHeader extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            Icons.arrow_drop_down_rounded,
+                            size: 18,
+                            color: isDark
+                                ? BrandTokens.darkTextSecondary
+                                : BrandTokens.textSecondary,
+                          ),
                         ],
                       ),
                     ),

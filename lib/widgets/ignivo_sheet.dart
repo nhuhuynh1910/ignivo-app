@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/services/system_session_manager.dart';
 import '../core/theme/brand_tokens.dart';
 
 /// Thành phần Bottom Sheet chuẩn hóa theo phong cách Stitch HTML Demo (.ig-sheet)
@@ -521,6 +522,146 @@ Future<bool?> showIgnivoConfirmSheet({
           onPressed: () => Navigator.of(ctx).pop(false),
           child: const Text('Hủy'),
         ),
+      ],
+    ),
+  );
+}
+
+/// Bottom Sheet: Chuyển đổi hệ thống nhanh đa Edge Box (.quick-switcher)
+Future<void> showIgnivoQuickSystemSwitcherSheet({
+  required BuildContext context,
+  required SystemSessionManager sessionManager,
+  VoidCallback? onOpenSystemsPage,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final systems = sessionManager.systems;
+  final activeId = sessionManager.activeSystemId;
+
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => IgnivoSheet(
+      title: 'Chuyển hệ thống giám sát',
+      children: [
+        if (systems.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text('Chưa có hệ thống nào trong danh mục.'),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 340),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: systems.length,
+              separatorBuilder: (_, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final system = systems[index];
+                final isActive = system.systemId == activeId;
+
+                return InkWell(
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    if (!isActive) {
+                      await sessionManager.switchSystem(system.systemId);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? (isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint).withValues(alpha: 0.35)
+                          : (isDark ? BrandTokens.darkSurfaceVariant : Colors.grey.shade50),
+                      borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                      border: Border.all(
+                        color: isActive
+                            ? BrandTokens.brandPrimary
+                            : (isDark ? BrandTokens.darkBorder : BrandTokens.border),
+                        width: isActive ? 1.8 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isActive ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                          color: isActive
+                              ? BrandTokens.brandPrimary
+                              : (isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                system.systemName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                system.guardUrl,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? BrandTokens.darkSurface : Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                            ),
+                          ),
+                          child: Text(
+                            system.roleDisplayName,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        const SizedBox(height: 16),
+        if (onOpenSystemsPage != null)
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(46),
+              side: BorderSide(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              onOpenSystemsPage();
+            },
+            icon: const Icon(Icons.hub_outlined, size: 18),
+            label: const Text('Quản lý tất cả hệ thống'),
+          ),
       ],
     ),
   );

@@ -31,6 +31,38 @@ class GuardSettingsPage extends StatelessWidget {
   final MultiSystemMonitoringCoordinator? coordinator;
   final VoidCallback? onOpenDiagnostics;
 
+  void _confirmSignOutAccount(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất tài khoản IGNIVO?'),
+        content: const Text(
+          'Toàn bộ phiên làm việc của các hệ thống trên thiết bị này sẽ được đóng lại và bạn sẽ quay về màn hình đăng nhập Cloud.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark
+                  ? BrandTokens.darkCriticalFg
+                  : BrandTokens.criticalFg,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Đăng xuất Cloud'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await authController?.signOut();
+    }
+  }
+
   void _confirmLogout(BuildContext context) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
@@ -106,6 +138,7 @@ class GuardSettingsPage extends StatelessWidget {
         sessionController.username ??
         'Người dùng';
     final phone = sessionController.phoneNumber ?? '';
+    final cloudEmail = authController?.currentUserEmail;
     final warningStyle = StatusStyle.warning(isDark: isDark);
     final criticalColor = isDark
         ? BrandTokens.darkCriticalFg
@@ -189,19 +222,19 @@ class GuardSettingsPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          if (cloudEmail != null) ...[
+                            Text(
+                              cloudEmail,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (phone.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(
-                              phone,
+                              'Hệ thống: $name',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isDark
@@ -209,6 +242,28 @@ class GuardSettingsPage extends StatelessWidget {
                                     : BrandTokens.textSecondary,
                               ),
                             ),
+                          ] else ...[
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (phone.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                phone,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? BrandTokens.darkTextSecondary
+                                      : BrandTokens.textSecondary,
+                                ),
+                              ),
+                            ],
                           ],
                           const SizedBox(height: 6),
                           Container(
@@ -501,28 +556,63 @@ class GuardSettingsPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // 5. Logout Button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: criticalColor,
-                  side: BorderSide(color: criticalColor),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      BrandTokens.buttonRadius,
+            // 5. Logout Buttons
+            if (authController != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: criticalColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        BrandTokens.buttonRadius,
+                      ),
                     ),
                   ),
-                ),
-                onPressed: () => _confirmLogout(context),
-                icon: const Icon(Icons.logout),
-                label: const Text(
-                  'Đăng xuất tài khoản',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  onPressed: () => _confirmSignOutAccount(context),
+                  icon: const Icon(Icons.cloud_off_rounded),
+                  label: const Text(
+                    'Đăng xuất IGNIVO Cloud',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: criticalColor,
+                  ),
+                  onPressed: () => _confirmLogout(context),
+                  icon: const Icon(Icons.logout, size: 18),
+                  label: const Text('Đăng xuất phiên Pi hiện tại'),
+                ),
+              ),
+            ] else ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: criticalColor,
+                    side: BorderSide(color: criticalColor),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        BrandTokens.buttonRadius,
+                      ),
+                    ),
+                  ),
+                  onPressed: () => _confirmLogout(context),
+                  icon: const Icon(Icons.logout),
+                  label: const Text(
+                    'Đăng xuất tài khoản',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             Center(
               child: Text(
