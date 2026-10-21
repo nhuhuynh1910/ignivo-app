@@ -19,6 +19,7 @@ class IgnivoPageHeader extends StatelessWidget {
     this.onTapSystem,
     this.onTapAvatar,
     this.avatarInitials,
+    this.compact,
   });
 
   final String title;
@@ -31,9 +32,197 @@ class IgnivoPageHeader extends StatelessWidget {
   final VoidCallback? onTapSystem;
   final VoidCallback? onTapAvatar;
   final String? avatarInitials;
+  final bool? compact;
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = compact ?? (title == 'Trang chủ');
+    if (isCompact) {
+      return _buildCompactHeader(context);
+    }
+    return _buildFullHeader(context);
+  }
+
+  Widget _buildCompactHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final syncTime = updatedAt?.toLocal();
+    final formattedSyncTime = syncTime == null
+        ? null
+        : '${syncTime.hour.toString().padLeft(2, '0')}:${syncTime.minute.toString().padLeft(2, '0')}';
+    final syncTooltip = stale
+        ? 'Dữ liệu chưa đồng bộ'
+        : formattedSyncTime != null
+            ? 'Đã đồng bộ lúc $formattedSyncTime'
+            : 'Đã kết nối';
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Semantics(
+          header: true,
+          label: '$title - $systemName',
+          child: Row(
+            children: [
+              if (Navigator.canPop(context)) ...[
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                  tooltip: 'Trở về danh sách hệ thống',
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 8),
+              ] else ...[
+                const IgnivoBrandLogo.wordmarkOnly(excludeFromSemantics: false),
+                const SizedBox(width: 10),
+              ],
+              // System Selector Pill with integrated Online/Sync dot
+              Flexible(
+                child: Tooltip(
+                  message: '$systemName · $syncTooltip',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      if (onTapSystem != null) {
+                        onTapSystem!();
+                      } else {
+                        showIgnivoSystemSheet(
+                          context: context,
+                          systemName: systemName,
+                          address: 'Hệ thống FireGuard Edge',
+                          isConnected: !stale,
+                          cameraCount: 3,
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? BrandTokens.darkSurfaceVariant
+                            : BrandTokens.brandTint,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? BrandTokens.darkBorder
+                              : BrandTokens.brandPrimary.withValues(alpha: 0.2),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.router_rounded,
+                            size: 16,
+                            color: isDark
+                                ? BrandTokens.darkPrimary
+                                : BrandTokens.brandPrimary,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 130),
+                              child: Text(
+                                systemName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5,
+                                  color: isDark
+                                      ? BrandTokens.darkTextPrimary
+                                      : BrandTokens.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: stale
+                                  ? Colors.orange.shade700
+                                  : (isDark
+                                      ? BrandTokens.stitchDarkOnlineFg
+                                      : BrandTokens.stitchOnlineFg),
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            Icons.arrow_drop_down_rounded,
+                            size: 18,
+                            color: isDark
+                                ? BrandTokens.darkTextSecondary
+                                : BrandTokens.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              ?action,
+              if (onTapAvatar != null || avatarInitials != null) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Cài đặt & Tài khoản',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: onTapAvatar,
+                    child: CircleAvatar(
+                      radius: 15,
+                      backgroundColor: isDark
+                          ? BrandTokens.darkBrandTint
+                          : BrandTokens.brandTint,
+                      child: avatarInitials != null && avatarInitials != 'MA'
+                          ? Text(
+                              avatarInitials!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? BrandTokens.darkPrimary
+                                    : BrandTokens.brandPrimary,
+                              ),
+                            )
+                          : Icon(
+                              Icons.person_rounded,
+                              size: 17,
+                              color: isDark
+                                  ? BrandTokens.darkPrimary
+                                  : BrandTokens.brandPrimary,
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullHeader(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final muted = isDark
