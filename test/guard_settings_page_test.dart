@@ -91,6 +91,10 @@ void main() {
       expect(find.text('VAI TRÒ: OWNER (TOÀN QUYỀN)'), findsOneWidget);
       expect(find.text('Người liên hệ khẩn cấp'), findsOneWidget);
       expect(find.text('Địa chỉ khẩn cấp'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Cảnh báo hoạt động khi mở ứng dụng'),
+        100,
+      );
       expect(find.text('Cảnh báo hoạt động khi mở ứng dụng'), findsOneWidget);
 
       await tester.scrollUntilVisible(find.text('Đăng xuất tài khoản'), 100);

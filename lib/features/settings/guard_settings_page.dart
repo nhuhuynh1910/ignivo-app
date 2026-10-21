@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/ignivo_sheet.dart';
+import '../../core/models/system_record.dart';
+import '../../core/services/fireeye_api_service.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../fireguard/monitoring_controller.dart';
+import '../fireguard/people_page.dart';
 import '../../core/services/app_auth_controller.dart';
 import '../../core/services/multi_system_monitoring_coordinator.dart';
 import '../../core/services/system_session_manager.dart';
+import '../systems/system_members_page.dart';
 import '../systems/systems_page.dart';
 import 'diagnostics_page.dart';
 import 'emergency_contacts_page.dart';
@@ -379,6 +383,38 @@ class GuardSettingsPage extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 1),
+                  if (isOwnerOrAdmin) ...[
+                    ListTile(
+                      leading: _buildLeadingIcon(
+                        context,
+                        Icons.face_retouching_natural_rounded,
+                      ),
+                      title: const Text(
+                        'Nhận diện khuôn mặt người quen',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Đăng ký khuôn mặt người thân / nhân viên để tránh báo nhầm',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => PeoplePage(
+                              eye: FireeyeApiService(
+                                fireguard: sessionController.api,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                  ],
                   ListTile(
                     leading: _buildLeadingIcon(
                       context,
@@ -494,6 +530,49 @@ class GuardSettingsPage extends StatelessWidget {
                               authController: authController,
                               coordinator: coordinator,
                               canPop: true,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: _buildLeadingIcon(
+                        context,
+                        Icons.people_alt_outlined,
+                      ),
+                      title: const Text(
+                        'Thành viên & Phân quyền',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Text(
+                        isOwnerOrAdmin
+                            ? 'Mời qua email và quản trị quyền RBAC'
+                            : 'Xem danh sách thành viên trong hệ thống',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () {
+                        final currentSystem = sessionManager!.systems.firstWhere(
+                          (s) =>
+                              s.systemId == (sessionManager!.activeSystemId ?? ''),
+                          orElse: () => sessionManager!.systems.isNotEmpty
+                              ? sessionManager!.systems.first
+                              : SystemRecord.fromPiConnectionProfile(
+                                  sessionController.profile,
+                                  systemId: sessionManager!.activeSystemId ??
+                                      sessionController.deviceId,
+                                ).copyWith(
+                                  role: sessionController.role ?? 'OPERATOR',
+                                ),
+                        );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SystemMembersPage(
+                              system: currentSystem,
                             ),
                           ),
                         );

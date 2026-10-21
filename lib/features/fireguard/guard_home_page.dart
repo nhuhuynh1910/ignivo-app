@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../core/services/app_auth_controller.dart';
 import '../../core/services/camera_snapshot_loader.dart';
+import '../../core/services/multi_system_monitoring_coordinator.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/services/system_session_manager.dart';
 import '../../core/theme/brand_tokens.dart';
@@ -21,6 +23,8 @@ class GuardHomePage extends StatefulWidget {
     required this.monitoringController,
     this.sessionManager,
     this.snapshotLoader,
+    this.authController,
+    this.coordinator,
     this.onNavigateTab,
     this.onOpenIncident,
     this.onOpenLiveView,
@@ -31,6 +35,8 @@ class GuardHomePage extends StatefulWidget {
   final MonitoringController monitoringController;
   final SystemSessionManager? sessionManager;
   final CameraSnapshotLoader? snapshotLoader;
+  final AppAuthController? authController;
+  final MultiSystemMonitoringCoordinator? coordinator;
   final void Function(int tabIndex)? onNavigateTab;
   final void Function(int incidentId)? onOpenIncident;
   final void Function(int cameraId)? onOpenLiveView;
@@ -199,6 +205,8 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       MaterialPageRoute(
                         builder: (_) => SystemsPage(
                           sessionManager: widget.sessionManager!,
+                          authController: widget.authController,
+                          coordinator: widget.coordinator,
                           canPop: true,
                         ),
                       ),

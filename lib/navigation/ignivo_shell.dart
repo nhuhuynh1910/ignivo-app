@@ -193,6 +193,8 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
             sessionManager: widget.sessionManager,
             monitoringController: _monitoring,
             snapshotLoader: _snapshotLoader,
+            authController: widget.authController,
+            coordinator: widget.coordinator,
             onNavigateTab: (idx) => setState(() => _selectedTab = idx),
             onOpenIncident: _openIncident,
             onOpenLiveView: _openCameraLive,
