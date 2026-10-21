@@ -73,6 +73,7 @@ flutter:
     - assets/images/ignivo_mark.jpg
     - assets/images/ignivo_wordmark.jpg
     - assets/images/app_launcher_icon.png
+    - assets/images/Ten nhom.png
     - assets/sounds/
 
 flutter_launcher_icons:

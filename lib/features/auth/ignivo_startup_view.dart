@@ -47,8 +47,41 @@ class IgnivoStartupView extends StatelessWidget {
                   const IgnivoLogo.mark(size: 80),
                   const SizedBox(height: BrandTokens.space16),
 
-                  // Wordmark IGNIVO
-                  const IgnivoLogo.wordmark(width: 170),
+                  // Tên nhóm / Wordmark graphic IGNIVO từ assets/images/Ten nhom.png
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(
+                        BrandTokens.badgeRadius,
+                      ),
+                      border: Border.all(
+                        color: isDark
+                            ? BrandTokens.darkBorder
+                            : BrandTokens.border,
+                        width: 1.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.35 : 0.08,
+                          ),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      BrandTokens.teamNameAsset,
+                      width: 190,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const IgnivoLogo.wordmark(width: 170),
+                    ),
+                  ),
                   const SizedBox(height: BrandTokens.space16),
 
                   // Slogan 2 dòng không chồng chữ

@@ -15,7 +15,7 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Firebase initialization skipped or failed: $e');
   }
-  runApp(const IgnivoApp());
+  runApp(const IgnivoApp(showInitialSplash: true));
 }
 
 class IgnivoApp extends StatelessWidget {
@@ -23,11 +23,13 @@ class IgnivoApp extends StatelessWidget {
     super.key,
     this.sessionController,
     this.authenticatedBuilder,
+    this.showInitialSplash = false,
   });
 
   final SystemSessionController? sessionController;
   final Widget Function(BuildContext context, SystemSessionController controller)?
       authenticatedBuilder;
+  final bool showInitialSplash;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +42,7 @@ class IgnivoApp extends StatelessWidget {
       home: AppEntryGate(
         sessionController: sessionController,
         authenticatedBuilder: authenticatedBuilder,
+        showInitialSplash: showInitialSplash,
       ),
     );
   }

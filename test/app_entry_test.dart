@@ -6,9 +6,13 @@ import 'package:http/testing.dart';
 import 'package:ignivo_app/core/models/pi_connection_profile.dart';
 import 'package:ignivo_app/core/services/fireguard_api_service.dart';
 import 'package:ignivo_app/core/services/system_session_controller.dart';
+import 'package:ignivo_app/core/theme/brand_tokens.dart';
+import 'package:ignivo_app/features/auth/app_entry_gate.dart';
+import 'package:ignivo_app/features/auth/ignivo_startup_view.dart';
 import 'package:ignivo_app/features/auth/system_login_page.dart';
 import 'package:ignivo_app/features/settings/connection_setup_page.dart';
 import 'package:ignivo_app/main.dart';
+import 'package:ignivo_app/widgets/ignivo_logo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 http.Response jsonResp(Object data, [int code = 200]) =>
@@ -299,6 +303,58 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('system-login-back-btn')), findsNothing);
+    });
+
+    testWidgets('IgnivoStartupView displays Ignivo mark logo and team name image', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: IgnivoStartupView(),
+        ),
+      );
+
+      expect(find.byType(IgnivoLogo), findsOneWidget);
+      expect(find.byType(Image), findsNWidgets(2));
+
+      final teamImageFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == BrandTokens.teamNameAsset,
+      );
+      expect(teamImageFinder, findsOneWidget);
+
+      final markImageFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == BrandTokens.markAsset,
+      );
+      expect(markImageFinder, findsOneWidget);
+
+      expect(find.text('Phát hiện sớm.\nBảo vệ kịp thời.'), findsOneWidget);
+    });
+
+    testWidgets('AppEntryGate with showInitialSplash: true shows IgnivoStartupView before transitioning', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AppEntryGate(
+            showInitialSplash: true,
+          ),
+        ),
+      );
+
+      // Startup splash is active immediately
+      expect(find.byType(IgnivoStartupView), findsOneWidget);
+      expect(find.text('Đang khởi chạy hệ sinh thái IGNIVO...'), findsOneWidget);
+
+      // Advance time beyond splash delay
+      await tester.pump(const Duration(milliseconds: 1500));
+      await tester.pumpAndSettle();
+
+      // After splash finishes, enters normal entry flow
+      expect(find.byType(IgnivoStartupView), findsNothing);
+      expect(find.byType(ConnectionSetupPage), findsOneWidget);
     });
   });
 }

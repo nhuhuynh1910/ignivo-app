@@ -22,6 +22,7 @@ class AppEntryGate extends StatefulWidget {
     this.registryRepository,
     this.coordinator,
     this.authenticatedBuilder,
+    this.showInitialSplash = false,
   });
 
   final SystemSessionController? sessionController;
@@ -31,12 +32,16 @@ class AppEntryGate extends StatefulWidget {
   final MultiSystemMonitoringCoordinator? coordinator;
   final Widget Function(BuildContext context, SystemSessionController controller)?
       authenticatedBuilder;
+  final bool showInitialSplash;
 
   @override
   State<AppEntryGate> createState() => _AppEntryGateState();
 }
 
 class _AppEntryGateState extends State<AppEntryGate> {
+  // Initial splash state
+  bool _splashCompleted = true;
+
   // Legacy single controller mode
   SystemSessionController? _legacyController;
   bool _legacyInitialized = false;
@@ -64,6 +69,14 @@ class _AppEntryGateState extends State<AppEntryGate> {
   @override
   void initState() {
     super.initState();
+    if (widget.showInitialSplash) {
+      _splashCompleted = false;
+      Future.delayed(const Duration(milliseconds: 1400), () {
+        if (mounted) {
+          setState(() => _splashCompleted = true);
+        }
+      });
+    }
     if (_isLegacyMode) {
       _initLegacyMode();
     } else {
@@ -193,6 +206,11 @@ class _AppEntryGateState extends State<AppEntryGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.showInitialSplash && !_splashCompleted) {
+      return const IgnivoStartupView(
+        statusMessage: 'Đang khởi chạy hệ sinh thái IGNIVO...',
+      );
+    }
     if (_isLegacyMode) {
       return _buildLegacyFlow(context);
     }
