@@ -256,6 +256,11 @@ class _AppEntryGateState extends State<AppEntryGate> {
 
     final manager = _sessionManager;
     if (manager == null || manager.systems.isEmpty || _showSystemsPage) {
+      final hasActiveSystem = manager != null &&
+          manager.systems.isNotEmpty &&
+          manager.activeController != null;
+      final allowBack = _showSystemsPage && hasActiveSystem;
+
       return SystemsPage(
         sessionManager: manager ??
             SystemSessionManager(
@@ -264,7 +269,12 @@ class _AppEntryGateState extends State<AppEntryGate> {
             ),
         authController: _authController,
         coordinator: _coordinator,
-        canPop: _showSystemsPage && (manager?.systems.isNotEmpty ?? false),
+        canPop: allowBack,
+        onBack: allowBack
+            ? () {
+                if (mounted) setState(() => _showSystemsPage = false);
+              }
+            : null,
         onSystemSelected: (_) {
           if (mounted) setState(() => _showSystemsPage = false);
         },

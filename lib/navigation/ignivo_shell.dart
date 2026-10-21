@@ -253,40 +253,38 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
           );
         }
 
-        if (!isDesktop) {
-          return Scaffold(
-            body: tabContent,
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: _selectedTab,
-              onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
-              destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: 'Trang chủ',
+        final Widget shellScaffold = !isDesktop
+            ? Scaffold(
+                body: tabContent,
+                bottomNavigationBar: NavigationBar(
+                  selectedIndex: _selectedTab,
+                  onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
+                  destinations: [
+                    const NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: 'Trang chủ',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.videocam_outlined),
+                      selectedIcon: Icon(Icons.videocam),
+                      label: 'Camera',
+                    ),
+                    NavigationDestination(
+                      icon: buildAlertNavIcon(isSelected: false),
+                      selectedIcon: buildAlertNavIcon(isSelected: true),
+                      label: 'Cảnh báo',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings),
+                      label: 'Cài đặt',
+                    ),
+                  ],
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.videocam_outlined),
-                  selectedIcon: Icon(Icons.videocam),
-                  label: 'Camera',
-                ),
-                NavigationDestination(
-                  icon: buildAlertNavIcon(isSelected: false),
-                  selectedIcon: buildAlertNavIcon(isSelected: true),
-                  label: 'Cảnh báo',
-                ),
-                const NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings),
-                  label: 'Cài đặt',
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Scaffold(
-          body: Row(
+              )
+            : Scaffold(
+                body: Row(
             children: [
               NavigationRail(
                 extended: isExtended,
@@ -480,6 +478,17 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
               ),
             ],
           ),
+        );
+
+        return PopScope(
+          canPop: _selectedTab == 0,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (_selectedTab != 0) {
+              setState(() => _selectedTab = 0);
+            }
+          },
+          child: shellScaffold,
         );
       },
     );

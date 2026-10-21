@@ -18,6 +18,7 @@ class SystemsPage extends StatefulWidget {
     this.authController,
     this.coordinator,
     this.canPop = false,
+    this.onBack,
     this.onSystemSelected,
   });
 
@@ -25,6 +26,7 @@ class SystemsPage extends StatefulWidget {
   final AppAuthController? authController;
   final MultiSystemMonitoringCoordinator? coordinator;
   final bool canPop;
+  final VoidCallback? onBack;
   final void Function(SystemRecord system)? onSystemSelected;
 
   @override
@@ -160,22 +162,38 @@ class _SystemsPageState extends State<SystemsPage> {
     }
   }
 
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final systems = widget.sessionManager.systems;
     final activeId = widget.sessionManager.activeSystemId;
+    final canDirectlyPop = Navigator.canPop(context);
+    final canGoBack = widget.canPop || widget.onBack != null || canDirectlyPop;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hệ thống giám sát'),
-        leading: widget.canPop
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
+    return PopScope(
+      canPop: !canGoBack || canDirectlyPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Hệ thống giám sát'),
+          leading: canGoBack
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _handleBack,
+                )
+              : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.mail_outline_rounded),
@@ -299,8 +317,9 @@ class _SystemsPageState extends State<SystemsPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _openInvitationsPage() {
     Navigator.push(
