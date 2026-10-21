@@ -237,11 +237,69 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-
       // SystemLoginPage must not be shown
       expect(find.byType(SystemLoginPage), findsNothing);
       expect(find.text('DASHBOARD TỰ ĐỘNG: Trần Quản Lý'), findsOneWidget);
       expect(controller.isAuthenticated, isTrue);
     });
+
+    testWidgets('SystemLoginPage displays back button when canPop is true and invokes back action on tap', (
+      tester,
+    ) async {
+      bool backed = false;
+      final profile = PiConnectionProfile.fromGuardUrl(
+        'http://192.168.1.100:8080',
+        systemName: 'Xưởng Mộc A',
+      );
+      final controller = SystemSessionController(
+        api: FireguardApiService(),
+        initialProfile: profile,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SystemLoginPage(
+            sessionController: controller,
+            canPop: true,
+            onBack: () => backed = true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byKey(const Key('system-login-back-btn'));
+      expect(backButton, findsOneWidget);
+
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(backed, isTrue);
+    });
+
+    testWidgets('SystemLoginPage hides back button in standalone root mode when canPop is false', (
+      tester,
+    ) async {
+      final profile = PiConnectionProfile.fromGuardUrl(
+        'http://192.168.1.100:8080',
+        systemName: 'Xưởng Mộc A',
+      );
+      final controller = SystemSessionController(
+        api: FireguardApiService(),
+        initialProfile: profile,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SystemLoginPage(
+            sessionController: controller,
+            canPop: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('system-login-back-btn')), findsNothing);
+    });
   });
 }
+

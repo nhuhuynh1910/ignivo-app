@@ -12,11 +12,15 @@ class SystemLoginPage extends StatefulWidget {
     required this.sessionController,
     this.sessionManager,
     this.onSwitchSystem,
+    this.canPop,
+    this.onBack,
   });
 
   final SystemSessionController sessionController;
   final SystemSessionManager? sessionManager;
   final VoidCallback? onSwitchSystem;
+  final bool? canPop;
+  final VoidCallback? onBack;
 
   @override
   State<SystemLoginPage> createState() => _SystemLoginPageState();
@@ -46,6 +50,22 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
     super.dispose();
   }
 
+  bool get _canGoBack {
+    if (widget.canPop != null) return widget.canPop!;
+    if (widget.onBack != null) return true;
+    return Navigator.canPop(context);
+  }
+
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else if (Navigator.canPop(context)) {
+      Navigator.of(context).pop();
+    } else if (widget.onSwitchSystem != null) {
+      widget.onSwitchSystem!();
+    }
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     widget.sessionController.clearError();
@@ -61,6 +81,9 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
       // Clear password inputs from RAM immediately upon successful login
       _secretController.clear();
       _systemSecretController.clear();
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
@@ -69,6 +92,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
       MaterialPageRoute(
         builder: (_) => ConnectionSetupPage(
           sessionController: widget.sessionController,
+          sessionManager: widget.sessionManager,
           canPop: true,
         ),
       ),
@@ -81,9 +105,24 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
     final controller = widget.sessionController;
     final isAuthenticating = controller.status == SessionStatus.authenticating;
     final errorMessage = controller.lastError;
+    final showBack = _canGoBack;
 
     return Scaffold(
+      appBar: showBack
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              leading: IconButton(
+                key: const Key('system-login-back-btn'),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                tooltip: 'Trở về danh sách hệ thống',
+                onPressed: _handleBack,
+              ),
+            )
+          : null,
       body: SafeArea(
+        top: !showBack,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),

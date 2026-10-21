@@ -87,7 +87,12 @@ class _SystemsPageState extends State<SystemsPage> {
     if (controller != null && !controller.isAuthenticated) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => SystemLoginPage(sessionController: controller),
+          builder: (_) => SystemLoginPage(
+            sessionController: controller,
+            sessionManager: widget.sessionManager,
+            canPop: true,
+            onBack: () => Navigator.of(context).pop(),
+          ),
         ),
       );
     }
@@ -1039,6 +1044,8 @@ class _SystemsPageState extends State<SystemsPage> {
                         _confirmRemoveSystem(system);
                       } else if (val == 'logout') {
                         widget.sessionManager.logoutSystem(system.systemId);
+                      } else if (val == 'login') {
+                        _switchToSystem(system, openMonitoring: true);
                       }
                     },
                     itemBuilder: (context) => [
@@ -1050,6 +1057,17 @@ class _SystemsPageState extends State<SystemsPage> {
                               Icon(Icons.group_outlined, size: 18),
                               SizedBox(width: 8),
                               Text('Quản lý thành viên'),
+                            ],
+                          ),
+                        ),
+                      if (!isAuthed)
+                        const PopupMenuItem(
+                          value: 'login',
+                          child: Row(
+                            children: [
+                              Icon(Icons.login_rounded, size: 18),
+                              SizedBox(width: 8),
+                              Text('Đăng nhập vào Pi'),
                             ],
                           ),
                         ),
