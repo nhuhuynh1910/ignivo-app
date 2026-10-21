@@ -8,9 +8,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web.',
-      );
+      return web;
     }
 
     switch (defaultTargetPlatform) {
@@ -29,6 +27,15 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAMlOCoXjj0LbGXUlmPGe_Qh_bPW8p72Es',
+    appId: '1:397385781864:web:5ae248521f132b374e61dd',
+    messagingSenderId: '397385781864',
+    projectId: 'ignivo-ai',
+    authDomain: 'ignivo-ai.firebaseapp.com',
+    storageBucket: 'ignivo-ai.firebasestorage.app',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBsFeY6o32f8MR7ySlWnStn7XHXtUB2fGU',
