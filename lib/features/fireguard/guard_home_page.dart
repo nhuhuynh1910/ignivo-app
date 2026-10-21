@@ -863,16 +863,6 @@ class _GuardHomePageState extends State<GuardHomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'IGNIVO EDGE BOX',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                letterSpacing: 0.8,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withValues(alpha: 0.82),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -1048,77 +1038,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-
-                  // Footer: Processing note & System Sheet management link
-                  Container(
-                    padding: const EdgeInsets.only(top: 8),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          width: 0.8,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.hub_outlined,
-                              size: 13,
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Xử lý hình ảnh tại Edge Box',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.88),
-                              ),
-                            ),
-                          ],
-                        ),
-                        InkWell(
-                          onTap: () {
-                            showIgnivoSystemSheet(
-                              context: context,
-                              systemName: widget.sessionController.systemName,
-                              address: widget.sessionController.profile.guardUrl,
-                              isConnected: !isStale,
-                              cameraCount: totalCameras,
-                              onDiagnostics: widget.onOpenDiagnostics,
-                              onChangeConnection: () =>
-                                  widget.sessionController.disconnect(),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(4),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 2,
-                              horizontal: 4,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Quản lý hệ thống >',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 4),
 
                   // Expandable Hardware Telemetry
                   Theme(
