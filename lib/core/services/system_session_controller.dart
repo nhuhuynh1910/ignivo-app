@@ -63,8 +63,15 @@ class SystemSessionController extends ChangeNotifier {
   bool get isOwnerOrAdmin =>
       isAuthenticated && (role == 'OWNER' || role == 'ADMIN');
 
-  /// Any authenticated role is allowed to handle emergency incidents (ACK, Resolve, False Alarm).
-  bool get canHandleIncidents => isAuthenticated;
+  bool get isViewer => role == 'VIEWER';
+
+  bool get canOperate =>
+      isAuthenticated && role != 'VIEWER';
+
+  /// Only VIEWER is forbidden from handling emergency incidents (ACK, Resolve, False Alarm, Escalate).
+  bool get canHandleIncidents => canOperate;
+
+
 
   Future<void> initialize(SharedPreferences prefs) async {
     _profile = await PiConnectionProfile.load(prefs);

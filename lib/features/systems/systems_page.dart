@@ -7,6 +7,9 @@ import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../auth/system_login_page.dart';
 import '../settings/connection_setup_page.dart';
+import 'system_members_page.dart';
+import 'invitations_page.dart';
+
 
 class SystemsPage extends StatefulWidget {
   const SystemsPage({
@@ -174,6 +177,21 @@ class _SystemsPageState extends State<SystemsPage> {
               )
             : null,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.mail_outline_rounded),
+            tooltip: 'Lời mời tham gia hệ thống',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => InvitationsPage(
+                    sessionManager: widget.sessionManager,
+                    userEmail: widget.authController?.currentUserEmail,
+                  ),
+                ),
+              );
+            },
+          ),
           if (widget.authController != null)
             IconButton(
               icon: const Icon(Icons.logout_rounded),
@@ -181,6 +199,7 @@ class _SystemsPageState extends State<SystemsPage> {
               onPressed: _confirmSignOutAccount,
             ),
         ],
+
       ),
       body: SafeArea(
         child: Center(
@@ -458,13 +477,31 @@ class _SystemsPageState extends State<SystemsPage> {
                     ),
                   PopupMenuButton<String>(
                     onSelected: (val) {
-                      if (val == 'remove') {
+                      if (val == 'members') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SystemMembersPage(system: system),
+                          ),
+                        );
+                      } else if (val == 'remove') {
                         _confirmRemoveSystem(system);
                       } else if (val == 'logout') {
                         widget.sessionManager.logoutSystem(system.systemId);
                       }
                     },
                     itemBuilder: (context) => [
+                      if (system.canManageMembers)
+                        const PopupMenuItem(
+                          value: 'members',
+                          child: Row(
+                            children: [
+                              Icon(Icons.group_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Quản lý thành viên'),
+                            ],
+                          ),
+                        ),
                       if (isAuthed)
                         const PopupMenuItem(
                           value: 'logout',
@@ -490,6 +527,7 @@ class _SystemsPageState extends State<SystemsPage> {
                       ),
                     ],
                   ),
+
                 ],
               ),
               const SizedBox(height: 8),
@@ -555,16 +593,26 @@ class _SystemsPageState extends State<SystemsPage> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? BrandTokens.darkSurfaceVariant
-                              : BrandTokens.background,
+                          color: system.role == 'OWNER'
+                              ? (isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint)
+                              : (isDark ? BrandTokens.darkSurfaceVariant : BrandTokens.background),
                           borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: system.role == 'OWNER'
+                                ? BrandTokens.brandPrimary.withValues(alpha: 0.3)
+                                : (isDark ? BrandTokens.darkBorder : BrandTokens.border),
+                          ),
                         ),
                         child: Text(
-                          system.role == 'OWNER' ? 'Chủ sở hữu' : 'Thành viên',
-                          style: const TextStyle(fontSize: 11),
+                          system.roleDisplayName,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: system.role == 'OWNER' ? BrandTokens.brandPrimary : null,
+                          ),
                         ),
                       ),
+
                       const SizedBox(width: 8),
                       Text(
                         isAuthed ? 'Đã xác thực' : 'Chưa đăng nhập Pi',

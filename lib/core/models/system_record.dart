@@ -30,6 +30,25 @@ class SystemRecord {
   final DateTime? lastConnectedAt;
   final String status;
 
+  bool get canOperate => role == 'OWNER' || role == 'ADMIN' || role == 'OPERATOR';
+  bool get isViewer => role == 'VIEWER';
+  bool get canManageMembers => role == 'OWNER' || role == 'ADMIN';
+
+  String get roleDisplayName {
+    switch (role.toUpperCase()) {
+      case 'OWNER':
+        return 'Chủ sở hữu';
+      case 'ADMIN':
+        return 'Quản trị viên';
+      case 'OPERATOR':
+        return 'Vận hành';
+      case 'VIEWER':
+      default:
+        return 'Chỉ xem';
+    }
+  }
+
+
   SystemRecord copyWith({
     String? systemId,
     String? systemName,

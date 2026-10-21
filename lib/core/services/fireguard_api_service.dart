@@ -336,7 +336,10 @@ class FireguardApiService {
   }) => _write('POST', '/incidents/$id/false-alarm', body: {'note': note});
   Future<bool> resolveIncident(int id, {String note = 'Đã xử lý từ IGNIVO'}) =>
       _write('POST', '/incidents/$id/resolve', body: {'note': note});
+  Future<bool> escalateIncident(int id) =>
+      _write('POST', '/incidents/$id/escalate');
   String getIncidentImageUrl(dynamic id, {dynamic image = '00.jpg'}) {
+
     var name = image.toString();
     if (RegExp(r'^\d+$').hasMatch(name)) name = '${name.padLeft(2, '0')}.jpg';
     return '$apiPrefix/incidents/$id/images/${Uri.encodeComponent(name)}';

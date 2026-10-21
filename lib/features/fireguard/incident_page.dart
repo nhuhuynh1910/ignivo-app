@@ -137,7 +137,18 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
   }
 
   Future<void> _act(String action) async {
+    final userRole = _api.currentUser?['role']?.toString().toUpperCase();
+    if (userRole == 'VIEWER') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tài khoản vai trò Chỉ xem (Viewer) không có quyền thao tác trên sự cố.'),
+        ),
+      );
+      return;
+    }
+
     if (action != 'ack') {
+
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -264,107 +275,166 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                           ),
                         ),
                     ],
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                    if (_api.currentUser?['role']?.toString().toUpperCase() == 'VIEWER') ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.3)),
                         ),
-                        backgroundColor: BrandTokens.criticalFg,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed:
-                          _busy ||
-                              _error != null ||
-                              incident['status'] == 'acknowledged'
-                          ? null
-                          : () {
-                              HapticFeedback.heavyImpact();
-                              _act('ack');
-                            },
-                      icon: Icon(
-                        incident['status'] == 'acknowledged'
-                            ? Icons.check_circle_outline_rounded
-                            : Icons.front_hand_rounded,
-                        size: 20,
-                      ),
-                      label: Text(
-                        incident['status'] == 'acknowledged'
-                            ? 'Đã nhận xử lý'
-                            : 'Nhận xử lý • Dừng gọi tiếp',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed: _busy || _error != null
-                          ? null
-                          : () {
-                              setState(() {
-                                if (widget.coordinator?.isSilenced == true) {
-                                  widget.coordinator?.resumeAlarm();
-                                } else {
-                                  widget.coordinator?.silenceAlarm();
-                                }
-                              });
-                            },
-                      icon: Icon(
-                        (widget.coordinator?.isSilenced == true)
-                            ? Icons.volume_up_rounded
-                            : Icons.volume_off_rounded,
-                        size: 20,
-                      ),
-                      label: Text(
-                        (widget.coordinator?.isSilenced == true)
-                            ? 'Bật lại âm thanh'
-                            : 'Tắt âm trên thiết bị',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 46),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                        child: Row(
+                          children: [
+                            Icon(Icons.visibility_rounded, color: Colors.amber.shade800, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Chế độ Chỉ xem (Viewer): Bạn không có quyền thao tác hay đóng sự cố này.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.amber.shade900,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: _busy || _error != null
+                            ? null
+                            : () {
+                                setState(() {
+                                  if (widget.coordinator?.isSilenced == true) {
+                                    widget.coordinator?.resumeAlarm();
+                                  } else {
+                                    widget.coordinator?.silenceAlarm();
+                                  }
+                                });
+                              },
+                        icon: Icon(
+                          (widget.coordinator?.isSilenced == true)
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_off_rounded,
+                          size: 20,
+                        ),
+                        label: Text(
+                          (widget.coordinator?.isSilenced == true)
+                              ? 'Bật lại âm thanh'
+                              : 'Tắt âm trên thiết bị',
+                        ),
+                      ),
+                    ] else ...[
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          backgroundColor: BrandTokens.criticalFg,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed:
+                            _busy ||
+                                _error != null ||
+                                incident['status'] == 'acknowledged'
+                            ? null
+                            : () {
+                                HapticFeedback.heavyImpact();
+                                _act('ack');
+                              },
+                        icon: Icon(
+                          incident['status'] == 'acknowledged'
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.front_hand_rounded,
+                          size: 20,
+                        ),
+                        label: Text(
+                          incident['status'] == 'acknowledged'
+                              ? 'Đã nhận xử lý'
+                              : 'Nhận xử lý • Dừng gọi tiếp',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: _busy || _error != null
+                            ? null
+                            : () {
+                                setState(() {
+                                  if (widget.coordinator?.isSilenced == true) {
+                                    widget.coordinator?.resumeAlarm();
+                                  } else {
+                                    widget.coordinator?.silenceAlarm();
+                                  }
+                                });
+                              },
+                        icon: Icon(
+                          (widget.coordinator?.isSilenced == true)
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_off_rounded,
+                          size: 20,
+                        ),
+                        label: Text(
+                          (widget.coordinator?.isSilenced == true)
+                              ? 'Bật lại âm thanh'
+                              : 'Tắt âm trên thiết bị',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 46),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: _busy || _error != null
+                                  ? null
+                                  : () {
+                                      HapticFeedback.mediumImpact();
+                                      _act('resolve');
+                                    },
+                              child: const Text('Đã xử lý xong'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(80, 46),
+                              foregroundColor: Colors.red.shade400,
                             ),
                             onPressed: _busy || _error != null
                                 ? null
                                 : () {
-                                    HapticFeedback.mediumImpact();
-                                    _act('resolve');
+                                    HapticFeedback.lightImpact();
+                                    _act('false-alarm');
                                   },
-                            child: const Text('Đã xử lý xong'),
+                            child: const Text('Báo nhầm'),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            minimumSize: const Size(80, 46),
-                            foregroundColor: Colors.red.shade400,
-                          ),
-                          onPressed: _busy || _error != null
-                              ? null
-                              : () {
-                                  HapticFeedback.lightImpact();
-                                  _act('false-alarm');
-                                },
-                          child: const Text('Báo nhầm'),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
+
                   ],
                 ),
               ),
