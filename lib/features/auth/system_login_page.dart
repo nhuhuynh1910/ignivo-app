@@ -5,6 +5,7 @@ import '../../core/theme/brand_tokens.dart';
 import '../settings/connection_setup_page.dart';
 
 import '../../core/services/system_session_manager.dart';
+import '../../core/models/system_record.dart';
 
 class SystemLoginPage extends StatefulWidget {
   const SystemLoginPage({
@@ -70,14 +71,47 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
     if (!_formKey.currentState!.validate()) return;
     widget.sessionController.clearError();
 
-    final success = await widget.sessionController.login(
-      phoneNumber: _phoneController.text.trim(),
+    final phoneInput = _phoneController.text.trim();
+    var success = await widget.sessionController.login(
+      phoneNumber: phoneInput,
       secretKey: _secretController.text,
       systemSecretKey: _systemSecretController.text,
       rememberMe: _rememberMe,
     );
 
+    // Auto-retry with Vietnamese country code (+84) if user entered 0...
+    if (!success && phoneInput.startsWith('0') && phoneInput.length >= 9) {
+      final altPhone = '+84${phoneInput.substring(1)}';
+      success = await widget.sessionController.login(
+        phoneNumber: altPhone,
+        secretKey: _secretController.text,
+        systemSecretKey: _systemSecretController.text,
+        rememberMe: _rememberMe,
+      );
+    }
+
     if (success && mounted) {
+      if (widget.sessionManager != null &&
+          widget.sessionController.api.authToken != null) {
+        final token = widget.sessionController.api.authToken!;
+        final systems = widget.sessionManager!.systems;
+        final currentSys = systems.firstWhere(
+          (s) => s.guardUrl == widget.sessionController.guardUrl,
+          orElse: () => systems.isNotEmpty
+              ? systems.first
+              : SystemRecord.fromPiConnectionProfile(
+                  widget.sessionController.profile,
+                  systemId:
+                      'sys_${widget.sessionController.guardUrl.hashCode.abs()}',
+                ),
+        );
+        await widget.sessionManager!.registry.setSystemToken(
+          widget.sessionManager!.uid,
+          currentSys.systemId,
+          token,
+        );
+      }
+
       // Clear password inputs from RAM immediately upon successful login
       _secretController.clear();
       _systemSecretController.clear();
@@ -272,7 +306,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                       enabled: !isAuthenticating,
                       decoration: const InputDecoration(
                         labelText: 'Số điện thoại',
-                        hintText: '0912345678',
+                        hintText: '+84999999999 hoặc 0999999999',
                         prefixIcon: Icon(Icons.phone_outlined),
                         border: OutlineInputBorder(),
                       ),
@@ -411,6 +445,28 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Quick-fill helper button for default Pi credentials
+                    Center(
+                      child: TextButton.icon(
+                        key: const Key('quick-fill-pi-btn'),
+                        onPressed: isAuthenticating
+                            ? null
+                            : () {
+                                _phoneController.text = '+84999999999';
+                                _secretController.text = 'adminpassword';
+                                _systemSecretController.text =
+                                    'default_server_secret_key_123456';
+                                setState(() {});
+                              },
+                        icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
+                        label: const Text(
+                          'Điền tài khoản mẫu Pi (+84999999999 / Owner)',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ),
                   ],
                 ),
