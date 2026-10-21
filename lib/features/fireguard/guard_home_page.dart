@@ -239,21 +239,6 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                   callConfigured:
                                       status?['stringee_configured'] == true,
                                 ),
-                                const SizedBox(height: 16),
-
-                                // 2. Smart Status Chips Row (Apple Home style)
-                                _buildStatusChipsBar(
-                                  context,
-                                  isStale: isStale,
-                                  isAiActive: isAiActive,
-                                  aiFps: aiFps,
-                                  totalCameras: totalCameras,
-                                  onlineCameras: onlineCameras,
-                                  unclosedIncidents: unclosedIncidents,
-                                  callConfigured:
-                                      status?['stringee_configured'] == true,
-                                  isDesktop: true,
-                                ),
                                 const SizedBox(height: 20),
 
                                 // 3. Bento 2-Column Dashboard Layout
@@ -782,190 +767,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
   // Core Page Sections
   // ---------------------------------------------------------------------------
 
-  Widget _buildStatusChipsBar(
-    BuildContext context, {
-    required bool isStale,
-    required bool isAiActive,
-    required double aiFps,
-    required int totalCameras,
-    required int onlineCameras,
-    required List<Map<String, dynamic>> unclosedIncidents,
-    required bool callConfigured,
-    bool isDesktop = false,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    final hasIncidents = unclosedIncidents.isNotEmpty;
-    final safeColor = hasIncidents
-        ? BrandTokens.stitchCritical
-        : (isStale ? Colors.amber.shade700 : const Color(0xFF007A3D));
-
-    final safeBg = hasIncidents
-        ? BrandTokens.stitchCritical.withValues(alpha: isDark ? 0.22 : 0.10)
-        : (isStale
-            ? Colors.amber.shade900.withValues(alpha: isDark ? 0.22 : 0.10)
-            : const Color(0xFF007A3D).withValues(alpha: isDark ? 0.20 : 0.10));
-
-    final safeBorder = safeColor.withValues(alpha: isDark ? 0.45 : 0.35);
-
-    final safeText = hasIncidents
-        ? '${unclosedIncidents.length} sự cố cần chú ý'
-        : (isStale
-            ? 'Dữ liệu giám sát cần đồng bộ lại'
-            : 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có');
-
-    final chips = <Widget>[
-      // 1. Safety Status Chip (Primary Calibrated Highlight)
-      _buildStatusPill(
-        context,
-        icon: hasIncidents
-            ? Icons.warning_amber_rounded
-            : (isStale ? Icons.sync_problem_rounded : Icons.shield_outlined),
-        label: safeText,
-        color: safeColor,
-        backgroundColor: safeBg,
-        borderColor: safeBorder,
-        hasPulseDot: true,
-        onTap: () {
-          if (hasIncidents) {
-            widget.onNavigateTab?.call(2);
-          } else {
-            widget.onOpenDiagnostics?.call();
-          }
-        },
-      ),
-      const SizedBox(width: 8),
-
-      // 2. Edge Hardware Box Chip
-      _buildStatusPill(
-        context,
-        icon: Icons.developer_board_rounded,
-        label: isStale ? 'Edge Box: Đang kết nối' : 'Edge Box: Online',
-        color: isStale ? Colors.amber.shade700 : BrandTokens.stitchSafe,
-        onTap: widget.onOpenDiagnostics,
-      ),
-      const SizedBox(width: 8),
-
-      // 3. AI Monitoring Chip
-      _buildStatusPill(
-        context,
-        icon: Icons.psychology_outlined,
-        label: isAiActive
-            ? (aiFps > 0
-                ? 'AI: Đang giám sát (${aiFps.toStringAsFixed(1)} FPS)'
-                : 'AI: Sẵn sàng')
-            : 'AI: Tắt',
-        color: isAiActive ? BrandTokens.stitchSafe : BrandTokens.stitchWarning,
-        onTap: widget.onOpenDiagnostics,
-      ),
-      const SizedBox(width: 8),
-
-      // 4. Cameras Online Chip
-      _buildStatusPill(
-        context,
-        icon: Icons.videocam_outlined,
-        label: totalCameras > 0
-            ? '$onlineCameras/$totalCameras Camera online'
-            : 'Chưa có camera',
-        color: (totalCameras > 0 && onlineCameras == totalCameras)
-            ? BrandTokens.stitchSafe
-            : (onlineCameras > 0
-                ? BrandTokens.stitchWarning
-                : theme.textTheme.bodySmall?.color ?? Colors.grey),
-        onTap: () => widget.onNavigateTab?.call(1),
-      ),
-      const SizedBox(width: 8),
-
-      // 5. Emergency Hotline / SOS Chip
-      _buildStatusPill(
-        context,
-        icon: Icons.phone_in_talk_outlined,
-        label: callConfigured ? 'SOS: Sẵn sàng' : 'SOS: Chưa cấu hình',
-        color: callConfigured
-            ? BrandTokens.stitchSafe
-            : BrandTokens.stitchWarning,
-        onTap: () => widget.onNavigateTab?.call(3),
-      ),
-    ];
-
-    if (isDesktop) {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: chips,
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: chips,
-      ),
-    );
-  }
-
-  Widget _buildStatusPill(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    Color? backgroundColor,
-    Color? borderColor,
-    bool hasPulseDot = false,
-    VoidCallback? onTap,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final bg = backgroundColor ??
-        (isDark
-            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
-            : theme.cardColor);
-
-    final border = borderColor ?? theme.dividerColor.withValues(alpha: 0.08);
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: border, width: 0.8),
-            boxShadow: BrandTokens.softShadow(isDark: isDark),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? BrandTokens.darkTextPrimary
-                      : BrandTokens.textPrimary,
-                ),
-              ),
-              if (hasPulseDot) ...[
-                const SizedBox(width: 6),
-                PulsingStatusDot(color: color, size: 6, pulseSize: 13),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildReadinessCard(
     BuildContext context,
@@ -1567,6 +1369,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
       aiFps: fps,
       snapshotBytes: _snapshots[id],
       isSnapshotLoading: _loadingSnapshots.contains(id),
+      showLiveViewAction: false,
       margin: margin,
       onTap: () => widget.onOpenLiveView?.call(id),
     );
@@ -1645,7 +1448,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Chưa có camera nào được thiết lập trên Pi.',
+                  'Chưa có camera nào được kết nối vào hệ thống.',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -1666,79 +1469,80 @@ class _GuardHomePageState extends State<GuardHomePage> {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             clipBehavior: Clip.none,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ...cameras.map((cam) {
-                  return SizedBox(
-                    width: isGrid ? 300 : 275,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _buildCameraCardItem(cam, margin: EdgeInsets.zero),
-                    ),
-                  );
-                }),
-                if (cameras.length > 1)
-                  SizedBox(
-                    width: 130,
-                    height: 236,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Material(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
-                        child: InkWell(
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ...cameras.map((cam) {
+                    return SizedBox(
+                      width: isGrid ? 300 : 275,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _buildCameraCardItem(cam, margin: EdgeInsets.zero),
+                      ),
+                    );
+                  }),
+                  if (cameras.length > 1)
+                    SizedBox(
+                      width: 130,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Material(
+                          color: theme.cardColor,
                           borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
-                          onTap: () => widget.onNavigateTab?.call(1),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
-                              border: Border.all(
-                                color: theme.dividerColor.withValues(alpha: 0.12),
-                                width: 0.8,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                            onTap: () => widget.onNavigateTab?.call(1),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                                border: Border.all(
+                                  color: theme.dividerColor.withValues(alpha: 0.12),
+                                  width: 0.8,
+                                ),
                               ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: theme.colorScheme.primary,
+                                      size: 20,
+                                    ),
                                   ),
-                                  child: Icon(
-                                    Icons.arrow_forward_rounded,
-                                    color: theme.colorScheme.primary,
-                                    size: 20,
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Xem tất cả',
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Xem tất cả',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${cameras.length} camera',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: theme.textTheme.bodySmall?.color,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '${cameras.length} camera',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 11,
-                                    color: theme.textTheme.bodySmall?.color,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

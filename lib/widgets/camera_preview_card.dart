@@ -24,6 +24,7 @@ class CameraPreviewCard extends StatelessWidget {
     this.snapshotTime,
     this.isLive = false,
     this.canConfigure = false,
+    this.showLiveViewAction = true,
     this.margin,
     this.onTap,
     this.onEdit,
@@ -41,6 +42,7 @@ class CameraPreviewCard extends StatelessWidget {
   final String? snapshotTime;
   final bool isLive;
   final bool canConfigure;
+  final bool showLiveViewAction;
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
@@ -182,49 +184,27 @@ class CameraPreviewCard extends StatelessWidget {
                             ),
                           ),
                         ],
-                        const Text(' • ', style: TextStyle(color: Colors.grey)),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.router_rounded,
-                              size: 13,
-                              color: isDark
-                                  ? BrandTokens.darkPrimary
-                                  : BrandTokens.brandPrimary,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              'Edge Box',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? BrandTokens.darkPrimary
-                                    : BrandTokens.brandPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const Divider(height: 1),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: const Size(0, 32),
-                        ),
-                        onPressed: onTap,
-                        icon: const Icon(Icons.play_circle_outline, size: 16),
-                        label: const Text(
-                          'Xem trực tiếp (Live View)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    if (showLiveViewAction) ...[
+                      const SizedBox(height: 8),
+                      const Divider(height: 1),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          onPressed: onTap,
+                          icon: const Icon(Icons.play_circle_outline, size: 16),
+                          label: const Text(
+                            'Xem trực tiếp (Live View)',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
