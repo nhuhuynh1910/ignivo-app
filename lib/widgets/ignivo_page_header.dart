@@ -52,6 +52,14 @@ class IgnivoPageHeader extends StatelessWidget {
           children: [
             Row(
               children: [
+                if (Navigator.canPop(context)) ...[
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                    tooltip: 'Trở về danh sách hệ thống',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 const IgnivoBrandLogo.wordmarkOnly(excludeFromSemantics: false),
                 const Spacer(),
                 Tooltip(

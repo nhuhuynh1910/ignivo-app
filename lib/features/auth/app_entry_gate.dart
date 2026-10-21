@@ -49,7 +49,6 @@ class _AppEntryGateState extends State<AppEntryGate> {
   MultiSystemMonitoringCoordinator? _coordinator;
   bool _managerInitialized = false;
   String? _managerError;
-  bool _showSystemsPage = false;
 
   bool get _isLegacyMode {
     if (widget.authController != null) return false;
@@ -255,64 +254,20 @@ class _AppEntryGateState extends State<AppEntryGate> {
     }
 
     final manager = _sessionManager;
-    if (manager == null || manager.systems.isEmpty || _showSystemsPage) {
-      final hasActiveSystem = manager != null &&
-          manager.systems.isNotEmpty &&
-          manager.activeController != null;
-      final allowBack = _showSystemsPage && hasActiveSystem;
-
-      return SystemsPage(
-        sessionManager: manager ??
-            SystemSessionManager(
-              registry: _registry,
-              uid: _authController.currentUid ?? '',
-            ),
-        authController: _authController,
-        coordinator: _coordinator,
-        canPop: allowBack,
-        onBack: allowBack
-            ? () {
-                if (mounted) setState(() => _showSystemsPage = false);
-              }
-            : null,
-        onSystemSelected: (_) {
-          if (mounted) setState(() => _showSystemsPage = false);
-        },
-      );
+    if (widget.authenticatedBuilder != null && manager?.activeController != null) {
+      return widget.authenticatedBuilder!(context, manager!.activeController!);
     }
 
-    // 3. Có danh sách hệ thống -> kiểm tra active system
-    final activeController = manager.activeController;
-    if (activeController == null) {
-      return SystemsPage(
-        sessionManager: manager,
-        authController: _authController,
-        coordinator: _coordinator,
-        canPop: false,
-      );
-    }
-
-    // 4. Nếu active system chưa đăng nhập vào Pi
-    if (!activeController.isAuthenticated) {
-      return SystemLoginPage(
-        sessionController: activeController,
-        sessionManager: manager,
-        onSwitchSystem: () {
-          setState(() => _showSystemsPage = true);
-        },
-      );
-    }
-
-    // 5. Đã xác thực đầy đủ cả Cloud Account và Pi Session -> Vào IgnivoShell
-    if (widget.authenticatedBuilder != null) {
-      return widget.authenticatedBuilder!(context, activeController);
-    }
-
-    return IgnivoShell(
-      sessionController: activeController,
-      sessionManager: manager,
-      coordinator: _coordinator,
+    // Luồng chuẩn DMSS: Sau khi đăng nhập, màn hình chính là Device Hub (SystemsPage)
+    return SystemsPage(
+      sessionManager: manager ??
+          SystemSessionManager(
+            registry: _registry,
+            uid: _authController.currentUid ?? '',
+          ),
       authController: _authController,
+      coordinator: _coordinator,
+      canPop: false,
     );
   }
 }
