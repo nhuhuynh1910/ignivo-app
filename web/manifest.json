@@ -1,11 +1,11 @@
 {
-    "name": "ignivo_app",
-    "short_name": "ignivo_app",
+    "name": "IGNIVO - Giám sát An ninh & Báo cháy Edge AI",
+    "short_name": "IGNIVO",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#005FB8",
+    "theme_color": "#005FB8",
+    "description": "Hệ sinh thái giám sát an ninh và phát hiện sự cố Edge AI IGNIVO.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
