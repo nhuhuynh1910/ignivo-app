@@ -274,6 +274,7 @@ Future<void> showIgnivoSystemSheet({
   required int cameraCount,
   VoidCallback? onDiagnostics,
   VoidCallback? onChangeConnection,
+  VoidCallback? onSwitchSystem,
 }) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   return showIgnivoModalSheet(
@@ -298,12 +299,35 @@ Future<void> showIgnivoSystemSheet({
         value: '$cameraCount đã cấu hình',
       ),
       const SizedBox(height: 18),
+      if (onSwitchSystem != null) ...[
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            backgroundColor: isDark
+                ? BrandTokens.darkPrimary
+                : BrandTokens.brandPrimary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
+            ),
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+            onSwitchSystem();
+          },
+          icon: const Icon(Icons.hub_outlined, size: 20),
+          label: const Text('Danh sách hệ thống (Đổi Pi)'),
+        ),
+        const SizedBox(height: 8),
+      ],
       FilledButton.icon(
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
-          backgroundColor: isDark
-              ? BrandTokens.darkPrimary
-              : BrandTokens.brandPrimary,
+          backgroundColor: onSwitchSystem != null
+              ? (isDark ? BrandTokens.darkSurfaceVariant : BrandTokens.background)
+              : (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary),
+          foregroundColor: onSwitchSystem != null
+              ? (isDark ? Colors.white : Colors.black87)
+              : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
           ),

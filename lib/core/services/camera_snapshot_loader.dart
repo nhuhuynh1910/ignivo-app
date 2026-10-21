@@ -61,7 +61,7 @@ class CameraSnapshotLoader {
     this.maxConcurrent = 2,
     this.maxItems = 20,
     this.maxBytes = 16 * 1024 * 1024, // 16 MiB
-  })  : _client = httpClient ?? http.Client(),
+  })  : _client = httpClient ?? api.client,
         _isCustomClient = httpClient != null;
 
   final FireguardApiService api;

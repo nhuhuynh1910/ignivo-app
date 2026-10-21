@@ -6,14 +6,19 @@ import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 
+import '../../core/models/system_record.dart';
+import '../../core/services/system_session_manager.dart';
+
 class ConnectionSetupPage extends StatefulWidget {
   const ConnectionSetupPage({
     super.key,
     required this.sessionController,
+    this.sessionManager,
     this.canPop = false,
   });
 
   final SystemSessionController sessionController;
+  final SystemSessionManager? sessionManager;
   final bool canPop;
 
   @override
@@ -120,6 +125,17 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
 
       final prefs = await SharedPreferences.getInstance();
       await widget.sessionController.updateProfile(newProfile, prefs);
+
+      if (widget.sessionManager != null) {
+        final record = SystemRecord.fromPiConnectionProfile(
+          newProfile,
+          systemId: 'sys_${normalized.hashCode.abs()}',
+        );
+        await widget.sessionManager!.addOrUpdateSystem(
+          record,
+          existingController: widget.sessionController,
+        );
+      }
 
       if (!mounted) return;
       if (widget.canPop && Navigator.canPop(context)) {

@@ -19,6 +19,7 @@ class FireguardApiService {
     : _client = client ?? http.Client();
   static final instance = FireguardApiService();
   final http.Client _client;
+  http.Client get client => _client;
   static const defaultBaseUrl = 'http://100.95.189.60:8080';
   static const _prefBaseUrlKey = 'fireguard_edge_base_url';
   static const _prefAuthTokenKey = 'fireguard_edge_auth_token';

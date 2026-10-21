@@ -1,13 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import '../../core/services/app_auth_controller.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'register_page.dart';
 import '../settings/edge_connection_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, this.authController});
+
+  final AppAuthController? authController;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -90,6 +92,17 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      if (widget.authController != null) {
+        final ok = await widget.authController!.signInWithEmail(
+          _emailController.text,
+          _passwordController.text,
+        );
+        if (!ok && mounted && widget.authController!.lastError != null) {
+          _showMessage(widget.authController!.lastError!);
+        }
+        return;
+      }
+
       await _authService.login(
         email: _emailController.text,
         password: _passwordController.text,
@@ -113,6 +126,14 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      if (widget.authController != null) {
+        final ok = await widget.authController!.signInWithGoogle();
+        if (!ok && mounted && widget.authController!.lastError != null) {
+          _showMessage(widget.authController!.lastError!);
+        }
+        return;
+      }
+
       await _authService.signInWithGoogle();
     } on FirebaseAuthException catch (e) {
       _showMessage(_firebaseErrorMessage(e));

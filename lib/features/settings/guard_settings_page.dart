@@ -4,6 +4,10 @@ import '../../widgets/ignivo_sheet.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../fireguard/monitoring_controller.dart';
+import '../../core/services/app_auth_controller.dart';
+import '../../core/services/multi_system_monitoring_coordinator.dart';
+import '../../core/services/system_session_manager.dart';
+import '../systems/systems_page.dart';
 import 'diagnostics_page.dart';
 import 'emergency_contacts_page.dart';
 import 'emergency_location_page.dart';
@@ -14,11 +18,17 @@ class GuardSettingsPage extends StatelessWidget {
     super.key,
     required this.sessionController,
     required this.monitoringController,
+    this.sessionManager,
+    this.authController,
+    this.coordinator,
     this.onOpenDiagnostics,
   });
 
   final SystemSessionController sessionController;
   final MonitoringController monitoringController;
+  final SystemSessionManager? sessionManager;
+  final AppAuthController? authController;
+  final MultiSystemMonitoringCoordinator? coordinator;
   final VoidCallback? onOpenDiagnostics;
 
   void _confirmLogout(BuildContext context) async {
@@ -403,6 +413,39 @@ class GuardSettingsPage extends StatelessWidget {
               ),
               child: Column(
                 children: [
+                  if (sessionManager != null) ...[
+                    ListTile(
+                      leading: _buildLeadingIcon(
+                        context,
+                        Icons.hub_outlined,
+                      ),
+                      title: Text(
+                        'Hệ thống IGNIVO (${sessionManager!.systems.length})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Chuyển đổi hoặc liên kết thêm Edge Box khác',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SystemsPage(
+                              sessionManager: sessionManager!,
+                              authController: authController,
+                              coordinator: coordinator,
+                              canPop: true,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                  ],
                   ListTile(
                     leading: _buildLeadingIcon(
                       context,

@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/services/app_auth_controller.dart';
 import '../../core/services/camera_snapshot_loader.dart';
+import '../../core/services/multi_system_monitoring_coordinator.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/services/system_session_manager.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../features/activity/guard_activity_page.dart';
 import '../features/camera/camera_live_page.dart';
@@ -11,16 +15,23 @@ import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
 import '../features/settings/guard_settings_page.dart';
 import '../features/settings/diagnostics_page.dart';
+import '../features/systems/systems_page.dart';
 import '../widgets/desktop_top_bar.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
     super.key,
     required this.sessionController,
+    this.sessionManager,
+    this.coordinator,
+    this.authController,
     this.monitoringController,
   });
 
   final SystemSessionController sessionController;
+  final SystemSessionManager? sessionManager;
+  final MultiSystemMonitoringCoordinator? coordinator;
+  final AppAuthController? authController;
   final MonitoringController? monitoringController;
 
   @override
@@ -31,6 +42,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   late final MonitoringController _monitoring;
   late final CameraSnapshotLoader _snapshotLoader;
   final Set<int> _snackBarAnnounced = {};
+  StreamSubscription<CrossSystemIncidentAlert>? _crossAlertSub;
 
   @override
   void initState() {
@@ -42,6 +54,27 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         MonitoringController(api: widget.sessionController.api);
     _monitoring.addListener(_onMonitoringChanged);
     _monitoring.start();
+
+    _crossAlertSub = widget.coordinator?.onCrossSystemAlert.listen((alert) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'CẢNH BÁO KHẨN CẤP: ${alert.systemName} phát hiện sự cố #${alert.incidentId}!',
+          ),
+          duration: const Duration(seconds: 15),
+          backgroundColor: Colors.red.shade900,
+          action: SnackBarAction(
+            label: 'Chuyển hệ thống',
+            textColor: Colors.yellow,
+            onPressed: () async {
+              await widget.sessionManager?.switchSystem(alert.systemId);
+            },
+          ),
+        ),
+      );
+    });
   }
 
   void _onMonitoringChanged() {
@@ -97,6 +130,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _crossAlertSub?.cancel();
     _monitoring.removeListener(_onMonitoringChanged);
     if (widget.monitoringController == null) {
       _monitoring.dispose();
@@ -177,6 +211,9 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
           3 => GuardSettingsPage(
             sessionController: widget.sessionController,
             monitoringController: _monitoring,
+            sessionManager: widget.sessionManager,
+            authController: widget.authController,
+            coordinator: widget.coordinator,
             onOpenDiagnostics: _openDiagnostics,
           ),
           _ => const SizedBox.shrink(),
@@ -311,62 +348,79 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                     alignment: Alignment.bottomCenter,
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 20),
-                      child: isExtended
-                          ? Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 12),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: (isDark
-                                        ? BrandTokens.darkBrandTint
-                                        : BrandTokens.brandTint)
-                                    .withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(
-                                  BrandTokens.badgeRadius,
-                                ),
-                                border: Border.all(
-                                  color: (isDark
-                                          ? BrandTokens.darkBorder
-                                          : BrandTokens.border)
-                                      .withValues(alpha: 0.5),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.cloud_done_rounded,
-                                    size: 16,
-                                    color: _monitoring.stale
-                                        ? Colors.amber
-                                        : BrandTokens.stitchSafe,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      widget.sessionController.systemName,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+                        onTap: widget.sessionManager != null
+                            ? () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => SystemsPage(
+                                      sessionManager: widget.sessionManager!,
+                                      authController: widget.authController,
+                                      coordinator: widget.coordinator,
+                                      canPop: true,
                                     ),
                                   ),
-                                ],
+                                );
+                              }
+                            : null,
+                        child: isExtended
+                            ? Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (isDark
+                                          ? BrandTokens.darkBrandTint
+                                          : BrandTokens.brandTint)
+                                      .withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(
+                                    BrandTokens.badgeRadius,
+                                  ),
+                                  border: Border.all(
+                                    color: (isDark
+                                            ? BrandTokens.darkBorder
+                                            : BrandTokens.border)
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.cloud_done_rounded,
+                                      size: 16,
+                                      color: _monitoring.stale
+                                          ? Colors.amber
+                                          : BrandTokens.stitchSafe,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        widget.sessionController.systemName,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Tooltip(
+                                message: widget.sessionController.systemName,
+                                child: Icon(
+                                  Icons.cloud_done_rounded,
+                                  size: 20,
+                                  color: _monitoring.stale
+                                      ? Colors.amber
+                                      : BrandTokens.stitchSafe,
+                                ),
                               ),
-                            )
-                          : Tooltip(
-                              message: widget.sessionController.systemName,
-                              child: Icon(
-                                Icons.cloud_done_rounded,
-                                size: 20,
-                                color: _monitoring.stale
-                                    ? Colors.amber
-                                    : BrandTokens.stitchSafe,
-                              ),
-                            ),
+                      ),
                     ),
                   ),
                 ),

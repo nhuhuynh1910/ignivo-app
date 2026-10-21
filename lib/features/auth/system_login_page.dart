@@ -4,10 +4,19 @@ import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../settings/connection_setup_page.dart';
 
+import '../../core/services/system_session_manager.dart';
+
 class SystemLoginPage extends StatefulWidget {
-  const SystemLoginPage({super.key, required this.sessionController});
+  const SystemLoginPage({
+    super.key,
+    required this.sessionController,
+    this.sessionManager,
+    this.onSwitchSystem,
+  });
 
   final SystemSessionController sessionController;
+  final SystemSessionManager? sessionManager;
+  final VoidCallback? onSwitchSystem;
 
   @override
   State<SystemLoginPage> createState() => _SystemLoginPageState();
@@ -140,16 +149,31 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                               ],
                             ),
                           ),
-                          TextButton(
-                            key: const Key('change-connection-link'),
-                            onPressed: isAuthenticating ? null : _openSetupPage,
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.onSwitchSystem != null)
+                                TextButton(
+                                  key: const Key('switch-system-link'),
+                                  onPressed: isAuthenticating ? null : widget.onSwitchSystem,
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                                  ),
+                                  child: const Text('Đổi hệ thống'),
+                                ),
+                              TextButton(
+                                key: const Key('change-connection-link'),
+                                onPressed: isAuthenticating ? null : _openSetupPage,
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                ),
+                                child: const Text('Đổi kết nối'),
                               ),
-                            ),
-                            child: const Text('Đổi kết nối'),
+                            ],
                           ),
                         ],
                       ),

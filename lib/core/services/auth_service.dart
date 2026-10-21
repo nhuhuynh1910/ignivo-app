@@ -4,9 +4,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   AuthService({
     FirebaseAuth? auth,
-  }) : _auth = auth ?? FirebaseAuth.instance;
+  }) : _auth = auth;
 
-  final FirebaseAuth _auth;
+  final FirebaseAuth? _auth;
+
+  FirebaseAuth get _client => _auth ?? FirebaseAuth.instance;
 
   final GoogleSignIn _googleSignIn =
       GoogleSignIn.instance;
@@ -17,24 +19,44 @@ class AuthService {
   // CURRENT USER
   // ============================================================
 
-  User? get currentUser =>
-      _auth.currentUser;
+  User? get currentUser {
+    try {
+      return _client.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  String? get currentUserId =>
-      _auth.currentUser?.uid;
+  String? get currentUserId {
+    try {
+      return _client.currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  String? get currentUserEmail =>
-      _auth.currentUser?.email;
+  String? get currentUserEmail {
+    try {
+      return _client.currentUser?.email;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  Stream<User?> get authStateChanges =>
-      _auth.authStateChanges();
+  Stream<User?> get authStateChanges {
+    try {
+      return _client.authStateChanges();
+    } catch (_) {
+      return const Stream.empty();
+    }
+  }
 
   // ============================================================
   // PROVIDER CHECK
   // ============================================================
 
   bool get isPasswordUser {
-    final user = _auth.currentUser;
+    final user = currentUser;
 
     if (user == null) {
       return false;
@@ -47,7 +69,7 @@ class AuthService {
   }
 
   bool get isGoogleUser {
-    final user = _auth.currentUser;
+    final user = currentUser;
 
     if (user == null) {
       return false;
@@ -93,7 +115,7 @@ class AuthService {
     required String email,
     required String password,
   }) {
-    return _auth.signInWithEmailAndPassword(
+    return _client.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
@@ -107,7 +129,7 @@ class AuthService {
     required String email,
     required String password,
   }) {
-    return _auth.createUserWithEmailAndPassword(
+    return _client.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
@@ -131,7 +153,7 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
 
-    return _auth.signInWithCredential(
+    return _client.signInWithCredential(
       credential,
     );
   }
@@ -143,7 +165,7 @@ class AuthService {
   Future<void> sendPasswordResetEmail({
     required String email,
   }) {
-    return _auth.sendPasswordResetEmail(
+    return _client.sendPasswordResetEmail(
       email: email.trim(),
     );
   }
@@ -156,7 +178,7 @@ class AuthService {
     required String currentPassword,
     required String newPassword,
   }) async {
-    final user = _auth.currentUser;
+    final user = currentUser;
 
     if (user == null) {
       throw FirebaseAuthException(
@@ -213,7 +235,7 @@ class AuthService {
   // ============================================================
 
   Future<void> reloadUser() async {
-    await _auth.currentUser?.reload();
+    await currentUser?.reload();
   }
 
   // ============================================================
@@ -221,7 +243,9 @@ class AuthService {
   // ============================================================
 
   Future<void> logout() async {
-    await _auth.signOut();
+    try {
+      await _client.signOut();
+    } catch (_) {}
 
     try {
       await _initializeGoogleSignIn();
