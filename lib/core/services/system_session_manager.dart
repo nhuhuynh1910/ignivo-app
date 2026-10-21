@@ -28,6 +28,8 @@ class SystemSessionManager extends ChangeNotifier {
   String? _activeSystemId;
   bool _initialized = false;
   String? _lastError;
+  bool _disposed = false;
+  StreamSubscription<List<SystemRecord>>? _cloudSub;
 
   bool get isInitialized => _initialized;
   String? get activeSystemId => _activeSystemId;
@@ -79,9 +81,90 @@ class SystemSessionManager extends ChangeNotifier {
 
       _initialized = true;
       notifyListeners();
+
+      // Kích hoạt đồng bộ Cloud hai chiều để đồng bộ tức thì với các thiết bị khác (Web & App)
+      if (registry.isCloudSyncSupported) {
+        _startCloudSync();
+      }
     } catch (e) {
       _lastError = 'Lỗi khởi tạo hệ thống: $e';
       _initialized = true;
+      notifyListeners();
+    }
+  }
+
+  void _startCloudSync() {
+    if (!registry.isCloudSyncSupported) return;
+
+    _cloudSub?.cancel();
+    _cloudSub = registry.watchCloudSystems(uid).listen(
+      (cloudList) {
+        if (!_disposed) {
+          _applySyncedSystems(cloudList);
+        }
+      },
+      onError: (err) {
+        debugPrint('Cloud systems watch note: $err');
+      },
+    );
+
+    // Kéo dữ liệu từ Cloud về để hợp nhất với bộ nhớ cục bộ
+    registry.syncFromCloud(uid).then((synced) {
+      if (!_disposed) {
+        _applySyncedSystems(synced);
+      }
+    }).catchError((err) {
+      debugPrint('Cloud syncFromCloud note: $err');
+    });
+  }
+
+  void _applySyncedSystems(List<SystemRecord> newSystems) async {
+    if (_disposed || newSystems.isEmpty) return;
+
+    final currentIds = _systems.map((s) => s.systemId).toSet();
+    final newIds = newSystems.map((s) => s.systemId).toSet();
+
+    final isDifferent = currentIds.length != newIds.length ||
+        !currentIds.containsAll(newIds) ||
+        _systems.any((s) {
+          final match = newSystems.where((n) => n.systemId == s.systemId);
+          if (match.isEmpty) return true;
+          final n = match.first;
+          return n.systemName != s.systemName || n.guardUrl != s.guardUrl;
+        });
+
+    if (!isDifferent || _disposed) return;
+
+    _systems = List.unmodifiable(newSystems);
+
+    // Bổ sung controller cho các hệ thống mới tải từ Cloud
+    for (final sys in _systems) {
+      if (!_controllers.containsKey(sys.systemId)) {
+        final token = await registry.getSystemToken(uid, sys.systemId);
+        final controller = _createController(sys, savedToken: token);
+        controller.addListener(_onChildControllerChanged);
+        _controllers[sys.systemId] = controller;
+      }
+    }
+
+    // Dọn dẹp controller cho các hệ thống đã bị gỡ trên thiết bị khác
+    final removedIds =
+        _controllers.keys.where((id) => !newIds.contains(id)).toList();
+    for (final id in removedIds) {
+      final c = _controllers.remove(id);
+      c?.removeListener(_onChildControllerChanged);
+      c?.dispose();
+    }
+
+    // Đảm bảo active system luôn hợp lệ
+    if (_activeSystemId == null || !_controllers.containsKey(_activeSystemId)) {
+      _activeSystemId = _systems.isNotEmpty ? _systems.first.systemId : null;
+      if (_activeSystemId != null) {
+        await registry.setActiveSystemId(uid, _activeSystemId!);
+      }
+    }
+
+    if (!_disposed) {
       notifyListeners();
     }
   }
@@ -190,6 +273,7 @@ class SystemSessionManager extends ChangeNotifier {
 
   @override
   void dispose() {
+    _cloudSub?.cancel();
     for (final c in _controllers.values) {
       c.removeListener(_onChildControllerChanged);
       c.dispose();

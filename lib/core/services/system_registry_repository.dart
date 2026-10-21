@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,19 +8,35 @@ import '../models/pi_connection_profile.dart';
 import '../models/system_record.dart';
 
 /// Quản lý danh mục các hệ thống kết nối và kho token phân vùng theo Firebase UID.
+/// Hỗ trợ bộ nhớ cục bộ (SharedPreferences & SecureStorage) kết hợp đồng bộ Cloud Firestore.
 class SystemRegistryRepository {
   SystemRegistryRepository({
     SharedPreferences? prefs,
     FlutterSecureStorage? secureStorage,
+    FirebaseFirestore? firestore,
   })  : _prefs = prefs,
         _secureStorage = secureStorage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(resetOnError: true),
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-            );
+            ),
+        _firestore = firestore;
 
   SharedPreferences? _prefs;
   final FlutterSecureStorage _secureStorage;
+  final FirebaseFirestore? _firestore;
+
+  FirebaseFirestore? get _effectiveFirestore {
+    if (_firestore != null) return _firestore;
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        return FirebaseFirestore.instance;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  bool get isCloudSyncSupported => _effectiveFirestore != null;
 
   static const String _prefMetadataPrefix = 'ignivo_systems_metadata_v1_';
   static const String _prefActiveSystemPrefix = 'ignivo_active_system_';
@@ -82,6 +100,21 @@ class SystemRegistryRepository {
     if (activeId == null || activeId.isEmpty) {
       await setActiveSystemId(uid, system.systemId);
     }
+
+    // Tự động sao lưu lên Cloud Firestore để đồng bộ giữa Web và Mobile
+    final firestore = _effectiveFirestore;
+    if (firestore != null && uid.isNotEmpty) {
+      try {
+        await firestore
+            .collection('users')
+            .doc(uid)
+            .collection('registered_systems')
+            .doc(system.systemId)
+            .set(system.toJson(), SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Warning: Cloud backup failed for system ${system.systemId}: $e');
+      }
+    }
   }
 
   /// Gỡ hệ thống khỏi danh mục của UID
@@ -96,6 +129,21 @@ class SystemRegistryRepository {
     // Xóa token trong secure storage
     await setSystemToken(uid, systemId, null);
 
+    // Xóa trên Cloud Firestore
+    final firestore = _effectiveFirestore;
+    if (firestore != null && uid.isNotEmpty) {
+      try {
+        await firestore
+            .collection('users')
+            .doc(uid)
+            .collection('registered_systems')
+            .doc(systemId)
+            .delete();
+      } catch (e) {
+        debugPrint('Warning: Cloud delete failed for system $systemId: $e');
+      }
+    }
+
     // Nếu hệ thống bị gỡ đang là active system, chuyển active sang hệ thống còn lại đầu tiên
     final activeId = await getActiveSystemId(uid);
     if (activeId == systemId) {
@@ -105,6 +153,88 @@ class SystemRegistryRepository {
         await prefs.remove('$_prefActiveSystemPrefix$uid');
       }
     }
+  }
+
+  /// Đồng bộ danh sách hệ thống từ Cloud Firestore về thiết bị (Web / Mobile)
+  Future<List<SystemRecord>> syncFromCloud(String uid) async {
+    final firestore = _effectiveFirestore;
+    if (firestore == null || uid.isEmpty) {
+      return getSystems(uid);
+    }
+
+    try {
+      final snapshot = await firestore
+          .collection('users')
+          .doc(uid)
+          .collection('registered_systems')
+          .get();
+
+      final localSystems = await getSystems(uid);
+
+      if (snapshot.docs.isEmpty) {
+        // Nếu trên Cloud chưa có nhưng cục bộ đã có, tự động đẩy dữ liệu cục bộ lên Cloud
+        for (final sys in localSystems) {
+          await firestore
+              .collection('users')
+              .doc(uid)
+              .collection('registered_systems')
+              .doc(sys.systemId)
+              .set(sys.toJson(), SetOptions(merge: true));
+        }
+        return localSystems;
+      }
+
+      final cloudSystems = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return SystemRecord.fromJson(data);
+      }).toList();
+
+      // Hợp nhất (Merge): Ưu tiên Cloud cho cùng systemId, giữ lại hệ thống cục bộ nếu có
+      final mergedMap = <String, SystemRecord>{};
+      for (final s in localSystems) {
+        mergedMap[s.systemId] = s;
+      }
+      for (final s in cloudSystems) {
+        mergedMap[s.systemId] = s;
+      }
+
+      final mergedList = mergedMap.values.toList();
+
+      // Cập nhật SharedPreferences cục bộ
+      final prefs = await _getPrefs();
+      final raw = jsonEncode(mergedList.map((s) => s.toJson()).toList());
+      await prefs.setString('$_prefMetadataPrefix$uid', raw);
+
+      // Cập nhật active system nếu cần
+      final activeId = await getActiveSystemId(uid);
+      if ((activeId == null || !mergedMap.containsKey(activeId)) && mergedList.isNotEmpty) {
+        await setActiveSystemId(uid, mergedList.first.systemId);
+      }
+
+      return mergedList;
+    } catch (e) {
+      debugPrint('Error syncing systems from cloud for UID $uid: $e');
+      return getSystems(uid);
+    }
+  }
+
+  /// Lắng nghe các thay đổi hệ thống thời gian thực từ Cloud Firestore
+  Stream<List<SystemRecord>> watchCloudSystems(String uid) {
+    final firestore = _effectiveFirestore;
+    if (firestore == null || uid.isEmpty) {
+      return const Stream.empty();
+    }
+
+    return firestore
+        .collection('users')
+        .doc(uid)
+        .collection('registered_systems')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => SystemRecord.fromJson(doc.data()))
+          .toList();
+    });
   }
 
   /// Lấy systemId đang được chọn hoạt động của UID
