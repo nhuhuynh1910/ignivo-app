@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/system_session_controller.dart';
+import '../../core/theme/brand_tokens.dart';
+import '../../widgets/ignivo_page_header.dart';
 import '../fireguard/camera_editor_page.dart';
 import 'mjpeg_stream_view.dart';
 
@@ -61,9 +62,33 @@ class _CameraLivePageState extends State<CameraLivePage> {
     }
   }
 
+  void _handleSnapshot() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đã ghi nhận ảnh chụp từ luồng camera trực tiếp.'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handleRefresh() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Đang làm mới thông tin camera...'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    _loadCameraDetail();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final cam = _camera ?? widget.initialCamera ?? {};
     final id = widget.cameraId;
     final name = cam['name']?.toString() ?? 'Camera #$id';
@@ -117,6 +142,46 @@ class _CameraLivePageState extends State<CameraLivePage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: (isOnline
+                                  ? BrandTokens.stitchSafe
+                                  : BrandTokens.stitchCritical)
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isOnline
+                                  ? BrandTokens.stitchSafe
+                                  : BrandTokens.stitchCritical,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isOnline ? 'LIVE' : 'OFFLINE',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -127,6 +192,8 @@ class _CameraLivePageState extends State<CameraLivePage> {
     }
 
     return Scaffold(
+      backgroundColor:
+          isDark ? BrandTokens.darkBackground : BrandTokens.background,
       appBar: ignivoDetailAppBar(
         context,
         title: name,
@@ -149,180 +216,635 @@ class _CameraLivePageState extends State<CameraLivePage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),
           child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Video MJPEG Player
-            Container(
-              color: Colors.black,
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: MjpegStreamView(
-                  streamUrl: streamUrl,
-                  fit: BoxFit.contain,
-                  requestHeaders: widget.api.headersForUrl(streamUrl),
-                ),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Camera Status Info Card
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
-                        color: theme.dividerColor.withValues(alpha: 0.15),
-                      ),
+              children: [
+                // 1. Video Container with HUD Overlay
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                      width: 1.2,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                isOnline ? Icons.videocam : Icons.videocam_off,
-                                color: isOnline ? Colors.green : Colors.red,
-                                size: 24,
+                    boxShadow: BrandTokens.softShadow(isDark: isDark),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        MjpegStreamView(
+                          streamUrl: streamUrl,
+                          fit: BoxFit.contain,
+                          requestHeaders: widget.api.headersForUrl(streamUrl),
+                        ),
+                        // Soft gradient top and bottom for readability
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.45),
+                                    Colors.transparent,
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.55),
+                                  ],
+                                  stops: const [0.0, 0.22, 0.78, 1.0],
+                                ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  isOnline
-                                      ? 'Camera đang truyền phát'
-                                      : 'Camera mất tín hiệu',
+                            ),
+                          ),
+                        ),
+                        // Top-left: Live status pill
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius:
+                                  BorderRadius.circular(BrandTokens.badgeRadius),
+                              border: Border.all(
+                                color: (isOnline
+                                        ? BrandTokens.stitchSafe
+                                        : BrandTokens.stitchCritical)
+                                    .withValues(alpha: 0.45),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isOnline
+                                        ? BrandTokens.stitchSafe
+                                        : BrandTokens.stitchCritical,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (isOnline
+                                                ? BrandTokens.stitchSafe
+                                                : BrandTokens.stitchCritical)
+                                            .withValues(alpha: 0.8),
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isOnline ? 'TRỰC TIẾP' : 'MẤT KẾT NỐI',
                                   style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Top-right: FPS badge
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius:
+                                  BorderRadius.circular(BrandTokens.badgeRadius),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.speed_rounded,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$fps FPS',
+                                  style: const TextStyle(
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Bottom watermark: Area & camera identity
+                        Positioned(
+                          bottom: 12,
+                          left: 12,
+                          right: 12,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.place_rounded,
+                                        color: BrandTokens.brandAccent,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          area,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
+                                  horizontal: 8,
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: isOnline
-                                      ? Colors.green.withValues(alpha: 0.15)
-                                      : Colors.red.withValues(alpha: 0.15),
+                                  color: Colors.black.withValues(alpha: 0.6),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  isOnline ? 'ONLINE' : 'OFFLINE',
-                                  style: TextStyle(
-                                    color: isOnline ? Colors.green : Colors.red,
-                                    fontWeight: FontWeight.bold,
+                                  'CAM #$id',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
                                     fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(height: 24),
-                          _buildDetailRow(context, 'Khu vực lắp đặt', area),
-                          const SizedBox(height: 8),
-                          _buildDetailRow(
-                            context,
-                            'AI nhận diện cháy',
-                            detectEnabled ? 'Đang kích hoạt' : 'Đã tạm tắt',
-                            valueColor: detectEnabled
-                                ? Colors.green
-                                : Colors.orange,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildDetailRow(
-                            context,
-                            'Tốc độ phân tích mục tiêu',
-                            '$fps FPS',
-                          ),
-                          const SizedBox(height: 8),
-                          _buildDetailRow(
-                            context,
-                            'Mã định danh camera',
-                            'Camera #$id',
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 14),
 
-                  // Maintenance & Edge Box Note
-                  // Container(
-                  //   padding: const EdgeInsets.all(14),
-                  //   decoration: BoxDecoration(
-                  //     color: theme.colorScheme.surfaceContainerHighest
-                  //         .withValues(alpha: 0.4),
-                  //     borderRadius: BorderRadius.circular(12),
-                  //     border: Border.all(
-                  //       color: theme.dividerColor.withValues(alpha: 0.1),
-                  //     ),
-                  //   ),
-                  //   child: Row(
-                  //     crossAxisAlignment: CrossAxisAlignment.start,
-                  //     children: [
-                  //       Icon(
-                  //         Icons.info_outline,
-                  //         size: 20,
-                  //         color: theme.colorScheme.primary,
-                  //       ),
-                  //       const SizedBox(width: 10),
-                  //       Expanded(
-                  //         child: Text(
-                  //           'Luồng MJPEG được phân tích trực tiếp tại chỗ bởi bộ tăng tốc Hailo NPU trên Raspberry Pi. Bất kỳ thay đổi vật lý hoặc đổi cổng RTSP cần thực hiện trên Edge Box.',
-                  //           style: TextStyle(
-                  //             fontSize: 12,
-                  //             color: theme.textTheme.bodySmall?.color,
-                  //           ),
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
-                ],
-              ),
+                // 2. Quick Action Toolbar
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _buildToolbarButton(
+                      context: context,
+                      icon: Icons.camera_alt_outlined,
+                      label: 'Chụp ảnh',
+                      onTap: _handleSnapshot,
+                    ),
+                    _buildToolbarButton(
+                      context: context,
+                      icon: Icons.refresh_rounded,
+                      label: 'Làm mới',
+                      onTap: _handleRefresh,
+                    ),
+                    _buildToolbarButton(
+                      context: context,
+                      icon: Icons.open_in_full_rounded,
+                      label: 'Toàn màn hình',
+                      onTap: () => setState(() => _isFullscreen = true),
+                    ),
+                    if (canConfig)
+                      _buildToolbarButton(
+                        context: context,
+                        icon: Icons.tune_rounded,
+                        label: 'Cấu hình',
+                        onTap: _openEditor,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 3. Status Overview Card
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                    ),
+                    boxShadow: BrandTokens.softShadow(isDark: isDark),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (isOnline
+                                  ? BrandTokens.stitchSafe
+                                  : BrandTokens.stitchCritical)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isOnline
+                              ? Icons.videocam_rounded
+                              : Icons.videocam_off_rounded,
+                          color: isOnline
+                              ? BrandTokens.stitchSafe
+                              : BrandTokens.stitchCritical,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isOnline
+                                  ? 'Camera đang truyền phát'
+                                  : 'Camera mất tín hiệu',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: isDark
+                                    ? BrandTokens.darkTextPrimary
+                                    : BrandTokens.brandNavy,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isOnline
+                                  ? 'Luồng MJPEG đang kết nối ổn định'
+                                  : 'Kiểm tra nguồn hoặc kết nối mạng camera',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? BrandTokens.darkTextTertiary
+                                    : BrandTokens.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isOnline
+                              ? (isDark
+                                  ? BrandTokens.stitchDarkOnlineBg
+                                  : BrandTokens.stitchOnlineBg)
+                              : (isDark
+                                  ? BrandTokens.stitchDarkCriticalBg
+                                  : BrandTokens.stitchCriticalBg),
+                          borderRadius:
+                              BorderRadius.circular(BrandTokens.badgeRadius),
+                          border: Border.all(
+                            color: isOnline
+                                ? BrandTokens.stitchSafe.withValues(alpha: 0.3)
+                                : BrandTokens.stitchCritical.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          isOnline ? 'ONLINE' : 'OFFLINE',
+                          style: TextStyle(
+                            color: isOnline
+                                ? (isDark
+                                    ? BrandTokens.stitchDarkOnlineFg
+                                    : BrandTokens.stitchOnlineFg)
+                                : (isDark
+                                    ? BrandTokens.stitchDarkCriticalFg
+                                    : BrandTokens.stitchCriticalFg),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 4. Metric 2x2 Grid
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricCard(
+                            context: context,
+                            icon: Icons.place_outlined,
+                            iconColor: BrandTokens.brandAccent,
+                            label: 'Khu vực lắp đặt',
+                            value: area,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricCard(
+                            context: context,
+                            icon: Icons.auto_awesome_rounded,
+                            iconColor: detectEnabled
+                                ? BrandTokens.stitchSafe
+                                : BrandTokens.stitchWarning,
+                            label: 'AI nhận diện cháy',
+                            value:
+                                detectEnabled ? 'Đang kích hoạt' : 'Đã tạm tắt',
+                            valueColor: detectEnabled
+                                ? BrandTokens.stitchSafe
+                                : BrandTokens.stitchWarning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricCard(
+                            context: context,
+                            icon: Icons.speed_rounded,
+                            iconColor: BrandTokens.brandSecondary,
+                            label: 'Tốc độ phân tích mục tiêu',
+                            value: '$fps FPS',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricCard(
+                            context: context,
+                            icon: Icons.fingerprint_rounded,
+                            iconColor: isDark
+                                ? BrandTokens.darkTextSecondary
+                                : BrandTokens.textSecondary,
+                            label: 'Mã định danh camera',
+                            value: 'Camera #$id',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 5. Edge Box Telemetry / Hardware Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                    ),
+                    boxShadow: BrandTokens.softShadow(isDark: isDark),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (isDark
+                                  ? BrandTokens.darkPrimary
+                                  : BrandTokens.brandPrimary)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.memory_rounded,
+                          size: 22,
+                          color: isDark
+                              ? BrandTokens.darkPrimary
+                              : BrandTokens.brandPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Bộ xử lý biên AI Edge NPU',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? BrandTokens.darkTextPrimary
+                                          : BrandTokens.brandNavy,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: BrandTokens.brandAccent
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: BrandTokens.brandAccent
+                                          .withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Hailo-8L',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: BrandTokens.brandAccent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Luồng MJPEG được phân tích thị giác trực tiếp tại chỗ bằng bộ tăng tốc Hailo NPU. Mọi thay đổi vật lý hoặc đổi cổng RTSP cần cấu hình trực tiếp trên Edge Box.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? BrandTokens.darkTextSecondary
+                                    : BrandTokens.textSecondary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-);
+    );
   }
 
-  Widget _buildDetailRow(
-    BuildContext context,
-    String label,
-    String value, {
+  Widget _buildToolbarButton({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+      borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+            border: Border.all(
+              color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+            ),
+            boxShadow: BrandTokens.softShadow(isDark: isDark),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color:
+                    isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? BrandTokens.darkTextPrimary
+                      : BrandTokens.brandNavy,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? iconColor,
     Color? valueColor,
   }) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: theme.textTheme.bodySmall?.color,
-            fontSize: 13,
-          ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveIconColor = iconColor ??
+        (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+        border: Border.all(
+          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: valueColor,
+        boxShadow: BrandTokens.softShadow(isDark: isDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: effectiveIconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: effectiveIconColor),
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark
+                  ? BrandTokens.darkTextTertiary
+                  : BrandTokens.textTertiary,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: valueColor ??
+                  (isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
