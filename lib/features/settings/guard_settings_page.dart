@@ -216,14 +216,14 @@ class GuardSettingsPage extends StatelessWidget {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      radius: 26,
+                      radius: 28,
                       backgroundColor: isDark
                           ? BrandTokens.darkBrandTint
                           : BrandTokens.brandTint,
                       child: Text(
                         initials.isNotEmpty ? initials : 'MA',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: isDark
                               ? BrandTokens.darkPrimary
@@ -283,7 +283,7 @@ class GuardSettingsPage extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
-                              vertical: 2,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
                               color: isDark
@@ -340,7 +340,11 @@ class GuardSettingsPage extends StatelessWidget {
                   ListTile(
                     leading: _buildLeadingIcon(
                       context,
-                      Icons.contacts_outlined,
+                      Icons.contacts_rounded,
+                      color: isDark ? Colors.red.shade300 : BrandTokens.criticalFg,
+                      background: isDark
+                          ? Colors.red.shade900.withValues(alpha: 0.25)
+                          : Colors.red.shade50,
                     ),
                     title: const Text(
                       'Người liên hệ khẩn cấp',
@@ -355,7 +359,7 @@ class GuardSettingsPage extends StatelessWidget {
                           : 'Xem danh bạ người thân & PCCC đã thiết lập',
                       style: const TextStyle(fontSize: 12),
                     ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -365,11 +369,15 @@ class GuardSettingsPage extends StatelessWidget {
                       );
                     },
                   ),
-                  const Divider(height: 1),
+                  const Divider(height: 1, indent: 68, endIndent: 16),
                   ListTile(
                     leading: _buildLeadingIcon(
                       context,
-                      Icons.location_on_outlined,
+                      Icons.location_on_rounded,
+                      color: isDark ? Colors.amber.shade300 : BrandTokens.stitchWarningFg,
+                      background: isDark
+                          ? Colors.amber.shade900.withValues(alpha: 0.25)
+                          : Colors.amber.shade50,
                     ),
                     title: const Text(
                       'Địa chỉ khẩn cấp',
@@ -382,7 +390,7 @@ class GuardSettingsPage extends StatelessWidget {
                       'Vị trí, toà nhà, số tầng để tổng đài cung cấp cho PCCC',
                       style: TextStyle(fontSize: 12),
                     ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -392,12 +400,16 @@ class GuardSettingsPage extends StatelessWidget {
                       );
                     },
                   ),
-                  const Divider(height: 1),
                   if (isOwnerOrAdmin) ...[
+                    const Divider(height: 1, indent: 68, endIndent: 16),
                     ListTile(
                       leading: _buildLeadingIcon(
                         context,
                         Icons.face_retouching_natural_rounded,
+                        color: isDark ? Colors.purple.shade200 : Colors.purple.shade700,
+                        background: isDark
+                            ? Colors.purple.shade900.withValues(alpha: 0.25)
+                            : Colors.purple.shade50,
                       ),
                       title: const Text(
                         'Nhận diện khuôn mặt người quen',
@@ -410,7 +422,7 @@ class GuardSettingsPage extends StatelessWidget {
                         'Đăng ký khuôn mặt người thân / nhân viên để tránh báo nhầm',
                         style: TextStyle(fontSize: 12),
                       ),
-                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -423,12 +435,16 @@ class GuardSettingsPage extends StatelessWidget {
                         );
                       },
                     ),
-                    const Divider(height: 1),
                   ],
+                  const Divider(height: 1, indent: 68, endIndent: 16),
                   ListTile(
                     leading: _buildLeadingIcon(
                       context,
-                      Icons.info_outline,
+                      Icons.info_outline_rounded,
+                      color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                      background: isDark
+                          ? BrandTokens.darkBrandTint
+                          : BrandTokens.brandTint,
                     ),
                     title: const Text(
                       'Giới thiệu IGNIVO',
@@ -441,7 +457,7 @@ class GuardSettingsPage extends StatelessWidget {
                       'Phát hiện sớm. Bảo vệ kịp thời.',
                       style: TextStyle(fontSize: 12),
                     ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -458,21 +474,28 @@ class GuardSettingsPage extends StatelessWidget {
             // 3. Audio & Alarm Explanation
             _buildSectionTitle(context, 'Cảnh báo âm thanh & thiết bị'),
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: warningStyle.background,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                 border: Border.all(color: warningStyle.border, width: 0.8),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.volume_up_outlined,
-                    color: warningStyle.foreground,
-                    size: 22,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: warningStyle.foreground.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.volume_up_rounded,
+                      color: warningStyle.foreground,
+                      size: 20,
+                    ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,6 +512,7 @@ class GuardSettingsPage extends StatelessWidget {
                           'Còi hú và rung hoạt động khi ứng dụng đang mở hoặc chạy đa nhiệm. Hãy bật âm lượng chuông để đảm bảo nghe thấy âm báo trong trường hợp có cháy.',
                           style: TextStyle(
                             fontSize: 12,
+                            height: 1.4,
                             color: isDark
                                 ? BrandTokens.darkTextSecondary
                                 : BrandTokens.textSecondary,
@@ -519,7 +543,11 @@ class GuardSettingsPage extends StatelessWidget {
                       key: const Key('settings-switch-system-tile'),
                       leading: _buildLeadingIcon(
                         context,
-                        Icons.hub_outlined,
+                        Icons.hub_rounded,
+                        color: isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+                        background: isDark
+                            ? Colors.teal.shade900.withValues(alpha: 0.25)
+                            : Colors.teal.shade50,
                       ),
                       title: Row(
                         children: [
@@ -559,7 +587,7 @@ class GuardSettingsPage extends StatelessWidget {
                         'Đang giám sát: ${sessionController.systemName}',
                         style: const TextStyle(fontSize: 12),
                       ),
-                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -573,11 +601,15 @@ class GuardSettingsPage extends StatelessWidget {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    const Divider(height: 1, indent: 68, endIndent: 16),
                     ListTile(
                       leading: _buildLeadingIcon(
                         context,
-                        Icons.people_alt_outlined,
+                        Icons.people_alt_rounded,
+                        color: isDark ? Colors.indigo.shade300 : Colors.indigo.shade700,
+                        background: isDark
+                            ? Colors.indigo.shade900.withValues(alpha: 0.25)
+                            : Colors.indigo.shade50,
                       ),
                       title: const Text(
                         'Thành viên & Phân quyền',
@@ -592,7 +624,7 @@ class GuardSettingsPage extends StatelessWidget {
                             : 'Xem danh sách thành viên trong hệ thống',
                         style: const TextStyle(fontSize: 12),
                       ),
-                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                       onTap: () {
                         final currentSystem = sessionManager!.systems.firstWhere(
                           (s) =>
@@ -616,12 +648,16 @@ class GuardSettingsPage extends StatelessWidget {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    const Divider(height: 1, indent: 68, endIndent: 16),
                   ],
                   ListTile(
                     leading: _buildLeadingIcon(
                       context,
-                      Icons.monitor_heart_outlined,
+                      Icons.monitor_heart_rounded,
+                      color: isDark ? BrandTokens.stitchDarkOnlineFg : BrandTokens.stitchOnlineFg,
+                      background: isDark
+                          ? BrandTokens.stitchDarkOnlineBg
+                          : BrandTokens.stitchOnlineBg,
                     ),
                     title: const Text(
                       'Chẩn đoán hệ thống Edge Pi',
@@ -634,7 +670,7 @@ class GuardSettingsPage extends StatelessWidget {
                       'Xem trạng thái CPU, NPU Hailo, AI FPS, WebSocket',
                       style: TextStyle(fontSize: 12),
                     ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -646,9 +682,16 @@ class GuardSettingsPage extends StatelessWidget {
                       );
                     },
                   ),
-                  const Divider(height: 1),
+                  const Divider(height: 1, indent: 68, endIndent: 16),
                   ListTile(
-                    leading: _buildLeadingIcon(context, Icons.router_outlined),
+                    leading: _buildLeadingIcon(
+                      context,
+                      Icons.router_rounded,
+                      color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                      background: isDark
+                          ? BrandTokens.darkSurfaceVariant
+                          : Colors.blueGrey.withValues(alpha: 0.1),
+                    ),
                     title: const Text(
                       'Địa chỉ FireGuard Edge',
                       style: TextStyle(
@@ -664,7 +707,7 @@ class GuardSettingsPage extends StatelessWidget {
                       onPressed: () => _confirmDisconnect(context),
                       child: Text(
                         'Đổi kết nối',
-                        style: TextStyle(color: criticalColor),
+                        style: TextStyle(color: criticalColor, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -703,7 +746,7 @@ class GuardSettingsPage extends StatelessWidget {
                     foregroundColor: criticalColor,
                   ),
                   onPressed: () => _confirmLogout(context),
-                  icon: const Icon(Icons.logout, size: 18),
+                  icon: const Icon(Icons.logout_rounded, size: 18),
                   label: const Text('Đăng xuất phiên Pi hiện tại'),
                 ),
               ),
@@ -722,7 +765,7 @@ class GuardSettingsPage extends StatelessWidget {
                     ),
                   ),
                   onPressed: () => _confirmLogout(context),
-                  icon: const Icon(Icons.logout),
+                  icon: const Icon(Icons.logout_rounded),
                   label: const Text(
                     'Đăng xuất tài khoản',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -752,29 +795,42 @@ class GuardSettingsPage extends StatelessWidget {
 );
 }
 
-  Widget _buildLeadingIcon(BuildContext context, IconData icon) {
+  Widget _buildLeadingIcon(
+    BuildContext context,
+    IconData icon, {
+    Color? color,
+    Color? background,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = color ?? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary);
+    final bg = background ?? (isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint);
     return Container(
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint,
-        borderRadius: BorderRadius.circular(10),
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
         icon,
         size: 20,
-        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+        color: fg,
       ),
     );
   }
 
   Widget _buildSectionTitle(BuildContext context, String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          letterSpacing: 0.2,
+          color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+        ),
       ),
     );
   }
