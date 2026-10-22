@@ -16,6 +16,8 @@ class DesktopTopBar extends StatelessWidget {
     this.isStale = false,
     this.onRefresh,
     this.onOpenDiagnostics,
+    this.onTapSystem,
+    this.actions,
   });
 
   final String title;
@@ -25,6 +27,8 @@ class DesktopTopBar extends StatelessWidget {
   final bool isStale;
   final Future<void> Function()? onRefresh;
   final VoidCallback? onOpenDiagnostics;
+  final VoidCallback? onTapSystem;
+  final List<Widget>? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -193,70 +197,96 @@ class DesktopTopBar extends StatelessWidget {
                 ),
               ],
 
+              if (actions != null && actions!.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                ...actions!,
+              ],
+
               const SizedBox(width: 8),
 
               // 4. User Profile & System Chip
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 180),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? BrandTokens.darkSurfaceVariant
-                        : BrandTokens.background,
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Tooltip(
+                  message: onTapSystem != null
+                      ? 'Nhấp để đổi hệ thống giám sát'
+                      : systemName,
+                  child: InkWell(
+                    onTap: onTapSystem,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: isDark
-                            ? BrandTokens.darkPrimary.withValues(alpha: 0.2)
-                            : BrandTokens.brandPrimary.withValues(alpha: 0.1),
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 16,
-                          color: isDark
-                              ? BrandTokens.darkPrimary
-                              : BrandTokens.brandPrimary,
-                        ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              systemName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? BrandTokens.darkTextPrimary
-                                    : BrandTokens.textPrimary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? BrandTokens.darkSurfaceVariant
+                            : BrandTokens.background,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 13,
+                            backgroundColor: isDark
+                                ? BrandTokens.darkPrimary.withValues(alpha: 0.2)
+                                : BrandTokens.brandPrimary.withValues(alpha: 0.1),
+                            child: Icon(
+                              Icons.person_rounded,
+                              size: 16,
+                              color: isDark
+                                  ? BrandTokens.darkPrimary
+                                  : BrandTokens.brandPrimary,
                             ),
-                            Text(
-                              roleLabel,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isDark
-                                    ? BrandTokens.darkTextTertiary
-                                    : BrandTokens.textTertiary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  systemName,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark
+                                        ? BrandTokens.darkTextPrimary
+                                        : BrandTokens.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  roleLabel,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark
+                                        ? BrandTokens.darkTextTertiary
+                                        : BrandTokens.textTertiary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (onTapSystem != null) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: isDark
+                                  ? BrandTokens.darkTextTertiary
+                                  : BrandTokens.textTertiary,
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

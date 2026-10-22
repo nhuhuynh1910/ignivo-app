@@ -478,32 +478,65 @@ class IgnivoSyncStatus extends StatelessWidget {
   }
 }
 
+/// InheritedWidget that notifies descendants whether a [DesktopTopBar] is already
+/// present above the current view, allowing [IgnivoPageBody] to omit the redundant in-page header.
+class IgnivoDesktopTopBarScope extends InheritedWidget {
+  const IgnivoDesktopTopBarScope({
+    super.key,
+    required this.hasTopBar,
+    required super.child,
+  });
+
+  final bool hasTopBar;
+
+  static bool hasTopBarOf(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<IgnivoDesktopTopBarScope>();
+    return scope?.hasTopBar ?? false;
+  }
+
+  @override
+  bool updateShouldNotify(IgnivoDesktopTopBarScope oldWidget) =>
+      hasTopBar != oldWidget.hasTopBar;
+}
+
 /// Keeps the header outside the scrollable content and below system insets.
 class IgnivoPageBody extends StatelessWidget {
-  const IgnivoPageBody({super.key, required this.header, required this.child});
+  const IgnivoPageBody({
+    super.key,
+    required this.header,
+    required this.child,
+    this.hideHeaderOnDesktopTopBar = true,
+  });
 
   final Widget header;
   final Widget child;
+  final bool hideHeaderOnDesktopTopBar;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: Theme.of(context).colorScheme.surface,
-    child: SafeArea(
-      bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          header,
-          Expanded(
-            child: ColoredBox(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: child,
+  Widget build(BuildContext context) {
+    final hasDesktopTopBar = hideHeaderOnDesktopTopBar &&
+        IgnivoDesktopTopBarScope.hasTopBarOf(context);
+
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: !hasDesktopTopBar,
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!hasDesktopTopBar) header,
+            Expanded(
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: child,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// Compact secondary-page header; native AppBar preserves back navigation.

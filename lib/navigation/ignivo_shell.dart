@@ -17,6 +17,8 @@ import '../features/settings/guard_settings_page.dart';
 import '../features/settings/diagnostics_page.dart';
 import '../features/systems/systems_page.dart';
 import '../widgets/desktop_top_bar.dart';
+import '../widgets/ignivo_page_header.dart';
+import '../widgets/ignivo_sheet.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
@@ -473,8 +475,33 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                         await _monitoring.refresh();
                       },
                       onOpenDiagnostics: _openDiagnostics,
+                      onTapSystem: () {
+                        if (widget.sessionManager != null) {
+                          showIgnivoQuickSystemSwitcherSheet(
+                            context: context,
+                            sessionManager: widget.sessionManager!,
+                            onOpenSystemsPage: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SystemsPage(
+                                    sessionManager: widget.sessionManager!,
+                                    authController: widget.authController,
+                                    coordinator: widget.coordinator,
+                                    canPop: true,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }
+                      },
                     ),
-                    Expanded(child: tabContent),
+                    Expanded(
+                      child: IgnivoDesktopTopBarScope(
+                        hasTopBar: true,
+                        child: tabContent,
+                      ),
+                    ),
                   ],
                 ),
               ),
