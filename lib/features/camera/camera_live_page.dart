@@ -453,13 +453,6 @@ class _CameraLivePageState extends State<CameraLivePage> {
                       label: 'Toàn màn hình',
                       onTap: () => setState(() => _isFullscreen = true),
                     ),
-                    if (canConfig)
-                      _buildToolbarButton(
-                        context: context,
-                        icon: Icons.tune_rounded,
-                        label: 'Cấu hình',
-                        onTap: _openEditor,
-                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -637,97 +630,97 @@ class _CameraLivePageState extends State<CameraLivePage> {
                 const SizedBox(height: 16),
 
                 // 5. Edge Box Telemetry / Hardware Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
-                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                    border: Border.all(
-                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-                    ),
-                    boxShadow: BrandTokens.softShadow(isDark: isDark),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: (isDark
-                                  ? BrandTokens.darkPrimary
-                                  : BrandTokens.brandPrimary)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.memory_rounded,
-                          size: 22,
-                          color: isDark
-                              ? BrandTokens.darkPrimary
-                              : BrandTokens.brandPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Bộ xử lý biên AI Edge NPU',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? BrandTokens.darkTextPrimary
-                                          : BrandTokens.brandNavy,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: BrandTokens.brandAccent
-                                        .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: BrandTokens.brandAccent
-                                          .withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Hailo-8L',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: BrandTokens.brandAccent,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Luồng MJPEG được phân tích thị giác trực tiếp tại chỗ bằng bộ tăng tốc Hailo NPU. Mọi thay đổi vật lý hoặc đổi cổng RTSP cần cấu hình trực tiếp trên Edge Box.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? BrandTokens.darkTextSecondary
-                                    : BrandTokens.textSecondary,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Container(
+                //   padding: const EdgeInsets.all(16),
+                //   decoration: BoxDecoration(
+                //     color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+                //     borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                //     border: Border.all(
+                //       color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                //     ),
+                //     boxShadow: BrandTokens.softShadow(isDark: isDark),
+                //   ),
+                //   child: Row(
+                //     crossAxisAlignment: CrossAxisAlignment.start,
+                //     children: [
+                //       Container(
+                //         padding: const EdgeInsets.all(10),
+                //         decoration: BoxDecoration(
+                //           color: (isDark
+                //                   ? BrandTokens.darkPrimary
+                //                   : BrandTokens.brandPrimary)
+                //               .withValues(alpha: 0.12),
+                //           borderRadius: BorderRadius.circular(12),
+                //         ),
+                //         child: Icon(
+                //           Icons.memory_rounded,
+                //           size: 22,
+                //           color: isDark
+                //               ? BrandTokens.darkPrimary
+                //               : BrandTokens.brandPrimary,
+                //         ),
+                //       ),
+                //       const SizedBox(width: 14),
+                //       Expanded(
+                //         child: Column(
+                //           crossAxisAlignment: CrossAxisAlignment.start,
+                //           children: [
+                //             Row(
+                //               children: [
+                //                 Expanded(
+                //                   child: Text(
+                //                     'Bộ xử lý biên AI Edge NPU',
+                //                     style: TextStyle(
+                //                       fontSize: 14,
+                //                       fontWeight: FontWeight.bold,
+                //                       color: isDark
+                //                           ? BrandTokens.darkTextPrimary
+                //                           : BrandTokens.brandNavy,
+                //                     ),
+                //                   ),
+                //                 ),
+                //                 Container(
+                //                   padding: const EdgeInsets.symmetric(
+                //                     horizontal: 8,
+                //                     vertical: 3,
+                //                   ),
+                //                   decoration: BoxDecoration(
+                //                     color: BrandTokens.brandAccent
+                //                         .withValues(alpha: 0.15),
+                //                     borderRadius: BorderRadius.circular(6),
+                //                     border: Border.all(
+                //                       color: BrandTokens.brandAccent
+                //                           .withValues(alpha: 0.3),
+                //                     ),
+                //                   ),
+                //                   child: const Text(
+                //                     'Hailo-8L',
+                //                     style: TextStyle(
+                //                       fontSize: 10,
+                //                       fontWeight: FontWeight.bold,
+                //                       color: BrandTokens.brandAccent,
+                //                     ),
+                //                   ),
+                //                 ),
+                //               ],
+                //             ),
+                //             const SizedBox(height: 6),
+                //             Text(
+                //               'Luồng MJPEG được phân tích thị giác trực tiếp tại chỗ bằng bộ tăng tốc Hailo NPU. Mọi thay đổi vật lý hoặc đổi cổng RTSP cần cấu hình trực tiếp trên Edge Box.',
+                //               style: TextStyle(
+                //                 fontSize: 12,
+                //                 color: isDark
+                //                     ? BrandTokens.darkTextSecondary
+                //                     : BrandTokens.textSecondary,
+                //                 height: 1.4,
+                //               ),
+                //             ),
+                //           ],
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
               ],
             ),
           ),
