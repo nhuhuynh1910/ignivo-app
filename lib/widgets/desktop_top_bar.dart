@@ -45,8 +45,8 @@ class DesktopTopBar extends StatelessWidget {
         : (isStale ? Colors.amber : BrandTokens.stitchCritical);
 
     final statusLabel = isWsConnected && !isStale
-        ? 'Edge WebSocket: Trực tuyến'
-        : (isStale ? 'Đang đồng bộ...' : 'Mất kết nối WebSocket');
+        ? 'Trực tuyến'
+        : (isStale ? 'Đang đồng bộ...' : 'Mất kết nối');
 
     final roleLabel = switch (role?.toUpperCase()) {
       'OWNER' => 'Chủ sở hữu',

@@ -9,18 +9,20 @@ void main() {
 
   group('Gói B1: BrandTokens & StatusStyle Unit Tests', () {
     test('BrandTokens defines proper primary and contrast tokens', () {
-      expect(BrandTokens.brandPrimary, const Color(0xFF005CAF));
-      expect(BrandTokens.brandNavy, const Color(0xFF102449));
-      expect(BrandTokens.brandCyan, const Color(0xFF16B9EE));
-      expect(BrandTokens.darkBackground, const Color(0xFF091426));
-      expect(BrandTokens.darkSurface, const Color(0xFF101E35));
-      expect(BrandTokens.darkPrimary, const Color(0xFF63CBFF));
-      expect(BrandTokens.darkOnPrimary, const Color(0xFF06152F));
+      expect(BrandTokens.brandPrimary, const Color(0xFF152375));
+      expect(BrandTokens.brandNavy, const Color(0xFF0F1D3D));
+      expect(BrandTokens.brandSecondary, const Color(0xFF2437B3));
+      expect(BrandTokens.brandAccent, const Color(0xFF4B65E8));
+      expect(BrandTokens.background, const Color(0xFFEAF0FF));
+      expect(BrandTokens.surface, const Color(0xFFFFFFFF));
+      expect(BrandTokens.darkBackground, const Color(0xFF0A1224));
+      expect(BrandTokens.darkSurface, const Color(0xFF0F1D3D));
+      expect(BrandTokens.darkPrimary, const Color(0xFF4B65E8));
     });
 
     test('AppColors backwards-compatible aliases point to BrandTokens', () {
       expect(AppColors.primary, BrandTokens.brandPrimary);
-      expect(AppColors.primarySecondary, BrandTokens.brandNavy);
+      expect(AppColors.primarySecondary, BrandTokens.brandSecondary);
       expect(AppColors.darkBackground, BrandTokens.darkBackground);
       expect(AppColors.darkSurface, BrandTokens.darkSurface);
     });

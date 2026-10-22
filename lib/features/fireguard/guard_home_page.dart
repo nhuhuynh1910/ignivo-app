@@ -831,20 +831,23 @@ class _GuardHomePageState extends State<GuardHomePage> {
 
     final isAllReady = readyCount == 4;
 
+    final gradient = isDark
+        ? const LinearGradient(
+            begin: Alignment(-0.8, -0.6),
+            end: Alignment(0.8, 0.6),
+            colors: [Color(0xFF0A1224), Color(0xFF0F1D3D), Color(0xFF152375)],
+            stops: [0.0, 0.5, 1.0],
+          )
+        : BrandTokens.primaryGradient;
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF123A6C), Color(0xFF10264B)]
-              : const [Color(0xFF005CAF), Color(0xFF1277CD)],
-        ),
+        gradient: gradient,
         borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? const Color(0xFF0A192F) : const Color(0xFF005CAF))
-                .withValues(alpha: isDark ? 0.45 : 0.24),
+            color: (isDark ? Colors.black : BrandTokens.brandPrimary)
+                .withValues(alpha: isDark ? 0.45 : 0.25),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -944,12 +947,13 @@ class _GuardHomePageState extends State<GuardHomePage> {
                               ],
                             ),
                             if (!isStale && unclosedIncidents.isEmpty) ...[
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 3),
                               Text(
                                 'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
                                 style: TextStyle(
                                   fontSize: 10.5,
-                                  color: Colors.white.withValues(alpha: 0.78),
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white.withValues(alpha: 0.8),
                                 ),
                               ),
                             ],

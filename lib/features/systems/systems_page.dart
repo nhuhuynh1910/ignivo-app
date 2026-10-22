@@ -436,7 +436,7 @@ class _SystemsPageState extends State<SystemsPage> {
           color: hasAlerts
               ? BrandTokens.stitchCriticalFg
               : isActive
-                  ? BrandTokens.brandPrimary
+                  ? BrandTokens.brandAccent
                   : (isDark ? BrandTokens.darkBorder : BrandTokens.border),
           width: isActive || hasAlerts ? 2 : 1,
         ),
@@ -456,7 +456,7 @@ class _SystemsPageState extends State<SystemsPage> {
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
                     color: isActive
-                        ? BrandTokens.brandPrimary
+                        ? BrandTokens.brandAccent
                         : (isDark
                             ? BrandTokens.darkTextSecondary
                             : BrandTokens.textSecondary),

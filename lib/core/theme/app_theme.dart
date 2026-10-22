@@ -5,8 +5,9 @@ import 'brand_tokens.dart';
 class AppColors {
   // Brand identity colors (Light)
   static const Color primary = BrandTokens.brandPrimary;
-  static const Color primarySecondary = BrandTokens.brandNavy;
+  static const Color primarySecondary = BrandTokens.brandSecondary;
   static const Color deepBlue = BrandTokens.brandNavy;
+  static const Color accent = BrandTokens.brandAccent;
 
   static const Color textPrimary = BrandTokens.textPrimary;
   static const Color textSecondary = BrandTokens.textSecondary;
@@ -31,7 +32,7 @@ class AppColors {
 
   // Backwards compatibility aliases
   static const Color primaryDark = deepBlue;
-  static const Color primaryLight = BrandTokens.darkPrimary;
+  static const Color primaryLight = BrandTokens.brandSecondary;
   static const Color background = backgroundSoft;
 }
 
@@ -45,6 +46,8 @@ class AppTheme {
         seedColor: BrandTokens.brandPrimary,
         brightness: Brightness.light,
         primary: BrandTokens.brandPrimary,
+        secondary: BrandTokens.brandSecondary,
+        tertiary: BrandTokens.brandAccent,
         surface: BrandTokens.surface,
         onSurface: BrandTokens.textPrimary,
         outline: BrandTokens.border,
@@ -58,8 +61,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
           side: BorderSide(
-            color: BrandTokens.border.withValues(alpha: 0.6),
-            width: 0.8,
+            color: BrandTokens.border.withValues(alpha: 0.8),
+            width: 1.0,
           ),
         ),
       ),
@@ -104,12 +107,12 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
-          borderSide: const BorderSide(color: BrandTokens.brandPrimary, width: 1.5),
+          borderSide: const BorderSide(color: BrandTokens.brandAccent, width: 1.8),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: BrandTokens.surface,
-        indicatorColor: BrandTokens.brandPrimary.withValues(alpha: 0.15),
+        indicatorColor: BrandTokens.brandAccent.withValues(alpha: 0.15),
       ),
     );
   }

@@ -126,7 +126,7 @@ class CameraPreviewCard extends StatelessWidget {
                               : Icons.smart_toy_outlined,
                           size: 16,
                           color: aiEnabled
-                              ? BrandTokens.brandPrimary
+                              ? BrandTokens.brandAccent
                               : (isDark
                                   ? BrandTokens.darkTextTertiary
                                   : BrandTokens.textTertiary),
@@ -139,9 +139,7 @@ class CameraPreviewCard extends StatelessWidget {
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: aiEnabled
-                                  ? (isDark
-                                      ? BrandTokens.darkPrimary
-                                      : BrandTokens.brandPrimary)
+                                  ? BrandTokens.brandAccent
                                   : (isDark
                                       ? BrandTokens.darkTextSecondary
                                       : BrandTokens.textSecondary),
@@ -154,14 +152,23 @@ class CameraPreviewCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
 
-                    // Hàng 3: Metadata (Khu vực • Model • Edge Box)
+                    // Hàng 3: Metadata (Icon Vị trí + Area • Model)
                     Row(
                       children: [
+                        Icon(
+                          Icons.place_outlined,
+                          size: 14,
+                          color: isDark
+                              ? BrandTokens.darkTextTertiary
+                              : BrandTokens.textTertiary,
+                        ),
+                        const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            'Khu vực: $area',
+                            area,
                             style: TextStyle(
                               fontSize: 12,
+                              fontWeight: FontWeight.w500,
                               color: isDark
                                   ? BrandTokens.darkTextSecondary
                                   : BrandTokens.textSecondary,
@@ -177,8 +184,8 @@ class CameraPreviewCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isDark
-                                  ? BrandTokens.darkTextSecondary
-                                  : BrandTokens.textSecondary,
+                                    ? BrandTokens.darkTextSecondary
+                                    : BrandTokens.textSecondary,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),

@@ -8,19 +8,33 @@ class BrandTokens {
   BrandTokens._();
 
   // ==========================================
-  // BRAND IDENTITY (LIGHT THEME) — STITCH
+  // BRAND IDENTITY (LIGHT THEME) — IGNIVO COLOR SYSTEM
   // ==========================================
-  static const Color brandPrimary = Color(0xFF005CAF);
-  static const Color brandSecondary = Color(0xFF005AC4);
-  static const Color brandCyan = Color(0xFF16B9EE);
-  static const Color brandNavy = Color(0xFF102449);
-  static const Color background = Color(0xFFF5F8FC);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF181C24);
-  static const Color textSecondary = Color(0xFF586678);
-  static const Color textTertiary = Color(0xFF717785);
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color brandTint = Color(0xFFEAF3FF);
+  static const Color brandPrimary = Color(0xFF152375); // --primary
+  static const Color brandSecondary = Color(0xFF2437B3); // --primary-light
+  static const Color brandNavy = Color(0xFF0F1D3D); // --primary-dark
+  static const Color brandAccent = Color(0xFF4B65E8); // --accent
+  static const Color brandCyan = Color(0xFF4B65E8); // mapped to accent for compatibility
+  static const Color background = Color(0xFFEAF0FF); // --background-light
+  static const Color surface = Color(0xFFFFFFFF); // --white
+  static const Color textPrimary = Color(0xFF0F1D3D);
+  static const Color textSecondary = Color(0xFF475569);
+  static const Color textTertiary = Color(0xFF64748B);
+  static const Color border = Color(0xFFD4E2F7);
+  static const Color brandTint = Color(0xFFEAF0FF);
+
+  /// Primary Gradient (110deg)
+  /// linear-gradient(110deg, #0F1D3D 0%, #152375 50%, #2437B3 100%)
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment(-0.8, -0.6),
+    end: Alignment(0.8, 0.6),
+    colors: [
+      Color(0xFF0F1D3D),
+      Color(0xFF152375),
+      Color(0xFF2437B3),
+    ],
+    stops: [0.0, 0.5, 1.0],
+  );
 
   // Stitch Semantic Tokens
   static const Color stitchSafe = Color(0xFF10B981);
@@ -36,22 +50,22 @@ class BrandTokens {
   static const Color stitchWarningFg = Color(0xFF925700);
   static const Color stitchWarningBg = Color(0xFFFFF4DC);
   static const Color stitchOfflineFg = Color(0xFF586678);
-  static const Color stitchOfflineBg = Color(0xFFF5F8FC);
+  static const Color stitchOfflineBg = Color(0xFFEAF0FF);
 
   // ==========================================
   // BRAND IDENTITY (DARK THEME)
   // ==========================================
-  static const Color darkBackground = Color(0xFF091426);
-  static const Color darkSurface = Color(0xFF101E35);
-  static const Color darkSurfaceVariant = Color(0xFF1B2B48);
-  static const Color darkTextPrimary = Color(0xFFEDF4FF);
-  static const Color darkTextSecondary = Color(0xFFB4C3D8);
-  static const Color darkTextTertiary = Color(0xFF64748B);
-  static const Color darkPrimary = Color(0xFF63CBFF);
-  static const Color stitchDarkPrimary = Color(0xFF83C9FF);
-  static const Color darkOnPrimary = Color(0xFF06152F);
-  static const Color darkBorder = Color(0xFF283B57);
-  static const Color darkBrandTint = Color(0xFF183150);
+  static const Color darkBackground = Color(0xFF0A1224);
+  static const Color darkSurface = Color(0xFF0F1D3D);
+  static const Color darkSurfaceVariant = Color(0xFF152375);
+  static const Color darkTextPrimary = Color(0xFFF1F5F9);
+  static const Color darkTextSecondary = Color(0xFFCBD5E1);
+  static const Color darkTextTertiary = Color(0xFF94A3B8);
+  static const Color darkPrimary = Color(0xFF4B65E8);
+  static const Color stitchDarkPrimary = Color(0xFF4B65E8);
+  static const Color darkOnPrimary = Color(0xFFFFFFFF);
+  static const Color darkBorder = Color(0xFF1E325C);
+  static const Color darkBrandTint = Color(0xFF122144);
 
   // Stitch Demo Status Palette (Dark)
   static const Color stitchDarkOnlineFg = Color(0xFF6EE7B7);
@@ -61,8 +75,8 @@ class BrandTokens {
   static const Color stitchDarkCriticalBorder = Color(0xFF8A4556);
   static const Color stitchDarkWarningFg = Color(0xFFFFD37A);
   static const Color stitchDarkWarningBg = Color(0xFF3C301F);
-  static const Color stitchDarkOfflineFg = Color(0xFFB4C3D8);
-  static const Color stitchDarkOfflineBg = Color(0xFF091426);
+  static const Color stitchDarkOfflineFg = Color(0xFFCBD5E1);
+  static const Color stitchDarkOfflineBg = Color(0xFF0A1224);
 
   // ==========================================
   // STATUS & ALERT SEMANTIC COLORS (LIGHT MODE)

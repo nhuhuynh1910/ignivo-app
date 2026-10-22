@@ -39,13 +39,18 @@ class EdgeStatusCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final gradientColors = isDark
-        ? [const Color(0xFF0F2B5C), const Color(0xFF0A1C3E)]
-        : [BrandTokens.brandPrimary, const Color(0xFF004F98)];
+    final gradient = isDark
+        ? const LinearGradient(
+            begin: Alignment(-0.8, -0.6),
+            end: Alignment(0.8, 0.6),
+            colors: [Color(0xFF0A1224), Color(0xFF0F1D3D), Color(0xFF152375)],
+            stops: [0.0, 0.5, 1.0],
+          )
+        : BrandTokens.primaryGradient;
 
     final borderColor = isDark
-        ? const Color(0xFF1E3A8A).withValues(alpha: 0.6)
-        : Colors.white.withValues(alpha: 0.18);
+        ? const Color(0xFF1E325C).withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.22);
 
     return Material(
       color: Colors.transparent,
@@ -55,19 +60,14 @@ class EdgeStatusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
         child: Ink(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
-            ),
+            gradient: gradient,
             borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
             border: Border.all(color: borderColor, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.4)
-                    : const Color(0xFF005CAF).withValues(alpha: 0.25),
-                blurRadius: 16,
+                color: (isDark ? Colors.black : BrandTokens.brandPrimary)
+                    .withValues(alpha: isDark ? 0.45 : 0.25),
+                blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
             ],
@@ -77,26 +77,33 @@ class EdgeStatusCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header row: Tên hệ thống + Badge an toàn
+                // Header row: Tên hệ thống + Badge an toàn (sạch text thừa)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.roofing_rounded,
-                            size: 20,
-                            color: Colors.white,
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.shield_outlined,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Flexible(
                             child: Text(
-                              'Hệ thống: $systemName',
+                              systemName,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: -0.2,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -209,10 +216,10 @@ class EdgeStatusCard extends StatelessWidget {
           ),
           const SizedBox(width: 5),
           const Text(
-            'Chưa ghi nhận sự cố',
+            'An toàn',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -276,7 +283,7 @@ class EdgeStatusCard extends StatelessWidget {
           _buildDivider(),
           Expanded(
             child: _buildMetricTile(
-              label: 'Cảnh báo trực tiếp',
+              label: 'Cảnh báo',
               valueWidget: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -369,7 +376,7 @@ class EdgeStatusCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildMetricTile(
-                  label: 'Cảnh báo trực tiếp',
+                  label: 'Cảnh báo',
                   valueWidget: Text(
                     directAlertStatus,
                     style: TextStyle(
@@ -387,7 +394,7 @@ class EdgeStatusCard extends StatelessWidget {
                 child: _buildMetricTile(
                   label: 'Camera',
                   valueWidget: Text(
-                    '$onlineCameras/$totalCameras đồng bộ',
+                    '$onlineCameras/$totalCameras',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
