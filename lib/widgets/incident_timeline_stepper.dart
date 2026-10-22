@@ -126,7 +126,7 @@ class IncidentTimelineStepper extends StatelessWidget {
               Icon(
                 Icons.alt_route_rounded,
                 size: 16,
-                color: isDark ? BrandTokens.stitchDarkPrimary : BrandTokens.brandPrimary,
+                color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -135,7 +135,7 @@ class IncidentTimelineStepper extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary,
+                    color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -146,15 +146,15 @@ class IncidentTimelineStepper extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.15),
+                    color: (isDark ? BrandTokens.darkPrimary : BrandTokens.brandAccent).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Mô phỏng',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Colors.blue,
+                      color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandAccent,
                     ),
                   ),
                 ),
@@ -251,8 +251,8 @@ class IncidentTimelineStepper extends StatelessWidget {
                     currentStatusMessage,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      color: currentStatusColor,
                     ),
                   ),
                 ),
@@ -271,11 +271,14 @@ class IncidentTimelineStepper extends StatelessWidget {
     return Expanded(
       flex: 2,
       child: Container(
-        height: 2,
-        margin: const EdgeInsets.only(top: 14),
-        color: isCompleted
-            ? BrandTokens.stitchOnlineFg
-            : (isDark ? BrandTokens.darkBorder : BrandTokens.border),
+        height: 2.5,
+        margin: const EdgeInsets.only(top: 13),
+        decoration: BoxDecoration(
+          color: isCompleted
+              ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+              : (isDark ? BrandTokens.darkBorder : BrandTokens.border),
+          borderRadius: BorderRadius.circular(2),
+        ),
       ),
     );
   }
@@ -295,12 +298,12 @@ class IncidentTimelineStepper extends StatelessWidget {
 
     switch (state) {
       case IncidentStepState.completed:
-        circleBg = isDark ? BrandTokens.stitchDarkOnlineBg : BrandTokens.stitchOnlineBg;
-        circleFg = isDark ? BrandTokens.stitchDarkOnlineFg : BrandTokens.stitchOnlineFg;
-        circleBorder = circleFg.withValues(alpha: 0.5);
+        circleBg = isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint;
+        circleFg = isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary;
+        circleBorder = circleFg.withValues(alpha: 0.4);
       case IncidentStepState.active:
         circleBg = isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint;
-        circleFg = isDark ? BrandTokens.stitchDarkPrimary : BrandTokens.brandPrimary;
+        circleFg = isDark ? BrandTokens.darkPrimary : BrandTokens.brandAccent;
         circleBorder = circleFg;
       case IncidentStepState.warning:
         circleBg = isDark ? BrandTokens.stitchDarkWarningBg : BrandTokens.stitchWarningBg;
@@ -342,11 +345,13 @@ class IncidentTimelineStepper extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10.5,
-              fontWeight: state == IncidentStepState.active ? FontWeight.bold : FontWeight.w600,
+              fontWeight: (state == IncidentStepState.active || state == IncidentStepState.completed)
+                  ? FontWeight.bold
+                  : FontWeight.w600,
               color: state == IncidentStepState.active
-                  ? (isDark ? BrandTokens.stitchDarkPrimary : BrandTokens.brandPrimary)
+                  ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandAccent)
                   : (state == IncidentStepState.completed
-                      ? (isDark ? BrandTokens.stitchDarkOnlineFg : BrandTokens.stitchOnlineFg)
+                      ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
                       : (isDark ? BrandTokens.darkTextTertiary : BrandTokens.textTertiary)),
             ),
             maxLines: 1,
@@ -361,7 +366,9 @@ class IncidentTimelineStepper extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.normal,
-              color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+              color: state == IncidentStepState.completed
+                  ? (isDark ? BrandTokens.darkTextSecondary : BrandTokens.brandSecondary)
+                  : (isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
