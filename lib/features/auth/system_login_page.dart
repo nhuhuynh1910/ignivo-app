@@ -119,6 +119,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
       // Clear password inputs from RAM immediately upon successful login
       _secretController.clear();
       _systemSecretController.clear();
+      if (!mounted) return;
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop(true);
       }
@@ -244,8 +245,8 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                     // Connection card
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                        horizontal: 12,
+                        vertical: 10,
                       ),
                       decoration: BoxDecoration(
                         color: theme.cardColor,
@@ -253,17 +254,27 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                           BrandTokens.cardRadius,
                         ),
                         border: Border.all(
-                          color: theme.dividerColor.withValues(alpha: 0.15),
+                          color: theme.brightness == Brightness.dark
+                              ? BrandTokens.darkBorder
+                              : BrandTokens.border,
+                          width: 0.8,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: BrandTokens.brandPrimary.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.home_work_outlined,
-                            size: 28,
-                            color: theme.colorScheme.primary,
+                            size: 26,
+                            color: BrandTokens.brandAccent,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,6 +507,14 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                       key: const Key('login-submit-btn'),
                       onPressed: isAuthenticating ? null : _handleLogin,
                       style: FilledButton.styleFrom(
+                        backgroundColor: BrandTokens.brandPrimary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 50),
+                        elevation: 2,
+                        shadowColor: BrandTokens.brandPrimary.withValues(alpha: 0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: isAuthenticating

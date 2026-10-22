@@ -336,10 +336,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
                           ),
                           backgroundColor: BrandTokens.criticalFg,
                           foregroundColor: Colors.white,
+                          elevation: 1.5,
                         ),
                         onPressed:
                             _busy ||
@@ -371,7 +372,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size(double.infinity, 46),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
                           ),
                         ),
                         onPressed: _busy || _error != null
@@ -405,7 +406,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                               style: OutlinedButton.styleFrom(
                                 minimumSize: const Size(0, 46),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
                                 ),
                               ),
                               onPressed: _busy || _error != null

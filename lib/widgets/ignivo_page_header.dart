@@ -622,16 +622,19 @@ class IgnivoAuthHeader extends StatelessWidget {
             padding: const EdgeInsets.all(7.0),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-                width: 1.0,
+                color: isDark
+                    ? BrandTokens.darkBorder
+                    : BrandTokens.brandAccent.withValues(alpha: 0.25),
+                width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+                  color: (isDark ? Colors.black : BrandTokens.brandPrimary)
+                      .withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -652,7 +655,10 @@ class IgnivoAuthHeader extends StatelessWidget {
           child: Text(
             title,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
+            ),
           ),
         ),
         const SizedBox(height: 6),

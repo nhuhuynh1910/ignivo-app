@@ -119,22 +119,40 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: BrandTokens.brandPrimary,
-                      size: 28,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: BrandTokens.brandAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.videocam_outlined,
+                        color: BrandTokens.brandAccent,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -153,14 +171,20 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                   style: TextStyle(fontSize: 14, height: 1.4),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Sau khi thêm camera trên Pi, danh sách camera trên ứng dụng di động sẽ tự động đồng bộ.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                      ),
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Đã hiểu'),
                   ),
@@ -264,10 +288,20 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                          borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                           border: Border.all(
-                            color: theme.dividerColor.withValues(alpha: 0.15),
+                            color: theme.brightness == Brightness.dark
+                                ? BrandTokens.darkBorder
+                                : BrandTokens.border,
+                            width: 0.8,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: BrandTokens.brandPrimary.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Column(
                           children: [
@@ -355,7 +389,7 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: SliverList.separated(
                       itemCount: filteredCameras.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 2),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) => _buildCameraCard(
                         context,
                         filteredCameras[index],

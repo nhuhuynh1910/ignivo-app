@@ -492,6 +492,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                     ? BrandTokens.darkTextPrimary
                     : BrandTokens.textPrimary,
                 fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 14),
@@ -502,16 +503,19 @@ class _GuardHomePageState extends State<GuardHomePage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: statusStyle.foreground,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      elevation: 2,
+                      shadowColor: statusStyle.foreground.withValues(alpha: 0.35),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size(0, 48),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
                       ),
                     ),
                     onPressed: () => widget.onOpenIncident?.call(id),
-                    icon: const Icon(Icons.remove_red_eye_outlined),
+                    icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
                     label: const Text(
                       'Xem bằng chứng & xử lý',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ),
                 ),

@@ -273,6 +273,7 @@ class SystemSessionManager extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _cloudSub?.cancel();
     for (final c in _controllers.values) {
       c.removeListener(_onChildControllerChanged);

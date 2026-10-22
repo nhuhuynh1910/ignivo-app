@@ -83,15 +83,21 @@ class GuardPanel extends StatelessWidget {
   const GuardPanel({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: Padding(padding: const EdgeInsets.all(16), child: child),
-  );
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+        side: BorderSide(
+          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+          width: 0.8,
+        ),
+      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
+    );
+  }
 }
 
 class GuardBadge extends StatelessWidget {
