@@ -122,12 +122,25 @@ class SystemRegistryRepository {
     final prefs = await _getPrefs();
     final currentSystems = await getSystems(uid);
 
+    final toRemove = currentSystems.where((s) => s.systemId == systemId).toList();
     final updated = currentSystems.where((s) => s.systemId != systemId).toList();
     final raw = jsonEncode(updated.map((s) => s.toJson()).toList());
     await prefs.setString('$_prefMetadataPrefix$uid', raw);
 
     // Xóa token trong secure storage
     await setSystemToken(uid, systemId, null);
+
+    // Xóa legacy profile nếu trùng khớp và đánh dấu đã migrate để không bao giờ tự động hồi sinh
+    final legacyProfile = await PiConnectionProfile.load(prefs);
+    if (toRemove.isNotEmpty) {
+      final target = toRemove.first;
+      if (legacyProfile.guardUrl == target.guardUrl ||
+          (legacyProfile.deviceId != null && legacyProfile.deviceId == target.deviceId)) {
+        await prefs.remove(PiConnectionProfile.prefProfileKey);
+        await prefs.remove('ignivo_saved_auth_token');
+      }
+    }
+    await prefs.setBool('ignivo_legacy_migrated_$uid', true);
 
     // Xóa trên Cloud Firestore
     final firestore = _effectiveFirestore;
@@ -169,49 +182,53 @@ class SystemRegistryRepository {
           .collection('registered_systems')
           .get();
 
+      final prefs = await _getPrefs();
+      final hasSyncedBefore = prefs.getBool('ignivo_cloud_synced_$uid') ?? false;
       final localSystems = await getSystems(uid);
 
       if (snapshot.docs.isEmpty) {
-        // Nếu trên Cloud chưa có nhưng cục bộ đã có, tự động đẩy dữ liệu cục bộ lên Cloud
-        for (final sys in localSystems) {
-          await firestore
-              .collection('users')
-              .doc(uid)
-              .collection('registered_systems')
-              .doc(sys.systemId)
-              .set(sys.toJson(), SetOptions(merge: true));
+        // Chỉ đẩy lên Cloud nếu đây là thiết bị đầu tiên chưa từng đồng bộ và máy đã có localSystems
+        if (!hasSyncedBefore && localSystems.isNotEmpty) {
+          for (final sys in localSystems) {
+            await firestore
+                .collection('users')
+                .doc(uid)
+                .collection('registered_systems')
+                .doc(sys.systemId)
+                .set(sys.toJson(), SetOptions(merge: true));
+          }
+          await prefs.setBool('ignivo_cloud_synced_$uid', true);
+          return localSystems;
+        } else {
+          // Cloud trống (người dùng đã gỡ hết hệ thống): đồng bộ trạng thái rỗng về máy
+          await prefs.setBool('ignivo_cloud_synced_$uid', true);
+          await prefs.setString('$_prefMetadataPrefix$uid', jsonEncode([]));
+          await prefs.remove('$_prefActiveSystemPrefix$uid');
+          return [];
         }
-        return localSystems;
       }
+
+      await prefs.setBool('ignivo_cloud_synced_$uid', true);
 
       final cloudSystems = snapshot.docs.map((doc) {
         final data = doc.data();
         return SystemRecord.fromJson(data);
       }).toList();
 
-      // Hợp nhất (Merge): Ưu tiên Cloud cho cùng systemId, giữ lại hệ thống cục bộ nếu có
-      final mergedMap = <String, SystemRecord>{};
-      for (final s in localSystems) {
-        mergedMap[s.systemId] = s;
-      }
-      for (final s in cloudSystems) {
-        mergedMap[s.systemId] = s;
-      }
-
-      final mergedList = mergedMap.values.toList();
-
-      // Cập nhật SharedPreferences cục bộ
-      final prefs = await _getPrefs();
-      final raw = jsonEncode(mergedList.map((s) => s.toJson()).toList());
+      // Cloud Firestore là nguồn chân lý: cập nhật SharedPreferences cục bộ theo Cloud
+      final raw = jsonEncode(cloudSystems.map((s) => s.toJson()).toList());
       await prefs.setString('$_prefMetadataPrefix$uid', raw);
 
       // Cập nhật active system nếu cần
       final activeId = await getActiveSystemId(uid);
-      if ((activeId == null || !mergedMap.containsKey(activeId)) && mergedList.isNotEmpty) {
-        await setActiveSystemId(uid, mergedList.first.systemId);
+      final cloudIds = cloudSystems.map((s) => s.systemId).toSet();
+      if ((activeId == null || !cloudIds.contains(activeId)) && cloudSystems.isNotEmpty) {
+        await setActiveSystemId(uid, cloudSystems.first.systemId);
+      } else if (cloudSystems.isEmpty) {
+        await prefs.remove('$_prefActiveSystemPrefix$uid');
       }
 
-      return mergedList;
+      return cloudSystems;
     } catch (e) {
       debugPrint('Error syncing systems from cloud for UID $uid: $e');
       return getSystems(uid);
@@ -286,12 +303,18 @@ class SystemRegistryRepository {
     return raw != null && raw.isNotEmpty;
   }
 
-  /// Di chuyển cấu hình legacy sang SystemRecord của tài khoản UID
+  /// Di chuyển cấu hình legacy sang SystemRecord của tài khoản UID (chỉ chạy 1 lần duy nhất)
   Future<SystemRecord?> migrateLegacyProfile(String uid) async {
     final prefs = await _getPrefs();
+    final alreadyMigrated = prefs.getBool('ignivo_legacy_migrated_$uid') ?? false;
+    if (alreadyMigrated) {
+      return null;
+    }
+
     final legacyProfile = await PiConnectionProfile.load(prefs);
 
     if (!legacyProfile.isConfigured || legacyProfile.guardUrl.isEmpty) {
+      await prefs.setBool('ignivo_legacy_migrated_$uid', true);
       return null;
     }
 
@@ -304,7 +327,11 @@ class SystemRegistryRepository {
               s.deviceId == legacyProfile.deviceId),
     );
 
+    await prefs.setBool('ignivo_legacy_migrated_$uid', true);
+
     if (alreadyExists) {
+      await prefs.remove(PiConnectionProfile.prefProfileKey);
+      await prefs.remove('ignivo_saved_auth_token');
       return existing.firstWhere(
         (s) =>
             s.guardUrl == legacyProfile.guardUrl ||
@@ -318,6 +345,10 @@ class SystemRegistryRepository {
     // Di chuyển token cũ nếu có
     final legacyToken = prefs.getString('ignivo_saved_auth_token');
     await saveSystem(uid, newRecord, token: legacyToken);
+
+    // Dọn dẹp legacy profile để không còn tồn tại dữ liệu bóng ma
+    await prefs.remove(PiConnectionProfile.prefProfileKey);
+    await prefs.remove('ignivo_saved_auth_token');
 
     return newRecord;
   }

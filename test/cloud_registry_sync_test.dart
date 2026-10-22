@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ignivo_app/core/models/pi_connection_profile.dart';
 import 'package:ignivo_app/core/models/system_record.dart';
 import 'package:ignivo_app/core/services/system_registry_repository.dart';
 import 'package:ignivo_app/core/services/system_session_manager.dart';
@@ -77,6 +78,37 @@ void main() {
 
       // Dispose cleanly without uncaught timer or stream exceptions
       manager.dispose();
+    });
+
+    test('removed system is never resurrected by migrateLegacyProfile or subsequent logins', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SystemRegistryRepository(prefs: prefs);
+
+      // Save a legacy profile as if user setup a single Pi before
+      final legacyProfile = PiConnectionProfile.fromGuardUrl(
+        'http://192.168.1.99:8080',
+        systemName: 'Xưởng Cũ',
+      );
+      await legacyProfile.save(prefs);
+
+      // 1. First migration imports the legacy profile
+      final migrated = await repo.migrateLegacyProfile(testUid);
+      expect(migrated, isNotNull);
+      expect(migrated!.systemName, 'Xưởng Cũ');
+      expect((await repo.getSystems(testUid)).length, 1);
+
+      // 2. User explicitly removes the system
+      await repo.removeSystem(testUid, migrated.systemId);
+      expect((await repo.getSystems(testUid)).isEmpty, isTrue);
+
+      // 3. User logs in again -> migrateLegacyProfile is called again
+      final secondMigrate = await repo.migrateLegacyProfile(testUid);
+      expect(secondMigrate, isNull);
+
+      // Systems list MUST remain empty - no ghost system resurrected!
+      final systemsAfterRelogin = await repo.getSystems(testUid);
+      expect(systemsAfterRelogin.isEmpty, isTrue);
     });
   });
 }

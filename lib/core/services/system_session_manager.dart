@@ -119,7 +119,7 @@ class SystemSessionManager extends ChangeNotifier {
   }
 
   void _applySyncedSystems(List<SystemRecord> newSystems) async {
-    if (_disposed || newSystems.isEmpty) return;
+    if (_disposed) return;
 
     final currentIds = _systems.map((s) => s.systemId).toSet();
     final newIds = newSystems.map((s) => s.systemId).toSet();

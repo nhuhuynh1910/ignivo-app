@@ -127,6 +127,16 @@ class GuardSettingsPage extends StatelessWidget {
     );
 
     if (confirmed == true) {
+      if (sessionManager != null) {
+        final currentSysId = sessionManager!.activeSystemId ??
+            sessionManager!.systems
+                .where((s) => s.guardUrl == sessionController.guardUrl)
+                .firstOrNull
+                ?.systemId;
+        if (currentSysId != null) {
+          await sessionManager!.removeSystem(currentSysId);
+        }
+      }
       await sessionController.disconnect();
     }
   }
