@@ -41,7 +41,7 @@ class IgnivoBrandLogo extends StatelessWidget {
     super.key,
     this.wordmarkWidth = 104.0,
     this.wordmarkHeight = 28.0,
-    this.containerized = true,
+    this.containerized = false,
     this.excludeFromSemantics = false,
   })  : markSize = 0,
         gap = 0,
@@ -59,33 +59,52 @@ class IgnivoBrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final wordmarkContainer = Container(
-      width: wordmarkWidth,
-      height: wordmarkHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4.0),
-        border: Border.all(
-          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-          width: 1.0,
-        ),
-      ),
-      child: Image.asset(
-        BrandTokens.wordmarkAsset,
-        fit: BoxFit.contain,
-        cacheWidth: (wordmarkWidth * 3).toInt(),
-        errorBuilder: (context, error, stackTrace) => const Text(
-          'IGNIVO',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: BrandTokens.brandPrimary,
-            fontSize: 14,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ),
-    );
+    final wordmarkContainer = containerized
+        ? Container(
+            width: wordmarkWidth,
+            height: wordmarkHeight,
+            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4.0),
+              border: Border.all(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                width: 1.0,
+              ),
+            ),
+            child: Image.asset(
+              BrandTokens.wordmarkAsset,
+              fit: BoxFit.contain,
+              cacheWidth: (wordmarkWidth * 3).toInt(),
+              errorBuilder: (context, error, stackTrace) => const Text(
+                'IGNIVO',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: BrandTokens.brandPrimary,
+                  fontSize: 14,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          )
+        : SizedBox(
+            width: wordmarkWidth,
+            height: wordmarkHeight,
+            child: Image.asset(
+              BrandTokens.wordmarkAsset,
+              fit: BoxFit.contain,
+              cacheWidth: (wordmarkWidth * 3).toInt(),
+              errorBuilder: (context, error, stackTrace) => const Text(
+                'IGNIVO',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: BrandTokens.brandPrimary,
+                  fontSize: 14,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          );
 
     if (wordmarkOnly) {
       if (excludeFromSemantics) {
