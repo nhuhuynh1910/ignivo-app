@@ -506,20 +506,48 @@ class GuardSettingsPage extends StatelessWidget {
                 children: [
                   if (sessionManager != null) ...[
                     ListTile(
+                      key: const Key('settings-switch-system-tile'),
                       leading: _buildLeadingIcon(
                         context,
                         Icons.hub_outlined,
                       ),
-                      title: Text(
-                        'Hệ thống IGNIVO (${sessionManager!.systems.length})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                      title: Row(
+                        children: [
+                          const Text(
+                            'Đổi hệ thống giám sát',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? BrandTokens.darkBrandTint
+                                  : BrandTokens.brandTint,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${sessionManager!.systems.length} hệ thống',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? BrandTokens.darkPrimary
+                                    : BrandTokens.brandPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      subtitle: const Text(
-                        'Chuyển đổi hoặc liên kết thêm Edge Box khác',
-                        style: TextStyle(fontSize: 12),
+                      subtitle: Text(
+                        'Đang giám sát: ${sessionController.systemName}',
+                        style: const TextStyle(fontSize: 12),
                       ),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       onTap: () {

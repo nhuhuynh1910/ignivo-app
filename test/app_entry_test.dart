@@ -4,13 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ignivo_app/core/models/pi_connection_profile.dart';
+import 'package:ignivo_app/core/models/system_record.dart';
+import 'package:ignivo_app/core/services/app_auth_controller.dart';
 import 'package:ignivo_app/core/services/fireguard_api_service.dart';
+import 'package:ignivo_app/core/services/system_registry_repository.dart';
 import 'package:ignivo_app/core/services/system_session_controller.dart';
+import 'package:ignivo_app/core/services/system_session_manager.dart';
 import 'package:ignivo_app/core/theme/brand_tokens.dart';
 import 'package:ignivo_app/features/auth/app_entry_gate.dart';
 import 'package:ignivo_app/features/auth/ignivo_startup_view.dart';
 import 'package:ignivo_app/features/auth/system_login_page.dart';
 import 'package:ignivo_app/features/settings/connection_setup_page.dart';
+import 'package:ignivo_app/features/systems/systems_page.dart';
 import 'package:ignivo_app/main.dart';
 import 'package:ignivo_app/widgets/ignivo_logo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -355,6 +360,51 @@ void main() {
       // After splash finishes, enters normal entry flow
       expect(find.byType(IgnivoStartupView), findsNothing);
       expect(find.byType(ConnectionSetupPage), findsOneWidget);
+    });
+
+    testWidgets('Account-First flow: logged-in Cloud user with configured system bypasses systems list and opens SystemLoginPage directly', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final registry = SystemRegistryRepository(prefs: prefs);
+      const testUid = 'user_direct_test_123';
+      final systemA = SystemRecord(
+        systemId: 'sys_alpha',
+        systemName: 'Xưởng Sản Xuất Alpha',
+        guardUrl: 'http://192.168.1.100:8080',
+        addedAt: DateTime.now(),
+      );
+      await registry.saveSystem(testUid, systemA);
+      await registry.setActiveSystemId(testUid, systemA.systemId);
+
+      final authController = AppAuthController(
+        initialMockUid: testUid,
+        initialMockEmail: 'owner@ignivo.test',
+      );
+      final sessionManager = SystemSessionManager(
+        registry: registry,
+        uid: testUid,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AppEntryGate(
+            authController: authController,
+            sessionManager: sessionManager,
+            registryRepository: registry,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      // Should bypass SystemsPage and go directly to SystemLoginPage of the active system
+      expect(find.byType(SystemsPage), findsNothing);
+      expect(find.byType(SystemLoginPage), findsOneWidget);
+      expect(find.text('Xưởng Sản Xuất Alpha'), findsOneWidget);
+      expect(find.text('http://192.168.1.100:8080'), findsOneWidget);
     });
   });
 }

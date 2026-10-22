@@ -263,7 +263,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
     // 2. Đang khởi tạo session manager cho UID
     if (!_managerInitialized) {
       return IgnivoStartupView(
-        statusMessage: 'Đang tải danh mục hệ thống...',
+        statusMessage: 'Đang tải thông tin hệ thống...',
         errorMessage: _managerError,
         onRetry: _managerError != null && _authController.currentUid != null
             ? () => _initManagerForUser(_authController.currentUid!)
@@ -272,20 +272,69 @@ class _AppEntryGateState extends State<AppEntryGate> {
     }
 
     final manager = _sessionManager;
-    if (widget.authenticatedBuilder != null && manager?.activeController != null) {
-      return widget.authenticatedBuilder!(context, manager!.activeController!);
+    if (manager == null) {
+      return const IgnivoStartupView(
+        statusMessage: 'Đang chuẩn bị phiên làm việc...',
+      );
     }
 
-    // Luồng chuẩn DMSS: Sau khi đăng nhập, màn hình chính là Device Hub (SystemsPage)
-    return SystemsPage(
-      sessionManager: manager ??
-          SystemSessionManager(
-            registry: _registry,
-            uid: _authController.currentUid ?? '',
-          ),
-      authController: _authController,
+    // 3. Nếu tài khoản chưa có hệ thống nào -> Màn hình kết nối hệ thống ban đầu
+    if (manager.systems.isEmpty) {
+      final tempController = SystemSessionController();
+      return ConnectionSetupPage(
+        sessionController: tempController,
+        sessionManager: manager,
+        canPop: false,
+        onSignOutAccount: () => _authController.signOut(),
+      );
+    }
+
+    // 4. Nếu chưa có activeController hợp lệ -> chọn hệ thống đầu tiên
+    var activeController = manager.activeController;
+    if (activeController == null) {
+      final firstSys = manager.systems.first;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        manager.switchSystem(firstSys.systemId);
+      });
+      return const IgnivoStartupView(
+        statusMessage: 'Đang kết nối hệ thống...',
+      );
+    }
+
+    // 5. Nếu chưa xác thực phiên Pi Edge Box -> Chuyển vào SystemLoginPage
+    if (!activeController.isAuthenticated) {
+      return SystemLoginPage(
+        key: ValueKey('system_login_${manager.activeSystemId}'),
+        sessionController: activeController,
+        sessionManager: manager,
+        authController: _authController,
+        canPop: false,
+        onSwitchSystem: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SystemsPage(
+                sessionManager: manager,
+                authController: _authController,
+                coordinator: _coordinator,
+                canPop: true,
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    if (widget.authenticatedBuilder != null) {
+      return widget.authenticatedBuilder!(context, activeController);
+    }
+
+    // 6. Đã xác thực thành công -> Vào thẳng màn hình giám sát chính (IgnivoShell)
+    return IgnivoShell(
+      key: ValueKey('shell_${manager.activeSystemId}'),
+      sessionController: activeController,
+      sessionManager: manager,
       coordinator: _coordinator,
-      canPop: false,
+      authController: _authController,
     );
   }
 }

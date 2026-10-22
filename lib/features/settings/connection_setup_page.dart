@@ -15,11 +15,13 @@ class ConnectionSetupPage extends StatefulWidget {
     required this.sessionController,
     this.sessionManager,
     this.canPop = false,
+    this.onSignOutAccount,
   });
 
   final SystemSessionController sessionController;
   final SystemSessionManager? sessionManager;
   final bool canPop;
+  final VoidCallback? onSignOutAccount;
 
   @override
   State<ConnectionSetupPage> createState() => _ConnectionSetupPageState();
@@ -155,7 +157,44 @@ class _ConnectionSetupPageState extends State<ConnectionSetupPage> {
     return Scaffold(
       appBar: widget.canPop
           ? ignivoDetailAppBar(context, title: 'Đổi kết nối')
-          : null,
+          : (widget.onSignOutAccount != null
+              ? AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  title: const Text('Ghép nối hệ thống IGNIVO'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.logout_rounded),
+                      tooltip: 'Đăng xuất tài khoản Cloud',
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Đăng xuất tài khoản'),
+                            content: const Text(
+                              'Bạn có muốn đăng xuất khỏi tài khoản Ignivo Cloud hiện tại?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Hủy'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Đăng xuất'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true && widget.onSignOutAccount != null) {
+                          widget.onSignOutAccount!();
+                        }
+                      },
+                    ),
+                  ],
+                )
+              : null),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

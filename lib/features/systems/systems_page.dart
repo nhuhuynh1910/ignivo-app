@@ -90,6 +90,7 @@ class _SystemsPageState extends State<SystemsPage> {
           builder: (_) => SystemLoginPage(
             sessionController: controller,
             sessionManager: widget.sessionManager,
+            authController: widget.authController,
             canPop: true,
             onBack: () => Navigator.of(context).pop(),
           ),
@@ -102,7 +103,14 @@ class _SystemsPageState extends State<SystemsPage> {
     if (widget.onSystemSelected != null) {
       widget.onSystemSelected!(system);
     } else if (widget.canPop && Navigator.canPop(context)) {
-      Navigator.pop(context, system);
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã chuyển sang hệ thống "${system.systemName}"'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: BrandTokens.stitchSafe,
+        ),
+      );
     } else if (openMonitoring && controller != null && controller.isAuthenticated) {
       await Navigator.of(context).push(
         MaterialPageRoute(
@@ -273,7 +281,7 @@ class _SystemsPageState extends State<SystemsPage> {
         break;
       case 0:
       default:
-        appBarTitle = 'Hệ thống giám sát';
+        appBarTitle = widget.canPop ? 'Đổi hệ thống giám sát' : 'Hệ thống giám sát';
         break;
     }
 

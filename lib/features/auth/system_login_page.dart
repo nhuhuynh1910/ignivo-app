@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/services/app_auth_controller.dart';
+import '../systems/systems_page.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
@@ -12,6 +14,7 @@ class SystemLoginPage extends StatefulWidget {
     super.key,
     required this.sessionController,
     this.sessionManager,
+    this.authController,
     this.onSwitchSystem,
     this.canPop,
     this.onBack,
@@ -19,6 +22,7 @@ class SystemLoginPage extends StatefulWidget {
 
   final SystemSessionController sessionController;
   final SystemSessionManager? sessionManager;
+  final AppAuthController? authController;
   final VoidCallback? onSwitchSystem;
   final bool? canPop;
   final VoidCallback? onBack;
@@ -133,6 +137,47 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
     );
   }
 
+  void _openSystemsPage() {
+    if (widget.onSwitchSystem != null) {
+      widget.onSwitchSystem!();
+    } else if (widget.sessionManager != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SystemsPage(
+            sessionManager: widget.sessionManager!,
+            authController: widget.authController,
+            canPop: true,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmSignOutCloud() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đăng xuất tài khoản Cloud'),
+        content: const Text(
+          'Bạn có muốn đăng xuất khỏi tài khoản Ignivo Cloud hiện tại và quay về màn hình đăng nhập?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && widget.authController != null) {
+      await widget.authController!.signOut();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -153,8 +198,30 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                 tooltip: 'Trở về danh sách hệ thống',
                 onPressed: _handleBack,
               ),
+              title: const Text('Đăng nhập hệ thống'),
             )
-          : null,
+          : (widget.authController != null || widget.sessionManager != null
+              ? AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  title: const Text('Đăng nhập hệ thống'),
+                  actions: [
+                    if (widget.sessionManager != null)
+                      IconButton(
+                        icon: const Icon(Icons.hub_outlined),
+                        tooltip: 'Đổi hệ thống',
+                        onPressed: isAuthenticating ? null : _openSystemsPage,
+                      ),
+                    if (widget.authController != null)
+                      IconButton(
+                        icon: const Icon(Icons.logout_rounded),
+                        tooltip: 'Đăng xuất tài khoản Cloud',
+                        onPressed: isAuthenticating ? null : _confirmSignOutCloud,
+                      ),
+                  ],
+                )
+              : null),
       body: SafeArea(
         top: !showBack,
         child: Center(
@@ -225,10 +292,12 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (widget.onSwitchSystem != null)
+                              if (widget.onSwitchSystem != null ||
+                                  (widget.sessionManager != null &&
+                                      widget.sessionManager!.systems.length > 1))
                                 TextButton(
                                   key: const Key('switch-system-link'),
-                                  onPressed: isAuthenticating ? null : widget.onSwitchSystem,
+                                  onPressed: isAuthenticating ? null : _openSystemsPage,
                                   style: TextButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
                                     padding: const EdgeInsets.symmetric(horizontal: 6),
