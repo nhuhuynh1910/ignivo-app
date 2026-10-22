@@ -95,10 +95,10 @@ class IncidentTimelineStepper extends StatelessWidget {
       currentStatusColor = BrandTokens.stitchCriticalFg;
     } else if (status == 'acknowledged') {
       currentStatusMessage = 'Lực lượng trực ban đã tiếp nhận sự cố và đang triển khai xử lý tại chỗ.';
-      currentStatusColor = BrandTokens.brandPrimary;
+      currentStatusColor = isDark ? BrandTokens.stitchDarkPrimary : BrandTokens.brandPrimary;
     } else if (status == 'resolved') {
       currentStatusMessage = 'Sự cố đã được kiểm soát và kết thúc an toàn.';
-      currentStatusColor = BrandTokens.stitchOnlineFg;
+      currentStatusColor = isDark ? BrandTokens.stitchDarkPrimary : BrandTokens.brandPrimary;
     } else if (status == 'false_alarm') {
       currentStatusMessage = 'Sự cố được xác nhận là báo động nhầm. Đã đóng phiên ghi nhận.';
       currentStatusColor = isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary;

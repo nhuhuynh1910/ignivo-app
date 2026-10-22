@@ -250,6 +250,7 @@ class _FireguardPageState extends State<FireguardPage>
   );
 
   Widget _incidentCard(Map<String, dynamic> incident) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSmoke =
         incident['trigger_type'].toString().toLowerCase() == 'smoke';
     final id = incident['id'];
@@ -279,9 +280,11 @@ class _FireguardPageState extends State<FireguardPage>
               children: [
                 GuardBadge(
                   incidentStatusLabel(incident['status']),
-                  color: ['resolved', 'false_alarm'].contains(incident['status'])
-                      ? Colors.teal
-                      : BrandTokens.stitchCriticalFg,
+                  color: (incident['status'] == 'resolved' || incident['status'] == 'acknowledged')
+                      ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+                      : (['resolved', 'false_alarm'].contains(incident['status'])
+                          ? Colors.teal
+                          : BrandTokens.stitchCriticalFg),
                 ),
                 GuardBadge('#$id', color: Colors.blueGrey),
                 if (incident['is_simulation'] == true)

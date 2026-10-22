@@ -637,9 +637,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
               children: [
                 GuardBadge(
                   incidentStatusLabel(incident['status']),
-                  color: isClosed
-                      ? BrandTokens.stitchOnlineFg
-                      : BrandTokens.stitchCriticalFg,
+                  color: (incident['status'] == 'resolved' || incident['status'] == 'acknowledged')
+                      ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+                      : (isClosed
+                          ? BrandTokens.stitchOnlineFg
+                          : BrandTokens.stitchCriticalFg),
                 ),
                 GuardBadge(
                   IncidentPresentationHelper.severityLabel(incident['severity']),
