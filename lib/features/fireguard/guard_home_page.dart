@@ -185,10 +185,24 @@ class _GuardHomePageState extends State<GuardHomePage> {
             ?.toDouble() ??
             0.0;
 
+        final userName = widget.sessionController.fullName ?? 'Quản trị viên';
+        final initials = userName
+            .trim()
+            .split(' ')
+            .where((e) => e.isNotEmpty)
+            .map((e) => e[0])
+            .take(2)
+            .join('')
+            .toUpperCase();
+
         return IgnivoPageBody(
           header: IgnivoPageHeader(
             title: 'Trang chủ',
+            subtitle: isStale
+                ? 'Trạng thái hệ thống chưa cập nhật'
+                : 'Tổng quan giám sát an toàn',
             systemName: widget.sessionController.systemName,
+            avatarInitials: initials.isNotEmpty ? initials : 'MA',
             showSync: true,
             updatedAt: widget.monitoringController.updated,
             stale: isStale,

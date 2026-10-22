@@ -40,7 +40,7 @@ class IgnivoPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = compact ?? (title == 'Trang chủ');
+    final isCompact = compact ?? false;
     if (isCompact) {
       return _buildCompactHeader(context);
     }
