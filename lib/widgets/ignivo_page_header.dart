@@ -20,6 +20,8 @@ class IgnivoPageHeader extends StatelessWidget {
     this.onTapAvatar,
     this.avatarInitials,
     this.compact,
+    this.showBack = false,
+    this.onBack,
   });
 
   final String title;
@@ -33,6 +35,8 @@ class IgnivoPageHeader extends StatelessWidget {
   final VoidCallback? onTapAvatar;
   final String? avatarInitials;
   final bool? compact;
+  final bool showBack;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -74,14 +78,14 @@ class IgnivoPageHeader extends StatelessWidget {
           label: '$title - $systemName',
           child: Row(
             children: [
-              if (Navigator.canPop(context)) ...[
+              if (showBack) ...[
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  tooltip: 'Trở về danh sách hệ thống',
+                  tooltip: 'Trở về',
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(8),
                   constraints: const BoxConstraints(),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: onBack ?? () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 8),
               ] else ...[
@@ -241,11 +245,11 @@ class IgnivoPageHeader extends StatelessWidget {
           children: [
             Row(
               children: [
-                if (Navigator.canPop(context)) ...[
+                if (showBack) ...[
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                    tooltip: 'Trở về danh sách hệ thống',
-                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: 'Trở về',
+                    onPressed: onBack ?? () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 4),
                 ],

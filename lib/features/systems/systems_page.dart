@@ -112,16 +112,20 @@ class _SystemsPageState extends State<SystemsPage> {
         ),
       );
     } else if (openMonitoring && controller != null && controller.isAuthenticated) {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => IgnivoShell(
-            sessionController: controller,
-            sessionManager: widget.sessionManager,
-            coordinator: widget.coordinator,
-            authController: widget.authController,
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => IgnivoShell(
+              sessionController: controller,
+              sessionManager: widget.sessionManager,
+              coordinator: widget.coordinator,
+              authController: widget.authController,
+            ),
           ),
-        ),
-      );
+        );
+      }
       if (mounted) setState(() {});
     }
   }
