@@ -481,10 +481,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Đề xuất C: Live heartbeat
-      expect(find.text('Đang quét an toàn thời gian thực'), findsOneWidget);
-
-      // Đề xuất A: Overall health badge & 4 Pillars
+      // Readiness card title & Overall health badge
+      expect(find.text('Mức sẵn sàng giám sát'), findsOneWidget);
       expect(find.text('100% Sẵn sàng'), findsOneWidget);
       expect(find.text('Camera giám sát'), findsWidgets);
       expect(find.text('AI Thị giác & Hailo'), findsOneWidget);

@@ -907,75 +907,24 @@ class _GuardHomePageState extends State<GuardHomePage> {
                 children: [
                   // Top section: Kicker, Title, Heartbeat status & Shield Badge (Streamlined)
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.home_outlined,
-                                  size: 17,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(
-                                    'Mức sẵn sàng giám sát',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                PulsingStatusDot(
-                                  color: isStale
-                                      ? const Color(0xFFFFB74D)
-                                      : const Color(0xFF4ADE80),
-                                  size: 5,
-                                  pulseSize: 11,
-                                ),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(
-                                    isStale
-                                        ? 'Mất kết nối đồng bộ'
-                                        : 'Đang quét an toàn thời gian thực',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white.withValues(alpha: 0.92),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (!isStale && unclosedIncidents.isEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                'Chưa ghi nhận cảnh báo trong dữ liệu hiện có',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ],
+                      const Icon(
+                        Icons.home_outlined,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'Mức sẵn sàng giám sát',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1023,7 +972,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
                   // 2x2 Glassmorphism Metrics Grid (Streamlined & Compact)
                   Row(

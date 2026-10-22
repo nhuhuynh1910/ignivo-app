@@ -85,7 +85,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Biệt Thự Vườn'), findsOneWidget);
-      expect(find.text('Chưa ghi nhận cảnh báo trong dữ liệu hiện có'), findsOneWidget);
+      expect(find.text('Mức sẵn sàng giám sát'), findsOneWidget);
+      expect(find.text('Chưa ghi nhận cảnh báo trong dữ liệu hiện có'), findsNothing);
       expect(find.textContaining('An toàn tuyệt đối'), findsNothing);
       expect(find.text('2 người thân · 1 PCCC'), findsOneWidget);
 
