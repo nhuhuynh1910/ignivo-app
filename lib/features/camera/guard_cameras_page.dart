@@ -232,6 +232,16 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
           }
         }).toList();
 
+        final userName = widget.sessionController.fullName ?? 'Quản trị viên';
+        final initials = userName
+            .trim()
+            .split(' ')
+            .where((e) => e.isNotEmpty)
+            .map((e) => e[0])
+            .take(2)
+            .join('')
+            .toUpperCase();
+
         return IgnivoPageBody(
           header: IgnivoPageHeader(
             title: 'Camera',
@@ -241,6 +251,7 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                 ? '$onlineCameras/$totalCameras camera trực tuyến'
                 : 'Chưa phát hiện camera kết nối',
             systemName: widget.sessionController.systemName,
+            avatarInitials: initials.isNotEmpty ? initials : 'MA',
             showSync: true,
             updatedAt: widget.monitoringController.updated,
             stale: widget.monitoringController.stale,

@@ -232,13 +232,24 @@ class IgnivoPageHeader extends StatelessWidget {
     final muted = isDark
         ? BrandTokens.darkTextSecondary
         : BrandTokens.textSecondary;
+
+    final syncTime = updatedAt?.toLocal();
+    final formattedSyncTime = syncTime == null
+        ? null
+        : '${syncTime.hour.toString().padLeft(2, '0')}:${syncTime.minute.toString().padLeft(2, '0')}';
+    final syncTooltip = stale
+        ? 'Dữ liệu chưa đồng bộ'
+        : formattedSyncTime != null
+            ? 'Đã đồng bộ lúc $formattedSyncTime'
+            : 'Đã kết nối';
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(bottom: BorderSide(color: theme.colorScheme.outline)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -256,9 +267,9 @@ class IgnivoPageHeader extends StatelessWidget {
                 const IgnivoBrandLogo.wordmarkOnly(excludeFromSemantics: false),
                 const Spacer(),
                 Tooltip(
-                  message: systemName,
+                  message: '$systemName · $syncTooltip',
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     onTap: () {
                       if (onTapSystem != null) {
                         onTapSystem!();
@@ -272,14 +283,26 @@ class IgnivoPageHeader extends StatelessWidget {
                         );
                       }
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? BrandTokens.darkSurfaceVariant
+                            : BrandTokens.brandTint,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? BrandTokens.darkBorder
+                              : BrandTokens.brandPrimary.withValues(alpha: 0.18),
+                          width: 0.8,
+                        ),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.router_rounded,
-                            size: 17,
+                            size: 15,
                             color: isDark
                                 ? BrandTokens.darkPrimary
                                 : BrandTokens.brandPrimary,
@@ -287,7 +310,7 @@ class IgnivoPageHeader extends StatelessWidget {
                           const SizedBox(width: 5),
                           Flexible(
                             child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 110),
+                              constraints: const BoxConstraints(maxWidth: 160),
                               child: Text(
                                 systemName,
                                 maxLines: 1,
@@ -297,14 +320,28 @@ class IgnivoPageHeader extends StatelessWidget {
                                       ? BrandTokens.darkTextPrimary
                                       : BrandTokens.textPrimary,
                                   fontWeight: FontWeight.w600,
+                                  fontSize: 12.5,
                                 ),
                               ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: stale
+                                  ? Colors.orange.shade700
+                                  : (isDark
+                                      ? BrandTokens.stitchDarkOnlineFg
+                                      : BrandTokens.stitchOnlineFg),
                             ),
                           ),
                           const SizedBox(width: 2),
                           Icon(
                             Icons.arrow_drop_down_rounded,
-                            size: 18,
+                            size: 16,
                             color: isDark
                                 ? BrandTokens.darkTextSecondary
                                 : BrandTokens.textSecondary,
@@ -348,7 +385,7 @@ class IgnivoPageHeader extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -361,18 +398,19 @@ class IgnivoPageHeader extends StatelessWidget {
                         child: Text(
                           title,
                           style: theme.textTheme.headlineSmall?.copyWith(
-                            fontSize: 27,
+                            fontSize: 23,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
+                            letterSpacing: -0.4,
                           ),
                         ),
                       ),
                       if (subtitle != null && subtitle!.isNotEmpty) ...[
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 3),
                         Text(
                           subtitle!,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: muted,
+                            fontSize: 12.5,
                           ),
                         ),
                       ],
@@ -382,10 +420,6 @@ class IgnivoPageHeader extends StatelessWidget {
                 if (action != null) ...[const SizedBox(width: 12), action!],
               ],
             ),
-            if (showSync) ...[
-              const SizedBox(height: 14),
-              IgnivoSyncStatus(updatedAt: updatedAt, stale: stale),
-            ],
           ],
         ),
       ),
@@ -411,14 +445,14 @@ class IgnivoHeaderAction extends StatelessWidget {
     return IconButton(
       onPressed: onPressed,
       tooltip: tooltip,
-      icon: Icon(icon, size: 22),
+      icon: Icon(icon, size: 20),
       style: IconButton.styleFrom(
-        minimumSize: const Size(48, 48),
+        minimumSize: const Size(42, 42),
         backgroundColor: isDark
             ? BrandTokens.darkBrandTint
             : BrandTokens.brandTint,
         foregroundColor: Theme.of(context).colorScheme.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -556,32 +590,33 @@ AppBar ignivoDetailAppBar(
     scrolledUnderElevation: 0,
     surfaceTintColor: Colors.transparent,
     toolbarHeight:
-        (subtitle == null ? 64 : 88) +
-        (scaler.scale(18) - 18) * 2.4 +
-        (subtitle == null ? 0 : (scaler.scale(12) - 12) * 1.3),
-    titleSpacing: 16,
+        (subtitle == null ? 56 : 64) +
+        (scaler.scale(17) - 17) * 1.5 +
+        (subtitle == null ? 0 : (scaler.scale(12) - 12) * 1.0),
+    titleSpacing: 12,
     title: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           title,
-          maxLines: 2,
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium?.copyWith(
-            fontSize: 18,
+            fontSize: 17,
             height: 1.2,
             fontWeight: FontWeight.w700,
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             subtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
-              height: 1.3,
+              fontSize: 12,
+              height: 1.2,
               color: theme.brightness == Brightness.dark
                   ? BrandTokens.darkTextSecondary
                   : BrandTokens.textSecondary,

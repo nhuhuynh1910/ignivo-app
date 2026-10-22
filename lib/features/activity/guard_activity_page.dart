@@ -79,10 +79,22 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
         final allIncidents = widget.monitoringController.incidents;
         final filtered = allIncidents.where(_matchesFilter).toList();
 
+        final userName = widget.sessionController?.fullName ?? 'Quản trị viên';
+        final initials = userName
+            .trim()
+            .split(' ')
+            .where((e) => e.isNotEmpty)
+            .map((e) => e[0])
+            .take(2)
+            .join('')
+            .toUpperCase();
+
         return IgnivoPageBody(
           header: IgnivoPageHeader(
             title: 'Cảnh báo',
+            subtitle: 'Nhật ký sự cố và phát hiện cháy',
             systemName: widget.sessionController?.systemName ?? 'IGNIVO',
+            avatarInitials: initials.isNotEmpty ? initials : 'MA',
             showSync: true,
             updatedAt: widget.monitoringController.updated,
             stale: widget.monitoringController.stale,
