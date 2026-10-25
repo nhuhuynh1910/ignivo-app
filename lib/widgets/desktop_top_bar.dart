@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme/brand_tokens.dart';
 import 'pulsing_status_dot.dart';
+import 'ignivo_avatar.dart';
 
 /// Thanh tiêu đề mở rộng chuyên biệt cho bản Desktop & Web
 ///
@@ -17,6 +18,9 @@ class DesktopTopBar extends StatelessWidget {
     this.onRefresh,
     this.onOpenDiagnostics,
     this.onTapSystem,
+    this.onTapAvatar,
+    this.avatarName,
+    this.avatarPhotoUrl,
     this.actions,
   });
 
@@ -28,6 +32,9 @@ class DesktopTopBar extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final VoidCallback? onOpenDiagnostics;
   final VoidCallback? onTapSystem;
+  final VoidCallback? onTapAvatar;
+  final String? avatarName;
+  final String? avatarPhotoUrl;
   final List<Widget>? actions;
 
   @override
@@ -126,17 +133,17 @@ class DesktopTopBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: (isDark
-                              ? BrandTokens.darkBrandTint
-                              : BrandTokens.brandTint)
+                          ? BrandTokens.darkBrandTint
+                          : BrandTokens.brandTint)
                           .withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: (isDark
-                                ? BrandTokens.darkBorder
-                                : BrandTokens.border)
+                            ? BrandTokens.darkBorder
+                            : BrandTokens.border)
                             .withValues(alpha: 0.6),
                       ),
                     ),
@@ -153,8 +160,8 @@ class DesktopTopBar extends StatelessWidget {
                         Text(
                           isCompact
                               ? (isWsConnected && !isStale
-                                  ? 'WS Online'
-                                  : 'Syncing')
+                              ? 'WS Online'
+                              : 'Syncing')
                               : statusLabel,
                           style: TextStyle(
                             fontSize: 12,
@@ -288,6 +295,20 @@ class DesktopTopBar extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // 5. Avatar tài khoản (logo IGNIVO vẫn nằm trên NavigationRail)
+              Tooltip(
+                message: 'Thông tin cá nhân',
+                child: IgnivoUserAvatar(
+                  name: avatarName,
+                  photoUrl: avatarPhotoUrl,
+                  radius: 17,
+                  showBorder: true,
+                  onTap: onTapAvatar,
                 ),
               ),
             ],

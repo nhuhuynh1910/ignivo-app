@@ -26,6 +26,7 @@ class CameraPreviewCard extends StatelessWidget {
     this.canConfigure = false,
     this.showLiveViewAction = true,
     this.margin,
+    this.maxWidth,
     this.onTap,
     this.onEdit,
   });
@@ -44,6 +45,7 @@ class CameraPreviewCard extends StatelessWidget {
   final bool canConfigure;
   final bool showLiveViewAction;
   final EdgeInsetsGeometry? margin;
+  final double? maxWidth;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
 
@@ -56,7 +58,7 @@ class CameraPreviewCard extends StatelessWidget {
       color: Colors.transparent,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
+          constraints: BoxConstraints(maxWidth: maxWidth ?? 440),
           child: InteractiveCard(
             margin: margin ?? const EdgeInsets.only(bottom: 14),
             borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
@@ -64,9 +66,9 @@ class CameraPreviewCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              // 1. Khung hình tỷ lệ 16:8.7 (theo CSS demo)
+              // 1. Khung hình tỷ lệ 16:9
               AspectRatio(
-                aspectRatio: 16 / 8.7,
+                aspectRatio: 16 / 9,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -81,8 +83,9 @@ class CameraPreviewCard extends StatelessWidget {
 
               // 2. Nội dung thông tin camera bên dưới
               Padding(
-                padding: const EdgeInsets.fromLTRB(15, 14, 15, 15),
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Hàng 1: Tên camera + Badge kết nối + Nút sửa
@@ -93,50 +96,70 @@ class CameraPreviewCard extends StatelessWidget {
                             name,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 15,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         _buildConnectionBadge(isOnline),
                         if (canConfigure && onEdit != null) ...[
-                          const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              minimumSize: const Size(0, 32),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: onEdit,
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: (isDark ? BrandTokens.darkSurfaceVariant : BrandTokens.brandTint).withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: (isDark ? BrandTokens.darkBorder : BrandTokens.border).withValues(alpha: 0.8),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit_outlined, size: 12, color: theme.colorScheme.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Sửa',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            icon: const Icon(Icons.edit_outlined, size: 14),
-                            label: const Text('Sửa', style: TextStyle(fontSize: 12)),
-                            onPressed: onEdit,
                           ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
-                    // Hàng 2: Trạng thái AI giám sát
+                    // Hàng 2: Trạng thái AI + Vị trí khu vực (Gọn 1 hàng)
                     Row(
                       children: [
                         Icon(
                           aiEnabled
                               ? Icons.smart_toy_rounded
                               : Icons.smart_toy_outlined,
-                          size: 16,
+                          size: 14,
                           color: aiEnabled
                               ? BrandTokens.brandAccent
                               : (isDark
                                   ? BrandTokens.darkTextTertiary
                                   : BrandTokens.textTertiary),
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
+                        const SizedBox(width: 4),
+                        Flexible(
                           child: Text(
                             aiStatusText,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: aiEnabled
                                   ? BrandTokens.brandAccent
@@ -144,26 +167,22 @@ class CameraPreviewCard extends StatelessWidget {
                                       ? BrandTokens.darkTextSecondary
                                       : BrandTokens.textSecondary),
                             ),
-                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Hàng 3: Metadata (Icon Vị trí + Area • Model)
-                    Row(
-                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Text('•', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                        ),
                         Icon(
                           Icons.place_outlined,
-                          size: 14,
+                          size: 13,
                           color: isDark
                               ? BrandTokens.darkTextTertiary
                               : BrandTokens.textTertiary,
                         ),
-                        const SizedBox(width: 4),
-                        Flexible(
+                        const SizedBox(width: 3),
+                        Expanded(
                           child: Text(
                             area,
                             style: TextStyle(
@@ -173,41 +192,28 @@ class CameraPreviewCard extends StatelessWidget {
                                   ? BrandTokens.darkTextSecondary
                                   : BrandTokens.textSecondary,
                             ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (model != null && model!.trim().isNotEmpty) ...[
-                          const Text(' • ', style: TextStyle(color: Colors.grey)),
-                          Flexible(
-                            child: Text(
-                              model!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? BrandTokens.darkTextSecondary
-                                    : BrandTokens.textSecondary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     if (showLiveViewAction) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       const Divider(height: 1),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            minimumSize: const Size(0, 32),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            minimumSize: const Size(0, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                           onPressed: onTap,
-                          icon: const Icon(Icons.play_circle_outline, size: 16),
+                          icon: const Icon(Icons.play_circle_outline, size: 14),
                           label: const Text(
                             'Xem trực tiếp (Live View)',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),

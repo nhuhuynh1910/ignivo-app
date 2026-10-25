@@ -1038,9 +1038,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
           color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
         ),
       ),
-      child: ExpansionTile(
-        key: const PageStorageKey('incident_evidence_images_tile'),
-        shape: const Border(),
+      child: Material(
+        color: Colors.transparent,
+        child: ExpansionTile(
+          key: const PageStorageKey('incident_evidence_images_tile'),
+          shape: const Border(),
         leading: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -1077,6 +1079,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1094,9 +1097,11 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
           color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
         ),
       ),
-      child: ExpansionTile(
-        key: const PageStorageKey('incident_voice_message_tile'),
-        shape: const Border(),
+      child: Material(
+        color: Colors.transparent,
+        child: ExpansionTile(
+          key: const PageStorageKey('incident_voice_message_tile'),
+          shape: const Border(),
         leading: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -1140,6 +1145,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
           ),
         ],
       ),
+    ),
     );
   }
 

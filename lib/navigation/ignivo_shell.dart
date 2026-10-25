@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/services/app_auth_controller.dart';
-import '../../core/services/camera_snapshot_loader.dart';
-import '../../core/services/multi_system_monitoring_coordinator.dart';
-import '../../core/services/system_session_controller.dart';
-import '../../core/services/system_session_manager.dart';
-import '../../core/theme/brand_tokens.dart';
+import '../core/services/app_auth_controller.dart';
+import '../core/services/camera_snapshot_loader.dart';
+import '../core/services/multi_system_monitoring_coordinator.dart';
+import '../core/services/system_session_controller.dart';
+import '../core/services/system_session_manager.dart';
+import '../core/theme/brand_tokens.dart';
 import '../features/activity/guard_activity_page.dart';
 import '../features/camera/camera_live_page.dart';
 import '../features/camera/guard_cameras_page.dart';
@@ -15,6 +15,7 @@ import '../features/fireguard/monitoring_controller.dart';
 import '../features/fireguard/incident_page.dart';
 import '../features/settings/guard_settings_page.dart';
 import '../features/settings/diagnostics_page.dart';
+import '../features/settings/personal_info_page.dart';
 import '../features/systems/systems_page.dart';
 import '../widgets/desktop_top_bar.dart';
 import '../widgets/ignivo_page_header.dart';
@@ -53,7 +54,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
     _snapshotLoader = CameraSnapshotLoader(api: widget.sessionController.api);
     _monitoring =
         widget.monitoringController ??
-        MonitoringController(api: widget.sessionController.api);
+            MonitoringController(api: widget.sessionController.api);
     _monitoring.addListener(_onMonitoringChanged);
     _monitoring.start();
 
@@ -62,14 +63,27 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'CẢNH BÁO KHẨN CẤP: ${alert.systemName} phát hiện sự cố #${alert.incidentId}!',
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 6,
+          backgroundColor: const Color(0xFF991B1B),
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'CẢNH BÁO KHẨN CẤP: ${alert.systemName} phát hiện sự cố #${alert.incidentId}!',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+            ],
           ),
           duration: const Duration(seconds: 15),
-          backgroundColor: Colors.red.shade900,
           action: SnackBarAction(
             label: 'Chuyển hệ thống',
-            textColor: Colors.yellow,
+            textColor: const Color(0xFFFFD700),
             onPressed: () async {
               await widget.sessionManager?.switchSystem(alert.systemId);
             },
@@ -91,12 +105,27 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
           HapticFeedback.heavyImpact();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('CẢNH BÁO: Phát hiện sự cố mới #$id'),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 6,
+              backgroundColor: const Color(0xFF991B1B),
+              content: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'CẢNH BÁO: Phát hiện sự cố mới #$id',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
               duration: const Duration(seconds: 15),
-              backgroundColor: Colors.red.shade900,
               action: SnackBarAction(
-                label: 'Xem',
-                textColor: Colors.yellow,
+                label: 'Xem ngay',
+                textColor: const Color(0xFFFFD700),
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -259,36 +288,36 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
 
         final Widget shellScaffold = !isDesktop
             ? Scaffold(
-                body: tabContent,
-                bottomNavigationBar: NavigationBar(
-                  selectedIndex: _selectedTab,
-                  onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
-                  destinations: [
-                    const NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home),
-                      label: 'Trang chủ',
-                    ),
-                    const NavigationDestination(
-                      icon: Icon(Icons.videocam_outlined),
-                      selectedIcon: Icon(Icons.videocam),
-                      label: 'Camera',
-                    ),
-                    NavigationDestination(
-                      icon: buildAlertNavIcon(isSelected: false),
-                      selectedIcon: buildAlertNavIcon(isSelected: true),
-                      label: 'Cảnh báo',
-                    ),
-                    const NavigationDestination(
-                      icon: Icon(Icons.settings_outlined),
-                      selectedIcon: Icon(Icons.settings),
-                      label: 'Cài đặt',
-                    ),
-                  ],
-                ),
-              )
+          body: tabContent,
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _selectedTab,
+            onDestinationSelected: (idx) => setState(() => _selectedTab = idx),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Trang chủ',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.videocam_outlined),
+                selectedIcon: Icon(Icons.videocam),
+                label: 'Camera',
+              ),
+              NavigationDestination(
+                icon: buildAlertNavIcon(isSelected: false),
+                selectedIcon: buildAlertNavIcon(isSelected: true),
+                label: 'Cảnh báo',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'Cài đặt',
+              ),
+            ],
+          ),
+        )
             : Scaffold(
-                body: Row(
+          body: Row(
             children: [
               NavigationRail(
                 extended: isExtended,
@@ -299,8 +328,24 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                 onDestinationSelected: (idx) =>
                     setState(() => _selectedTab = idx),
                 backgroundColor:
-                    isDark ? BrandTokens.darkSurface : BrandTokens.surface,
-                minExtendedWidth: 200,
+                isDark ? BrandTokens.darkSurface : BrandTokens.brandNavy,
+                indicatorColor: isDark
+                    ? BrandTokens.darkPrimary.withValues(alpha: 0.3)
+                    : BrandTokens.brandAccent,
+                minExtendedWidth: 220,
+                selectedIconTheme: const IconThemeData(color: Colors.white),
+                unselectedIconTheme: IconThemeData(
+                  color: isDark ? Colors.white60 : const Color(0xFF94A3B8),
+                ),
+                selectedLabelTextStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                unselectedLabelTextStyle: TextStyle(
+                  color: isDark ? Colors.white60 : const Color(0xFF94A3B8),
+                  fontSize: 12,
+                ),
                 leading: Padding(
                   padding: EdgeInsets.symmetric(
                     vertical: isExtended ? 20 : 16,
@@ -308,43 +353,58 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                   ),
                   child: isExtended
                       ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              BrandTokens.markAsset,
-                              height: 34,
-                              width: 34,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.local_fire_department_rounded,
-                                color: BrandTokens.brandPrimary,
-                                size: 32,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'IGNIVO',
-                              style: TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                                letterSpacing: 2.0,
-                                color: BrandTokens.brandPrimary,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Image.asset(
-                          BrandTokens.markAsset,
-                          height: 32,
-                          width: 32,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.local_fire_department_rounded,
-                            color: BrandTokens.brandPrimary,
-                            size: 30,
-                          ),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        BrandTokens.markAsset,
+                        height: 32,
+                        width: 32,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.local_fire_department_rounded,
+                          color: Colors.white,
+                          size: 28,
                         ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'IGNIVO',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                              letterSpacing: 2.0,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'ADMIN DASHBOARD',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: BrandTokens.brandAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                      : Image.asset(
+                    BrandTokens.markAsset,
+                    height: 30,
+                    width: 30,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
                 ),
                 trailing: Expanded(
                   child: Align(
@@ -355,74 +415,69 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                         borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
                         onTap: widget.sessionManager != null
                             ? () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => SystemsPage(
-                                      sessionManager: widget.sessionManager!,
-                                      authController: widget.authController,
-                                      coordinator: widget.coordinator,
-                                      canPop: true,
-                                    ),
-                                  ),
-                                );
-                              }
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => SystemsPage(
+                                sessionManager: widget.sessionManager!,
+                                authController: widget.authController,
+                                coordinator: widget.coordinator,
+                                canPop: true,
+                              ),
+                            ),
+                          );
+                        }
                             : null,
                         child: isExtended
                             ? Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 12),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: (isDark
-                                          ? BrandTokens.darkBrandTint
-                                          : BrandTokens.brandTint)
-                                      .withValues(alpha: 0.5),
-                                  borderRadius: BorderRadius.circular(
-                                    BrandTokens.badgeRadius,
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.12),
+                            borderRadius: BorderRadius.circular(
+                              BrandTokens.badgeRadius,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.22),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_done_rounded,
+                                size: 16,
+                                color: _monitoring.stale
+                                    ? Colors.amber
+                                    : BrandTokens.stitchSafe,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  widget.sessionController.systemName,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
                                   ),
-                                  border: Border.all(
-                                    color: (isDark
-                                            ? BrandTokens.darkBorder
-                                            : BrandTokens.border)
-                                        .withValues(alpha: 0.5),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.cloud_done_rounded,
-                                      size: 16,
-                                      color: _monitoring.stale
-                                          ? Colors.amber
-                                          : BrandTokens.stitchSafe,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        widget.sessionController.systemName,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : Tooltip(
-                                message: widget.sessionController.systemName,
-                                child: Icon(
-                                  Icons.cloud_done_rounded,
-                                  size: 20,
-                                  color: _monitoring.stale
-                                      ? Colors.amber
-                                      : BrandTokens.stitchSafe,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                            ],
+                          ),
+                        )
+                            : Tooltip(
+                          message: widget.sessionController.systemName,
+                          child: Icon(
+                            Icons.cloud_done_rounded,
+                            size: 20,
+                            color: _monitoring.stale
+                                ? Colors.amber
+                                : BrandTokens.stitchSafe,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -468,6 +523,16 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
                       },
                       systemName: widget.sessionController.systemName,
                       role: widget.sessionController.role,
+                      avatarName: widget.sessionController.fullName ??
+                          widget.sessionController.username,
+                      avatarPhotoUrl: widget.authController?.currentUser?.photoURL,
+                      onTapAvatar: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PersonalInfoPage(),
+                          ),
+                        );
+                      },
                       isWsConnected: _monitoring.isWsConnected,
                       isStale: _monitoring.stale,
                       onRefresh: () async {

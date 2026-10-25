@@ -9,6 +9,7 @@ import '../../models/camera_model.dart';
 import '../../models/edge_live_status_model.dart';
 import '../../models/system_model.dart';
 import '../../widgets/camera_card.dart';
+import '../../widgets/ignivo_avatar.dart';
 import '../camera/camera_detail_page.dart';
 import '../settings/personal_info_page.dart';
 import '../system/pair_edge_box_page.dart';
@@ -209,38 +210,16 @@ class _ProfileAvatar extends StatelessWidget {
       stream: firestoreService.watchUserProfile(uid),
       builder: (context, snapshot) {
         final data = snapshot.data?.data();
-        final name = data?['name']?.toString().trim() ?? '';
-        final photoUrl = data?['photoUrl']?.toString().trim() ?? '';
-        final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
 
-        return InkWell(
-          borderRadius: BorderRadius.circular(20),
+        return IgnivoUserAvatar(
+          data: data,
+          radius: 18,
+          showBorder: true,
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => PersonalInfoPage()),
             );
           },
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.backgroundBlueSoft,
-            ),
-            child: ClipOval(
-              child: photoUrl.isNotEmpty
-                  ? Image.network(photoUrl, fit: BoxFit.cover)
-                  : Center(
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.deepBlue,
-                  ),
-                ),
-              ),
-            ),
-          ),
         );
       },
     );

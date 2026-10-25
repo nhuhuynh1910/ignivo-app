@@ -270,7 +270,6 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
               await widget.monitoringController.refresh();
             },
             child: CustomScrollView(
-              cacheExtent: 2000,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 // 1. Thanh chip lọc trạng thái Stitch
@@ -381,7 +380,7 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                     sliver: SliverGrid(
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                         maxCrossAxisExtent: 480,
-                        mainAxisExtent: 390,
+                        mainAxisExtent: 400,
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
                       ),

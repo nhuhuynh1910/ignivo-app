@@ -92,18 +92,18 @@ class IgnivoLogo extends StatelessWidget {
       );
     }
 
-    if (!containerized) {
+    if (!containerized || variant == IgnivoLogoVariant.mark) {
       return imageWidget;
     }
 
-    // Badge Card Container: Nền trắng sạch, bo góc 12-16px, viền mềm mại
+    // Badge Card Container dành riêng cho wordmark
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: variant == IgnivoLogoVariant.wordmark ? 12.0 : 8.0,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12.0,
         vertical: 6.0,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? BrandTokens.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(BrandTokens.logoBadgeRadius),
         border: Border.all(
           color: isDark ? BrandTokens.darkBorder : BrandTokens.border,

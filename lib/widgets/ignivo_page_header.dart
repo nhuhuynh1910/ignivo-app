@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/brand_tokens.dart';
 import 'ignivo_brand_logo.dart';
+import 'ignivo_avatar.dart';
 import 'ignivo_sheet.dart';
 
 /// Shared, layered header for the four primary destinations.
@@ -19,6 +20,9 @@ class IgnivoPageHeader extends StatelessWidget {
     this.onTapSystem,
     this.onTapAvatar,
     this.avatarInitials,
+    this.avatarName,
+    this.avatarPhotoUrl,
+    this.titleIcon,
     this.compact,
     this.showBack = false,
     this.onBack,
@@ -34,6 +38,9 @@ class IgnivoPageHeader extends StatelessWidget {
   final VoidCallback? onTapSystem;
   final VoidCallback? onTapAvatar;
   final String? avatarInitials;
+  final String? avatarName;
+  final String? avatarPhotoUrl;
+  final IconData? titleIcon;
   final bool? compact;
   final bool showBack;
   final VoidCallback? onBack;
@@ -58,8 +65,8 @@ class IgnivoPageHeader extends StatelessWidget {
     final syncTooltip = stale
         ? 'Dữ liệu chưa đồng bộ'
         : formattedSyncTime != null
-            ? 'Đã đồng bộ lúc $formattedSyncTime'
-            : 'Đã kết nối';
+        ? 'Đã đồng bộ lúc $formattedSyncTime'
+        : 'Đã kết nối';
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -165,8 +172,8 @@ class IgnivoPageHeader extends StatelessWidget {
                               color: stale
                                   ? Colors.orange.shade700
                                   : (isDark
-                                      ? BrandTokens.stitchDarkOnlineFg
-                                      : BrandTokens.stitchOnlineFg),
+                                  ? BrandTokens.stitchDarkOnlineFg
+                                  : BrandTokens.stitchOnlineFg),
                             ),
                           ),
                           const SizedBox(width: 2),
@@ -192,29 +199,11 @@ class IgnivoPageHeader extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(999),
                     onTap: onTapAvatar,
-                    child: CircleAvatar(
+                    child: IgnivoUserAvatar(
+                      name: avatarName ?? avatarInitials,
+                      photoUrl: avatarPhotoUrl,
                       radius: 15,
-                      backgroundColor: isDark
-                          ? BrandTokens.darkBrandTint
-                          : BrandTokens.brandTint,
-                      child: avatarInitials != null && avatarInitials != 'MA'
-                          ? Text(
-                              avatarInitials!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? BrandTokens.darkPrimary
-                                    : BrandTokens.brandPrimary,
-                              ),
-                            )
-                          : Icon(
-                              Icons.person_rounded,
-                              size: 17,
-                              color: isDark
-                                  ? BrandTokens.darkPrimary
-                                  : BrandTokens.brandPrimary,
-                            ),
+                      showBorder: true,
                     ),
                   ),
                 ),
@@ -240,8 +229,8 @@ class IgnivoPageHeader extends StatelessWidget {
     final syncTooltip = stale
         ? 'Dữ liệu chưa đồng bộ'
         : formattedSyncTime != null
-            ? 'Đã đồng bộ lúc $formattedSyncTime'
-            : 'Đã kết nối';
+        ? 'Đã đồng bộ lúc $formattedSyncTime'
+        : 'Đã kết nối';
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -334,8 +323,8 @@ class IgnivoPageHeader extends StatelessWidget {
                               color: stale
                                   ? Colors.orange.shade700
                                   : (isDark
-                                      ? BrandTokens.stitchDarkOnlineFg
-                                      : BrandTokens.stitchOnlineFg),
+                                  ? BrandTokens.stitchDarkOnlineFg
+                                  : BrandTokens.stitchOnlineFg),
                             ),
                           ),
                           const SizedBox(width: 2),
@@ -357,29 +346,11 @@ class IgnivoPageHeader extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(999),
                     onTap: onTapAvatar,
-                    child: CircleAvatar(
+                    child: IgnivoUserAvatar(
+                      name: avatarName ?? avatarInitials,
+                      photoUrl: avatarPhotoUrl,
                       radius: 16,
-                      backgroundColor: isDark
-                          ? BrandTokens.darkBrandTint
-                          : BrandTokens.brandTint,
-                      child: avatarInitials != null && avatarInitials != 'MA'
-                          ? Text(
-                              avatarInitials!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? BrandTokens.darkPrimary
-                                    : BrandTokens.brandPrimary,
-                              ),
-                            )
-                          : Icon(
-                              Icons.person_rounded,
-                              size: 18,
-                              color: isDark
-                                  ? BrandTokens.darkPrimary
-                                  : BrandTokens.brandPrimary,
-                            ),
+                      showBorder: true,
                     ),
                   ),
                 ),
@@ -395,7 +366,21 @@ class IgnivoPageHeader extends StatelessWidget {
                     children: [
                       Semantics(
                         header: true,
-                        child: Text(
+                        child: titleIcon != null
+                            ? Container(
+                          width: 43,
+                          height: 43,
+                          decoration: BoxDecoration(
+                            gradient: BrandTokens.primaryGradient,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            titleIcon,
+                            color: Colors.white,
+                            size: 23,
+                          ),
+                        )
+                            : Text(
                           title,
                           style: theme.textTheme.headlineSmall?.copyWith(
                             fontSize: 23,
@@ -480,8 +465,8 @@ class IgnivoSyncStatus extends StatelessWidget {
     final formatted = time == null
         ? null
         : '${time.hour.toString().padLeft(2, '0')}:'
-              '${time.minute.toString().padLeft(2, '0')}:'
-              '${time.second.toString().padLeft(2, '0')}';
+        '${time.minute.toString().padLeft(2, '0')}:'
+        '${time.second.toString().padLeft(2, '0')}';
     final label = formatted == null
         ? 'Chưa có dữ liệu đồng bộ'
         : pending
@@ -575,12 +560,12 @@ class IgnivoPageBody extends StatelessWidget {
 
 /// Compact secondary-page header; native AppBar preserves back navigation.
 AppBar ignivoDetailAppBar(
-  BuildContext context, {
-  required String title,
-  String? subtitle,
-  List<Widget>? actions,
-  bool automaticallyImplyLeading = true,
-}) {
+    BuildContext context, {
+      required String title,
+      String? subtitle,
+      List<Widget>? actions,
+      bool automaticallyImplyLeading = true,
+    }) {
   final theme = Theme.of(context);
   final scaler = MediaQuery.textScalerOf(context);
   return AppBar(
@@ -590,7 +575,7 @@ AppBar ignivoDetailAppBar(
     scrolledUnderElevation: 0,
     surfaceTintColor: Colors.transparent,
     toolbarHeight:
-        (subtitle == null ? 56 : 64) +
+    (subtitle == null ? 56 : 64) +
         (scaler.scale(17) - 17) * 1.5 +
         (subtitle == null ? 0 : (scaler.scale(12) - 12) * 1.0),
     titleSpacing: 12,
@@ -656,7 +641,7 @@ class IgnivoAuthHeader extends StatelessWidget {
             height: 82,
             padding: const EdgeInsets.all(7.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? BrandTokens.darkSurface : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isDark

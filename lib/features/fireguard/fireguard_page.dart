@@ -819,10 +819,12 @@ class _FireguardPageState extends State<FireguardPage>
         ),
       ),
       GuardPanel(
-        child: ExpansionTile(
-          key: const PageStorageKey('fireguard_pi_detection_tile'),
-          tilePadding: EdgeInsets.zero,
-          title: const Text('Nhận diện trên Pi'),
+        child: Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
+            key: const PageStorageKey('fireguard_pi_detection_tile'),
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Nhận diện trên Pi'),
           children: [
             ListTile(
               title: const Text('Nguồn phát hiện'),
@@ -848,6 +850,7 @@ class _FireguardPageState extends State<FireguardPage>
             const SizedBox(height: 12),
           ],
         ),
+      ),
       ),
       Text(_api.baseUrl, style: Theme.of(context).textTheme.bodySmall),
       const SizedBox(height: 8),
@@ -884,9 +887,11 @@ class _FireguardPageState extends State<FireguardPage>
     return GuardPanel(
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          key: const PageStorageKey('fireguard_readiness_tile'),
-          tilePadding: EdgeInsets.zero,
+        child: Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
+            key: const PageStorageKey('fireguard_readiness_tile'),
+            tilePadding: EdgeInsets.zero,
           initiallyExpanded: false,
           leading: Icon(
             hasIssues
@@ -948,6 +953,7 @@ class _FireguardPageState extends State<FireguardPage>
             ],
           ],
         ),
+      ),
       ),
     );
   }

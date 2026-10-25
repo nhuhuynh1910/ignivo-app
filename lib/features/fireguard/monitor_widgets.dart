@@ -95,7 +95,13 @@ class GuardPanel extends StatelessWidget {
           width: 0.8,
         ),
       ),
-      child: Padding(padding: const EdgeInsets.all(16), child: child),
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: child,
+        ),
+      ),
     );
   }
 }

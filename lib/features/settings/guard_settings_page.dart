@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/ignivo_avatar.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/ignivo_sheet.dart';
 import '../../core/models/system_record.dart';
@@ -16,6 +17,7 @@ import 'diagnostics_page.dart';
 import 'emergency_contacts_page.dart';
 import 'emergency_location_page.dart';
 import 'ignivo_about_page.dart';
+import 'personal_info_page.dart';
 
 class GuardSettingsPage extends StatelessWidget {
   const GuardSettingsPage({
@@ -149,8 +151,8 @@ class GuardSettingsPage extends StatelessWidget {
     final role = sessionController.role ?? 'USER';
     final name =
         sessionController.fullName ??
-        sessionController.username ??
-        'Người dùng';
+            sessionController.username ??
+            'Người dùng';
     final phone = sessionController.phoneNumber ?? '';
     final cloudEmail = authController?.currentUserEmail;
     final warningStyle = StatusStyle.warning(isDark: isDark);
@@ -171,9 +173,17 @@ class GuardSettingsPage extends StatelessWidget {
       body: IgnivoPageBody(
         header: IgnivoPageHeader(
           title: 'Cài đặt',
+          titleIcon: Icons.settings_rounded,
           subtitle: 'Tài khoản và hệ thống',
           systemName: sessionController.systemName,
           avatarInitials: initials.isNotEmpty ? initials : 'MA',
+          avatarName: name,
+          avatarPhotoUrl: authController?.currentUser?.photoURL,
+          onTapAvatar: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PersonalInfoPage()),
+            );
+          },
           onTapSystem: () {
             showIgnivoSystemSheet(
               context: context,
@@ -182,7 +192,7 @@ class GuardSettingsPage extends StatelessWidget {
               isConnected: !monitoringController.stale,
               cameraCount: monitoringController.cameras.length,
               onDiagnostics: onOpenDiagnostics ??
-                  () {
+                      () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => DiagnosticsPage(
@@ -201,619 +211,617 @@ class GuardSettingsPage extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 860),
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: [
-            // 1. Account Info Section
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                side: BorderSide(
-                  color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: isDark
-                          ? BrandTokens.darkBrandTint
-                          : BrandTokens.brandTint,
-                      child: Text(
-                        initials.isNotEmpty ? initials : 'MA',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? BrandTokens.darkPrimary
-                              : BrandTokens.brandPrimary,
-                        ),
-                      ),
+              children: [
+                // 1. Card tài khoản dùng màu thương hiệu, giữ nguyên mở PersonalInfoPage.
+                Card(
+                  elevation: 0,
+                  clipBehavior: Clip.antiAlias,
+                  color: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1,
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (cloudEmail != null) ...[
-                            Text(
-                              cloudEmail,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Hệ thống: $name',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? BrandTokens.darkTextSecondary
-                                    : BrandTokens.textSecondary,
-                              ),
-                            ),
-                          ] else ...[
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (phone.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                phone,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark
-                                      ? BrandTokens.darkTextSecondary
-                                      : BrandTokens.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ],
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? (isOwnerOrAdmin
-                                        ? Colors.purple.shade900.withValues(
-                                            alpha: 0.3,
-                                          )
-                                        : BrandTokens.darkSurfaceVariant)
-                                  : (isOwnerOrAdmin
-                                        ? Colors.purple.withValues(alpha: 0.12)
-                                        : Colors.blueGrey.withValues(
-                                            alpha: 0.12,
-                                          )),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              isOwnerOrAdmin
-                                  ? 'VAI TRÒ: $role (TOÀN QUYỀN)'
-                                  : 'VAI TRÒ: $role (XỬ LÝ SỰ CỐ)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? (isOwnerOrAdmin
-                                          ? Colors.purple.shade200
-                                          : BrandTokens.darkTextSecondary)
-                                    : (isOwnerOrAdmin
-                                          ? Colors.purple.shade700
-                                          : Colors.blueGrey.shade800),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 2. Emergency Setup & Contacts
-            _buildSectionTitle(context, 'Cấu hình khẩn cấp'),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                side: BorderSide(
-                  color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-                ),
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: _buildLeadingIcon(
-                      context,
-                      Icons.contacts_rounded,
-                      color: isDark ? Colors.red.shade300 : BrandTokens.criticalFg,
-                      background: isDark
-                          ? Colors.red.shade900.withValues(alpha: 0.25)
-                          : Colors.red.shade50,
-                    ),
-                    title: const Text(
-                      'Người liên hệ khẩn cấp',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      isOwnerOrAdmin
-                          ? 'Cấu hình danh bạ gọi điện người thân & PCCC'
-                          : 'Xem danh bạ người thân & PCCC đã thiết lập',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              EmergencyContactsPage(api: sessionController.api),
-                        ),
-                      );
-                    },
                   ),
-                  const Divider(height: 1, indent: 68, endIndent: 16),
-                  ListTile(
-                    leading: _buildLeadingIcon(
-                      context,
-                      Icons.location_on_rounded,
-                      color: isDark ? Colors.amber.shade300 : BrandTokens.stitchWarningFg,
-                      background: isDark
-                          ? Colors.amber.shade900.withValues(alpha: 0.25)
-                          : Colors.amber.shade50,
+                  child: Ink(
+                    decoration: const BoxDecoration(
+                      gradient: BrandTokens.primaryGradient,
                     ),
-                    title: const Text(
-                      'Địa chỉ khẩn cấp',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Vị trí, toà nhà, số tầng để tổng đài cung cấp cho PCCC',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              EmergencyLocationPage(api: sessionController.api),
-                        ),
-                      );
-                    },
-                  ),
-                  if (isOwnerOrAdmin) ...[
-                    const Divider(height: 1, indent: 68, endIndent: 16),
-                    ListTile(
-                      leading: _buildLeadingIcon(
-                        context,
-                        Icons.face_retouching_natural_rounded,
-                        color: isDark ? Colors.purple.shade200 : Colors.purple.shade700,
-                        background: isDark
-                            ? Colors.purple.shade900.withValues(alpha: 0.25)
-                            : Colors.purple.shade50,
-                      ),
-                      title: const Text(
-                        'Nhận diện khuôn mặt người quen',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'Đăng ký khuôn mặt người thân / nhân viên để tránh báo nhầm',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                    child: InkWell(
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => PeoplePage(
-                              eye: FireeyeApiService(
-                                fireguard: sessionController.api,
-                              ),
-                            ),
+                            builder: (_) => const PersonalInfoPage(),
                           ),
                         );
                       },
-                    ),
-                  ],
-                  const Divider(height: 1, indent: 68, endIndent: 16),
-                  ListTile(
-                    leading: _buildLeadingIcon(
-                      context,
-                      Icons.info_outline_rounded,
-                      color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
-                      background: isDark
-                          ? BrandTokens.darkBrandTint
-                          : BrandTokens.brandTint,
-                    ),
-                    title: const Text(
-                      'Giới thiệu IGNIVO',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+                        child: Row(
+                          children: [
+                            IgnivoUserAvatar(
+                              name: name,
+                              photoUrl: authController?.currentUser?.photoURL,
+                              radius: 28,
+                              showBorder: true,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    cloudEmail?.isNotEmpty == true ? cloudEmail! : name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    cloudEmail?.isNotEmpty == true
+                                        ? 'Tên hiển thị: $name'
+                                        : (phone.isNotEmpty ? phone : 'Tài khoản IGNIVO'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withValues(alpha: 0.82),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(9),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.20),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isOwnerOrAdmin
+                                          ? 'VAI TRÒ: $role (TOÀN QUYỀN)'
+                                          : 'VAI TRÒ: $role (XỬ LÝ SỰ CỐ)',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.13),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.white,
+                                size: 21,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    subtitle: const Text(
-                      'Phát hiện sớm. Bảo vệ kịp thời.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const IgnivoAboutPage(),
-                        ),
-                      );
-                    },
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+                ),
 
-            // 3. Audio & Alarm Explanation
-            _buildSectionTitle(context, 'Cảnh báo âm thanh & thiết bị'),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: warningStyle.background,
-                borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                border: Border.all(color: warningStyle.border, width: 0.8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: warningStyle.foreground.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.volume_up_rounded,
-                      color: warningStyle.foreground,
-                      size: 20,
+                const SizedBox(height: 20),
+
+                // 2. Emergency Setup & Contacts
+                _buildSectionTitle(context, 'Cấu hình khẩn cấp'),
+                Card(
+                  elevation: 0,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                    side: BorderSide(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Cảnh báo hoạt động khi mở ứng dụng',
+                  child: Column(
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        leading: _buildLeadingIcon(
+                          context,
+                          Icons.contacts_rounded,
+                          color: isDark ? Colors.red.shade300 : BrandTokens.criticalFg,
+                          background: isDark
+                              ? Colors.red.shade900.withValues(alpha: 0.25)
+                              : Colors.red.shade50,
+                        ),
+                        title: const Text(
+                          'Người liên hệ khẩn cấp',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Còi hú và rung hoạt động khi ứng dụng đang mở hoặc chạy đa nhiệm. Hãy bật âm lượng chuông để đảm bảo nghe thấy âm báo trong trường hợp có cháy.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.4,
-                            color: isDark
-                                ? BrandTokens.darkTextSecondary
-                                : BrandTokens.textSecondary,
-                          ),
+                        subtitle: Text(
+                          isOwnerOrAdmin
+                              ? 'Cấu hình danh bạ gọi điện người thân & PCCC'
+                              : 'Xem danh bạ người thân & PCCC đã thiết lập',
+                          style: const TextStyle(fontSize: 12),
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 4. System Diagnostics & Connection
-            _buildSectionTitle(context, 'Hệ thống & Chẩn đoán'),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                side: BorderSide(
-                  color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-                ),
-              ),
-              child: Column(
-                children: [
-                  if (sessionManager != null) ...[
-                    ListTile(
-                      key: const Key('settings-switch-system-tile'),
-                      leading: _buildLeadingIcon(
-                        context,
-                        Icons.hub_rounded,
-                        color: isDark ? Colors.teal.shade300 : Colors.teal.shade700,
-                        background: isDark
-                            ? Colors.teal.shade900.withValues(alpha: 0.25)
-                            : Colors.teal.shade50,
+                        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  EmergencyContactsPage(api: sessionController.api),
+                            ),
+                          );
+                        },
                       ),
-                      title: Row(
-                        children: [
-                          const Text(
-                            'Đổi hệ thống giám sát',
+                      const Divider(height: 1, indent: 68, endIndent: 16),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        leading: _buildLeadingIcon(
+                          context,
+                          Icons.location_on_rounded,
+                          color: isDark ? Colors.amber.shade300 : BrandTokens.stitchWarningFg,
+                          background: isDark
+                              ? Colors.amber.shade900.withValues(alpha: 0.25)
+                              : Colors.amber.shade50,
+                        ),
+                        title: const Text(
+                          'Địa chỉ khẩn cấp',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Vị trí, toà nhà, số tầng để tổng đài cung cấp cho PCCC',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  EmergencyLocationPage(api: sessionController.api),
+                            ),
+                          );
+                        },
+                      ),
+                      if (isOwnerOrAdmin) ...[
+                        const Divider(height: 1, indent: 68, endIndent: 16),
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                          leading: _buildLeadingIcon(
+                            context,
+                            Icons.face_retouching_natural_rounded,
+                            color: isDark ? Colors.purple.shade200 : Colors.purple.shade700,
+                            background: isDark
+                                ? Colors.purple.shade900.withValues(alpha: 0.25)
+                                : Colors.purple.shade50,
+                          ),
+                          title: const Text(
+                            'Nhận diện khuôn mặt người quen',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
+                          subtitle: const Text(
+                            'Đăng ký khuôn mặt người thân / nhân viên để tránh báo nhầm',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => PeoplePage(
+                                  eye: FireeyeApiService(
+                                    fireguard: sessionController.api,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      const Divider(height: 1, indent: 68, endIndent: 16),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        leading: _buildLeadingIcon(
+                          context,
+                          Icons.info_outline_rounded,
+                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                          background: isDark
+                              ? BrandTokens.darkBrandTint
+                              : BrandTokens.brandTint,
+                        ),
+                        title: const Text(
+                          'Giới thiệu IGNIVO',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Phát hiện sớm. Bảo vệ kịp thời.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const IgnivoAboutPage(),
                             ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? BrandTokens.darkBrandTint
-                                  : BrandTokens.brandTint,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${sessionManager!.systems.length} hệ thống',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 3. Audio & Alarm Explanation
+                _buildSectionTitle(context, 'Cảnh báo âm thanh & thiết bị'),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: warningStyle.background,
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    border: Border.all(color: warningStyle.border, width: 0.8),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: warningStyle.foreground.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.volume_up_rounded,
+                          color: warningStyle.foreground,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Cảnh báo hoạt động khi mở ứng dụng',
                               style: TextStyle(
-                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? BrandTokens.darkPrimary
-                                    : BrandTokens.brandPrimary,
+                                fontSize: 13,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        'Đang giám sát: ${sessionController.systemName}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => SystemsPage(
-                              sessionManager: sessionManager!,
-                              authController: authController,
-                              coordinator: coordinator,
-                              canPop: true,
+                            const SizedBox(height: 4),
+                            Text(
+                              'Còi hú và rung hoạt động khi ứng dụng đang mở hoặc chạy đa nhiệm. Hãy bật âm lượng chuông để đảm bảo nghe thấy âm báo trong trường hợp có cháy.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: isDark
+                                    ? BrandTokens.darkTextSecondary
+                                    : BrandTokens.textSecondary,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1, indent: 68, endIndent: 16),
-                    ListTile(
-                      leading: _buildLeadingIcon(
-                        context,
-                        Icons.people_alt_rounded,
-                        color: isDark ? Colors.indigo.shade300 : Colors.indigo.shade700,
-                        background: isDark
-                            ? Colors.indigo.shade900.withValues(alpha: 0.25)
-                            : Colors.indigo.shade50,
-                      ),
-                      title: const Text(
-                        'Thành viên & Phân quyền',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          ],
                         ),
                       ),
-                      subtitle: Text(
-                        isOwnerOrAdmin
-                            ? 'Mời qua email và quản trị quyền RBAC'
-                            : 'Xem danh sách thành viên trong hệ thống',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                      onTap: () {
-                        final currentSystem = sessionManager!.systems.firstWhere(
-                          (s) =>
-                              s.systemId == (sessionManager!.activeSystemId ?? ''),
-                          orElse: () => sessionManager!.systems.isNotEmpty
-                              ? sessionManager!.systems.first
-                              : SystemRecord.fromPiConnectionProfile(
-                                  sessionController.profile,
-                                  systemId: sessionManager!.activeSystemId ??
-                                      sessionController.deviceId,
-                                ).copyWith(
-                                  role: sessionController.role ?? 'OPERATOR',
-                                ),
-                        );
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => SystemMembersPage(
-                              system: currentSystem,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1, indent: 68, endIndent: 16),
-                  ],
-                  ListTile(
-                    leading: _buildLeadingIcon(
-                      context,
-                      Icons.monitor_heart_rounded,
-                      color: isDark ? BrandTokens.stitchDarkOnlineFg : BrandTokens.stitchOnlineFg,
-                      background: isDark
-                          ? BrandTokens.stitchDarkOnlineBg
-                          : BrandTokens.stitchOnlineBg,
-                    ),
-                    title: const Text(
-                      'Chẩn đoán hệ thống Edge Pi',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Xem trạng thái CPU, NPU Hailo, AI FPS, WebSocket',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => DiagnosticsPage(
-                            monitoringController: monitoringController,
-                            sessionController: sessionController,
-                          ),
-                        ),
-                      );
-                    },
+                    ],
                   ),
-                  const Divider(height: 1, indent: 68, endIndent: 16),
-                  ListTile(
-                    leading: _buildLeadingIcon(
-                      context,
-                      Icons.router_rounded,
-                      color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
-                      background: isDark
-                          ? BrandTokens.darkSurfaceVariant
-                          : Colors.blueGrey.withValues(alpha: 0.1),
+                ),
+                const SizedBox(height: 20),
+
+                // 4. System Diagnostics & Connection
+                _buildSectionTitle(context, 'Hệ thống & Chẩn đoán'),
+                Card(
+                  elevation: 0,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
+                    side: BorderSide(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
                     ),
-                    title: const Text(
-                      'Địa chỉ FireGuard Edge',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                  ),
+                  child: Column(
+                    children: [
+                      if (sessionManager != null) ...[
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                          key: const Key('settings-switch-system-tile'),
+                          leading: _buildLeadingIcon(
+                            context,
+                            Icons.hub_rounded,
+                            color: isDark ? Colors.teal.shade300 : Colors.teal.shade700,
+                            background: isDark
+                                ? Colors.teal.shade900.withValues(alpha: 0.25)
+                                : Colors.teal.shade50,
+                          ),
+                          title: Row(
+                            children: [
+                              const Text(
+                                'Đổi hệ thống giám sát',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? BrandTokens.darkBrandTint
+                                      : BrandTokens.brandTint,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${sessionManager!.systems.length} hệ thống',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark
+                                        ? BrandTokens.darkPrimary
+                                        : BrandTokens.brandPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Text(
+                            'Đang giám sát: ${sessionController.systemName}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SystemsPage(
+                                  sessionManager: sessionManager!,
+                                  authController: authController,
+                                  coordinator: coordinator,
+                                  canPop: true,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(height: 1, indent: 68, endIndent: 16),
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                          leading: _buildLeadingIcon(
+                            context,
+                            Icons.people_alt_rounded,
+                            color: isDark ? Colors.indigo.shade300 : Colors.indigo.shade700,
+                            background: isDark
+                                ? Colors.indigo.shade900.withValues(alpha: 0.25)
+                                : Colors.indigo.shade50,
+                          ),
+                          title: const Text(
+                            'Thành viên & Phân quyền',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            isOwnerOrAdmin
+                                ? 'Mời qua email và quản trị quyền RBAC'
+                                : 'Xem danh sách thành viên trong hệ thống',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                          onTap: () {
+                            final currentSystem = sessionManager!.systems.firstWhere(
+                                  (s) =>
+                              s.systemId == (sessionManager!.activeSystemId ?? ''),
+                              orElse: () => sessionManager!.systems.isNotEmpty
+                                  ? sessionManager!.systems.first
+                                  : SystemRecord.fromPiConnectionProfile(
+                                sessionController.profile,
+                                systemId: sessionManager!.activeSystemId ??
+                                    sessionController.deviceId,
+                              ).copyWith(
+                                role: sessionController.role ?? 'OPERATOR',
+                              ),
+                            );
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SystemMembersPage(
+                                  system: currentSystem,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(height: 1, indent: 68, endIndent: 16),
+                      ],
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        leading: _buildLeadingIcon(
+                          context,
+                          Icons.monitor_heart_rounded,
+                          color: isDark ? BrandTokens.stitchDarkOnlineFg : BrandTokens.stitchOnlineFg,
+                          background: isDark
+                              ? BrandTokens.stitchDarkOnlineBg
+                              : BrandTokens.stitchOnlineBg,
+                        ),
+                        title: const Text(
+                          'Chẩn đoán hệ thống Edge Pi',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Xem trạng thái CPU, NPU Hailo, AI FPS, WebSocket',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => DiagnosticsPage(
+                                monitoringController: monitoringController,
+                                sessionController: sessionController,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1, indent: 68, endIndent: 16),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        leading: _buildLeadingIcon(
+                          context,
+                          Icons.router_rounded,
+                          color: isDark ? BrandTokens.darkTextSecondary : BrandTokens.textSecondary,
+                          background: isDark
+                              ? BrandTokens.darkSurfaceVariant
+                              : Colors.blueGrey.withValues(alpha: 0.1),
+                        ),
+                        title: const Text(
+                          'Địa chỉ FireGuard Edge',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Text(
+                          sessionController.guardUrl,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: TextButton(
+                          onPressed: () => _confirmDisconnect(context),
+                          child: Text(
+                            'Đổi kết nối',
+                            style: TextStyle(color: criticalColor, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // 5. Logout Buttons
+                if (authController != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: criticalColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            BrandTokens.buttonRadius,
+                          ),
+                        ),
+                      ),
+                      onPressed: () => _confirmSignOutAccount(context),
+                      icon: const Icon(Icons.cloud_off_rounded),
+                      label: const Text(
+                        'Đăng xuất IGNIVO Cloud',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    subtitle: Text(
-                      sessionController.guardUrl,
-                      style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: criticalColor,
+                      ),
+                      onPressed: () => _confirmLogout(context),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Đăng xuất phiên Pi hiện tại'),
                     ),
-                    trailing: TextButton(
-                      onPressed: () => _confirmDisconnect(context),
-                      child: Text(
-                        'Đổi kết nối',
-                        style: TextStyle(color: criticalColor, fontWeight: FontWeight.bold),
+                  ),
+                ] else ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: criticalColor,
+                        side: BorderSide(color: criticalColor),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            BrandTokens.buttonRadius,
+                          ),
+                        ),
+                      ),
+                      onPressed: () => _confirmLogout(context),
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text(
+                        'Đăng xuất tài khoản',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 5. Logout Buttons
-            if (authController != null) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: criticalColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        BrandTokens.buttonRadius,
-                      ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    'IGNIVO · Smart Safety',
+                    style: TextStyle(
+                      color: isDark
+                          ? BrandTokens.darkTextSecondary
+                          : BrandTokens.textSecondary,
+                      fontSize: 12,
+                      letterSpacing: 0.6,
                     ),
                   ),
-                  onPressed: () => _confirmSignOutAccount(context),
-                  icon: const Icon(Icons.cloud_off_rounded),
-                  label: const Text(
-                    'Đăng xuất IGNIVO Cloud',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: criticalColor,
-                  ),
-                  onPressed: () => _confirmLogout(context),
-                  icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text('Đăng xuất phiên Pi hiện tại'),
-                ),
-              ),
-            ] else ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: criticalColor,
-                    side: BorderSide(color: criticalColor),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        BrandTokens.buttonRadius,
-                      ),
-                    ),
-                  ),
-                  onPressed: () => _confirmLogout(context),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text(
-                    'Đăng xuất tài khoản',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                'IGNIVO · Smart Safety',
-                style: TextStyle(
-                  color: isDark
-                      ? BrandTokens.darkTextSecondary
-                      : BrandTokens.textSecondary,
-                  fontSize: 12,
-                  letterSpacing: 0.6,
-                ),
-              ),
+                const SizedBox(height: 24),
+              ],
             ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildLeadingIcon(
-    BuildContext context,
-    IconData icon, {
-    Color? color,
-    Color? background,
-  }) {
+      BuildContext context,
+      IconData icon, {
+        Color? color,
+        Color? background,
+      }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = color ?? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary);
     final bg = background ?? (isDark ? BrandTokens.darkBrandTint : BrandTokens.brandTint);
     return Container(
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Icon(
         icon,
-        size: 20,
+        size: 21,
         color: fg,
       ),
     );

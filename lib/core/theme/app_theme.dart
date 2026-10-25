@@ -114,6 +114,21 @@ class AppTheme {
         backgroundColor: BrandTokens.surface,
         indicatorColor: BrandTokens.brandAccent.withValues(alpha: 0.15),
       ),
+      navigationRailTheme: const NavigationRailThemeData(
+        backgroundColor: BrandTokens.brandNavy,
+        indicatorColor: BrandTokens.brandAccent,
+        selectedIconTheme: IconThemeData(color: Colors.white),
+        unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8)),
+        selectedLabelTextStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        unselectedLabelTextStyle: TextStyle(
+          color: Color(0xFF94A3B8),
+          fontSize: 12,
+        ),
+      ),
     );
   }
 
@@ -197,6 +212,21 @@ class AppTheme {
           }
           return TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12);
         }),
+      ),
+      navigationRailTheme: const NavigationRailThemeData(
+        backgroundColor: BrandTokens.darkSurface,
+        indicatorColor: BrandTokens.darkPrimary,
+        selectedIconTheme: IconThemeData(color: Colors.white),
+        unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8)),
+        selectedLabelTextStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        unselectedLabelTextStyle: TextStyle(
+          color: Color(0xFF94A3B8),
+          fontSize: 12,
+        ),
       ),
     );
   }

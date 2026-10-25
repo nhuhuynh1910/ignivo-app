@@ -121,19 +121,10 @@ class IgnivoBrandLogo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 1. Biểu tượng ngọn lửa xanh (Mark)
-        Container(
+        // 1. Biểu tượng ngọn lửa xanh (Mark - PNG đã xóa nền)
+        SizedBox(
           width: markSize,
           height: markSize * 1.12,
-          padding: const EdgeInsets.all(4.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius * 0.45),
-            border: Border.all(
-              color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-              width: 1.0,
-            ),
-          ),
           child: Image.asset(
             BrandTokens.markAsset,
             fit: BoxFit.contain,

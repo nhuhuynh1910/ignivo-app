@@ -288,17 +288,13 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Left / Main Column (flex: 62) - Tường Camera ở ngay trên cùng
+                                    // Left / Main Column (flex: 62) - Quản lý hệ thống ở trên, Tường Camera hiện đại ở dưới
                                     Expanded(
                                       flex: 62,
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: [
-                                          _buildQuickCamerasSection(
-                                              context, cameras,
-                                              isGrid: true),
-                                          const SizedBox(height: 20),
                                           _buildReadinessCard(
                                             context,
                                             status,
@@ -309,6 +305,10 @@ class _GuardHomePageState extends State<GuardHomePage> {
                                             cpuTemp: status?['cpu_temp_c'],
                                             unclosedIncidents: unclosedIncidents,
                                           ),
+                                          const SizedBox(height: 20),
+                                          _buildQuickCamerasSection(
+                                              context, cameras,
+                                              isGrid: true),
                                         ],
                                       ),
                                     ),
@@ -1049,22 +1049,24 @@ class _GuardHomePageState extends State<GuardHomePage> {
                         primary: Colors.white,
                       ),
                     ),
-                    child: ExpansionTile(
-                      key: const ValueKey('hardware_telemetry_expansion_tile'),
-                      tilePadding: EdgeInsets.zero,
-                      childrenPadding: const EdgeInsets.only(top: 4),
-                      visualDensity: VisualDensity.compact,
-                      iconColor: Colors.white,
-                      collapsedIconColor: Colors.white70,
-                      title: Text(
-                        'Thông số phần cứng & AI Edge',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11.5,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: ExpansionTile(
+                        key: const ValueKey('hardware_telemetry_expansion_tile'),
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(top: 4),
+                        visualDensity: VisualDensity.compact,
+                        iconColor: Colors.white,
+                        collapsedIconColor: Colors.white70,
+                        title: Text(
+                          'Thông số phần cứng & AI Edge',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                          ),
                         ),
-                      ),
-                      children: [
+                        children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -1170,13 +1172,14 @@ class _GuardHomePageState extends State<GuardHomePage> {
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildReadinessItem(
@@ -1263,6 +1266,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
   Widget _buildCameraCardItem(
     Map<String, dynamic> cam, {
     EdgeInsetsGeometry? margin,
+    double? maxWidth,
   }) {
     final id = cam['id'] as int? ?? 0;
     final name = cam['name']?.toString() ?? 'Camera #$id';
@@ -1291,6 +1295,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
       isSnapshotLoading: _loadingSnapshots.contains(id),
       showLiveViewAction: false,
       margin: margin,
+      maxWidth: maxWidth,
       onTap: () => widget.onOpenLiveView?.call(id),
     );
   }
@@ -1312,7 +1317,7 @@ class _GuardHomePageState extends State<GuardHomePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Xem nhanh Camera',
+                  'Tường Camera giám sát',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -1374,14 +1379,24 @@ class _GuardHomePageState extends State<GuardHomePage> {
               ],
             ),
           ),
-        ] else if (isGrid && cameras.length == 2) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _buildCameraCardItem(cameras[0])),
-              const SizedBox(width: 14),
-              Expanded(child: _buildCameraCardItem(cameras[1])),
-            ],
+        ] else if (isGrid) ...[
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: cameras.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              mainAxisExtent: 360,
+            ),
+            itemBuilder: (context, index) {
+              return _buildCameraCardItem(
+                cameras[index],
+                margin: EdgeInsets.zero,
+                maxWidth: double.infinity,
+              );
+            },
           ),
         ] else ...[
           // Horizontal Carousel: shows all cameras horizontally without occupying vertical space

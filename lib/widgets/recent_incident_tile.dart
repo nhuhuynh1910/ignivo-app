@@ -5,10 +5,8 @@ import '../features/fireguard/monitor_widgets.dart';
 import 'ignivo_shimmer.dart';
 import 'interactive_card.dart';
 
-/// Thẻ sự cố gần đây theo phong cách Stitch
-///
-/// Trình bày ảnh snapshot bằng chứng (nếu có), loại sự cố, mức độ nghiêm trọng (severity),
-/// khu vực, thời gian và trạng thái xử lý đồng bộ với AlertPresentationMapping.
+/// Thẻ sự cố gần đây: biểu tượng sự cố, mức độ, khu vực, thời gian
+/// và trạng thái xử lý (mức độ được phân biệt với trạng thái).
 class RecentIncidentTile extends StatelessWidget {
   const RecentIncidentTile({
     super.key,
@@ -39,13 +37,15 @@ class RecentIncidentTile extends StatelessWidget {
 
   static IconData getTriggerIcon(String? trigger) {
     final t = (trigger ?? '').toLowerCase();
-    if (t.contains('fire') || t.contains('flame') || t.contains('cháy') || t.contains('lửa')) {
+    if (t.contains('fire') || t.contains('flame') ||
+        t.contains('cháy') || t.contains('lửa')) {
       return Icons.local_fire_department_rounded;
     }
     if (t.contains('smoke') || t.contains('khói')) {
       return Icons.cloud_outlined;
     }
-    if (t.contains('camera') || t.contains('vision') || t.contains('motion') || t.contains('ai')) {
+    if (t.contains('camera') || t.contains('vision') ||
+        t.contains('motion') || t.contains('ai')) {
       return Icons.videocam_outlined;
     }
     if (t.contains('heat') || t.contains('temp') || t.contains('nhiệt')) {
@@ -57,53 +57,54 @@ class RecentIncidentTile extends StatelessWidget {
     return Icons.local_fire_department_rounded;
   }
 
-  Widget _buildLeadingThumbnail(
-    BuildContext context,
-    StatusStyle statusStyle,
-    bool isDark,
-  ) {
+  Widget _buildLeadingThumbnail(bool isDark) {
     final triggerIcon = getTriggerIcon(triggerType);
+    final iconColor = isDark
+        ? const Color(0xFFFF6B6B)
+        : BrandTokens.highFg;
+    final iconBackground = isDark
+        ? BrandTokens.darkHighBg
+        : BrandTokens.highBg;
+    final iconBorder = isDark
+        ? BrandTokens.darkHighBorder
+        : BrandTokens.highBorder;
+
+    Widget fallback() => Container(
+      width: 50,
+      height: 50,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: iconBackground,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: iconBorder, width: 1),
+      ),
+      child: Icon(triggerIcon, color: iconColor, size: 24),
+    );
 
     if (imageBytes != null && imageBytes!.isNotEmpty) {
       return SizedBox(
-        width: 48,
-        height: 48,
+        width: 50,
+        height: 50,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(15),
               child: Image.memory(
                 imageBytes!,
-                width: 48,
-                height: 48,
+                width: 50,
+                height: 50,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: statusStyle.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusStyle.border, width: 1),
-                  ),
-                  child: Icon(
-                    triggerIcon,
-                    color: statusStyle.foreground,
-                    size: 24,
-                  ),
-                ),
+                errorBuilder: (_, _, _) => fallback(),
               ),
             ),
             IgnorePointer(
               child: Container(
-                width: 48,
-                height: 48,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: statusStyle.border.withValues(alpha: 0.7),
-                    width: 1,
-                  ),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: iconBorder, width: 1),
                 ),
               ),
             ),
@@ -111,30 +112,17 @@ class RecentIncidentTile extends StatelessWidget {
               bottom: -2,
               right: -2,
               child: Container(
-                width: 18,
-                height: 18,
+                width: 19,
+                height: 19,
                 decoration: BoxDecoration(
-                  color: statusStyle.foreground,
+                  color: iconColor,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    color: isDark ? BrandTokens.darkSurface : Colors.white,
                     width: 1.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
                 ),
-                child: Center(
-                  child: Icon(
-                    triggerIcon,
-                    size: 10,
-                    color: Colors.white,
-                  ),
-                ),
+                child: Icon(triggerIcon, size: 10, color: Colors.white),
               ),
             ),
           ],
@@ -144,192 +132,204 @@ class RecentIncidentTile extends StatelessWidget {
 
     if (isImageLoading) {
       return IgnivoShimmerBox(
-        width: 48,
-        height: 48,
-        borderRadius: BorderRadius.circular(12),
+        width: 50,
+        height: 50,
+        borderRadius: BorderRadius.circular(15),
       );
     }
 
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: statusStyle.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusStyle.border, width: 1),
-      ),
-      child: Icon(
-        triggerIcon,
-        color: statusStyle.foreground,
-        size: 24,
-      ),
-    );
+    return fallback();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final statusKey = status?.trim().toLowerCase() ?? '';
+    final severityKey = severity?.trim().toLowerCase() ?? '';
 
-    final statusStyle = AlertPresentationMapping.statusStyle(
-      severity: severity,
-      isDark: isDark,
-    );
+    // Màu của badge theo trạng thái xử lý, KHÔNG theo severity.
+    final StatusStyle statusStyle;
+    final IconData statusIcon;
+    if (statusKey == 'resolved') {
+      statusStyle = StatusStyle.normal(isDark: isDark);
+      statusIcon = Icons.check_circle_outline_rounded;
+    } else if (statusKey == 'false_alarm') {
+      statusStyle = StatusStyle.stale(isDark: isDark);
+      statusIcon = Icons.remove_circle_outline_rounded;
+    } else if (statusKey == 'acknowledged') {
+      statusStyle = StatusStyle.warning(isDark: isDark);
+      statusIcon = Icons.pending_actions_rounded;
+    } else if (['analyzing', 'notifying', 'notified', 'ai_dismissed']
+        .contains(statusKey)) {
+      statusStyle = StatusStyle(
+        foreground: isDark ? BrandTokens.darkCriticalFg : BrandTokens.criticalFg,
+        background: isDark ? BrandTokens.darkCriticalBg : BrandTokens.criticalBg,
+        border: isDark ? BrandTokens.darkCriticalBorder : BrandTokens.criticalBorder,
+      );
+      statusIcon = Icons.error_outline_rounded;
+    } else {
+      statusStyle = AlertPresentationMapping.statusStyle(
+        severity: severity,
+        isDark: isDark,
+      );
+      statusIcon = Icons.info_outline_rounded;
+    }
 
     final statusLabel = AlertPresentationMapping.statusLabel(status);
+    final severityStyle = StatusStyle.forSeverity(severity, isDark: isDark);
+    final String? severityLabel = switch (severityKey) {
+      'critical' => 'Rất nghiêm trọng',
+      'high' => 'Mức độ cao',
+      'medium' => 'Mức độ vừa',
+      'low' => 'Mức độ thấp',
+      _ => null,
+    };
+
+    final secondaryColor = isDark
+        ? BrandTokens.darkTextSecondary
+        : BrandTokens.textSecondary;
 
     return InteractiveCard(
       onTap: onTap,
       borderRadius: BorderRadius.circular(BrandTokens.stitchSmallCardRadius),
-      padding: const EdgeInsets.all(BrandTokens.space12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thumbnail ảnh bằng chứng / Shimmer / Icon chỉ báo
-          _buildLeadingThumbnail(context, statusStyle, isDark),
+          _buildLeadingThumbnail(isDark),
           const SizedBox(width: 12),
-
-              // Thông tin sự cố
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isSimulation) ...[
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Mô phỏng',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        if (!title.contains('#$id')) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: isDark ? 0.6 : 0.8),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '#$id',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? BrandTokens.darkTextSecondary
-                                    : BrandTokens.textSecondary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                        ],
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 13,
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
                           color: isDark
-                              ? BrandTokens.darkTextSecondary
-                              : BrandTokens.textSecondary,
+                              ? BrandTokens.darkTextPrimary
+                              : BrandTokens.brandNavy,
                         ),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(
-                            area,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? BrandTokens.darkTextSecondary
-                                  : BrandTokens.textSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Text(' • ', style: TextStyle(color: Colors.grey)),
-                        Flexible(
-                          child: Text(
-                            timeStr,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? BrandTokens.darkTextTertiary
-                                  : BrandTokens.textTertiary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.chevron_right_rounded,
+                        size: 19,
+                        color: isDark
+                            ? BrandTokens.darkTextTertiary
+                            : BrandTokens.textTertiary),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 14, color: secondaryColor),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        area,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: secondaryColor),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-
-              // Badge trạng thái
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusStyle.background,
-                      borderRadius: BorderRadius.circular(9999),
-                      border: Border.all(color: statusStyle.border, width: 0.8),
-                    ),
-                    child: Text(
-                      statusLabel,
-                      style: TextStyle(
-                        color: statusStyle.foreground,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 13, color: secondaryColor),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        timeStr,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: secondaryColor),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 16,
-                    color: Colors.grey,
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 11),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusStyle.background,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: statusStyle.border, width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusStyle.foreground, size: 12),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: statusStyle.foreground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (severityLabel != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: severityStyle.background,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          severityLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: severityStyle.foreground,
+                          ),
+                        ),
+                      ),
+                    if (isSimulation)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: (isDark
+                              ? BrandTokens.darkPrimary
+                              : BrandTokens.brandAccent)
+                              .withValues(alpha: 0.13),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          'Mô phỏng',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? BrandTokens.darkPrimary
+                                : BrandTokens.brandPrimary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        );
+        ],
+      ),
+    );
   }
 }

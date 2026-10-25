@@ -201,7 +201,7 @@ class BrandTokens {
   // ==========================================
   // ASSET PATHS
   // ==========================================
-  static const String markAsset = 'assets/images/ignivo_mark.jpg';
+  static const String markAsset = 'assets/images/ignivo_logo.png';
   static const String wordmarkAsset = 'assets/images/Ten nhom.png';
   static const String teamNameAsset = 'assets/images/Ten nhom.png';
   static const String legacyLogoAsset = 'assets/images/ignivo_logo.png';
