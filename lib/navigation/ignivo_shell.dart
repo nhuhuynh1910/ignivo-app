@@ -19,6 +19,9 @@ import '../features/systems/systems_page.dart';
 import '../widgets/desktop_top_bar.dart';
 import '../widgets/ignivo_page_header.dart';
 import '../widgets/ignivo_sheet.dart';
+import '../../core/services/face_notification_service.dart';
+import '../../core/services/fireeye_api_service.dart';
+import '../features/fireguard/eye_events_page.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
@@ -45,6 +48,8 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   late final CameraSnapshotLoader _snapshotLoader;
   final Set<int> _snackBarAnnounced = {};
   StreamSubscription<CrossSystemIncidentAlert>? _crossAlertSub;
+  StreamSubscription<FaceNotificationEvent>? _faceNotificationSub;
+  FireeyeApiService? _fireeyeApi;
 
   @override
   void initState() {
@@ -56,6 +61,75 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         MonitoringController(api: widget.sessionController.api);
     _monitoring.addListener(_onMonitoringChanged);
     _monitoring.start();
+
+    _fireeyeApi = FireeyeApiService(fireguard: widget.sessionController.api);
+    unawaited(FaceNotificationService.instance.initialize(eye: _fireeyeApi));
+    _faceNotificationSub = FaceNotificationService.instance.onFaceEvent.listen((event) {
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      final isKnown = event.isKnownPerson;
+      final title = isKnown
+          ? (event.name != null && event.name!.isNotEmpty
+              ? 'Xác nhận: ${event.name} đã có mặt'
+              : 'Xác nhận: Người quen đã có mặt')
+          : 'Cảnh báo: Phát hiện người lạ!';
+      final bg = isKnown ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C);
+      final icon = isKnown ? Icons.check_circle_outline : Icons.warning_amber_rounded;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: bg,
+          duration: const Duration(seconds: 8),
+          content: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (event.message.isNotEmpty && event.message != title)
+                      Text(
+                        event.message,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          action: SnackBarAction(
+            label: 'Xem',
+            textColor: Colors.yellow,
+            onPressed: () {
+              if (_fireeyeApi != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EyeEventsPage(eye: _fireeyeApi!),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      );
+    });
 
     _crossAlertSub = widget.coordinator?.onCrossSystemAlert.listen((alert) {
       if (!mounted) return;
@@ -123,9 +197,13 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _monitoring.resume();
+      if (_fireeyeApi != null) {
+        FaceNotificationService.instance.startListening(_fireeyeApi!);
+      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _monitoring.pause();
+      FaceNotificationService.instance.stopListening();
     }
   }
 
@@ -133,6 +211,8 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _crossAlertSub?.cancel();
+    _faceNotificationSub?.cancel();
+    FaceNotificationService.instance.stopListening();
     _monitoring.removeListener(_onMonitoringChanged);
     if (widget.monitoringController == null) {
       _monitoring.dispose();

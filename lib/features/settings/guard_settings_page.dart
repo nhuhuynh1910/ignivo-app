@@ -7,6 +7,7 @@ import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../fireguard/monitoring_controller.dart';
 import '../fireguard/people_page.dart';
+import '../../core/services/face_notification_service.dart';
 import '../../core/services/app_auth_controller.dart';
 import '../../core/services/multi_system_monitoring_coordinator.dart';
 import '../../core/services/system_session_manager.dart';
@@ -18,6 +19,103 @@ import 'emergency_location_page.dart';
 import 'ignivo_about_page.dart';
 
 class GuardSettingsPage extends StatelessWidget {
+  void _showFaceNotificationSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final svc = FaceNotificationService.instance;
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.notifications_active_rounded,
+                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandNavy,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Cài đặt thông báo nhận diện',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tùy chỉnh thông báo nổi trên màn hình khi hệ thống AI nhận diện gương mặt qua camera Dahua.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Thông báo người quen'),
+                      subtitle: const Text('Hiện thông báo xác nhận khi AI thấy người đã đăng ký'),
+                      trailing: Switch(
+                        value: svc.notifyKnown,
+                        onChanged: (v) async {
+                          await svc.setNotifyKnown(v);
+                          setModalState(() {});
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Cảnh báo người lạ'),
+                      subtitle: const Text('Hiện thông báo cảnh báo khi phát hiện người chưa đăng ký'),
+                      trailing: Switch(
+                        value: svc.notifyUnknown,
+                        onChanged: (v) async {
+                          await svc.setNotifyUnknown(v);
+                          setModalState(() {});
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Xong'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
   const GuardSettingsPage({
     super.key,
     required this.sessionController,
@@ -434,6 +532,37 @@ class GuardSettingsPage extends StatelessWidget {
                           ),
                         );
                       },
+                    ),
+                    const Divider(height: 1, indent: 68, endIndent: 16),
+                    ListTile(
+                      leading: _buildLeadingIcon(
+                        context,
+                        Icons.notifications_active_outlined,
+                        color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade700,
+                        background: isDark
+                            ? Colors.indigo.shade900.withValues(alpha: 0.25)
+                            : Colors.indigo.shade50,
+                      ),
+                      title: const Text(
+                        'Thông báo nhận diện gương mặt',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: ListenableBuilder(
+                        listenable: FaceNotificationService.instance,
+                        builder: (context, _) {
+                          final k = FaceNotificationService.instance.notifyKnown ? 'Bật' : 'Tắt';
+                          final u = FaceNotificationService.instance.notifyUnknown ? 'Bật' : 'Tắt';
+                          return Text(
+                            'Người quen: $k · Người lạ: $u',
+                            style: const TextStyle(fontSize: 12),
+                          );
+                        },
+                      ),
+                      trailing: const Icon(Icons.tune_rounded, size: 20),
+                      onTap: () => _showFaceNotificationSheet(context),
                     ),
                   ],
                   const Divider(height: 1, indent: 68, endIndent: 16),

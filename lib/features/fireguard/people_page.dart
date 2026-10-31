@@ -1,7 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
+import '../../core/services/face_notification_service.dart';
 import '../../core/services/fireeye_api_service.dart';
+import 'eye_events_page.dart';
 
 class PeoplePage extends StatefulWidget {
   const PeoplePage({super.key, required this.eye});
@@ -21,6 +24,7 @@ class _PeoplePageState extends State<PeoplePage> {
   @override
   void initState() {
     super.initState();
+    unawaited(FaceNotificationService.instance.initialize());
     _load();
   }
 
@@ -228,6 +232,16 @@ class _PeoplePageState extends State<PeoplePage> {
       title: const Text('Người tham gia'),
       actions: [
         IconButton(
+          tooltip: 'Lịch sử nhận diện',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EyeEventsPage(eye: widget.eye),
+            ),
+          ),
+          icon: const Icon(Icons.history_rounded),
+        ),
+        IconButton(
           tooltip: 'Tải lại',
           onPressed: _busy ? null : _load,
           icon: const Icon(Icons.refresh),
@@ -269,6 +283,7 @@ class _PeoplePageState extends State<PeoplePage> {
                       ? null
                       : (v) => _act(() => widget.eye.setFaceWatch(v)),
                 ),
+
               const SizedBox(height: 12),
               if (widget.eye.canConfigure)
                 Card(
@@ -485,6 +500,69 @@ class _PeoplePageState extends State<PeoplePage> {
                         : null,
                   ),
                 ),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(80),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: Theme.of(context).dividerColor.withAlpha(40),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.notifications_active_outlined,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Tùy chọn thông báo nhận diện',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Báo khi thấy người quen'),
+                        subtitle: const Text('Hiện thông báo nổi khi nhận diện người đã lưu'),
+                        trailing: Switch(
+                          value: FaceNotificationService.instance.notifyKnown,
+                          onChanged: (v) async {
+                            await FaceNotificationService.instance.setNotifyKnown(v);
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Cảnh báo khi thấy người lạ'),
+                        subtitle: const Text('Thông báo cảnh giác khi có người chưa đăng ký'),
+                        trailing: Switch(
+                          value: FaceNotificationService.instance.notifyUnknown,
+                          onChanged: (v) async {
+                            await FaceNotificationService.instance.setNotifyUnknown(v);
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
   );
