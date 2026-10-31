@@ -406,6 +406,31 @@ class FireeyeApiService {
       'source_revision': ?sourceRevision,
     },
   );
+
+  /// Direct Dahua camera PTZ controls via FireEye backend
+  Future<void> moveCamera(String direction) async {
+    if (direction == 'home') {
+      await _request('/api/camera/home', method: 'POST');
+    } else {
+      await _request('/api/camera/$direction', method: 'POST');
+    }
+  }
+
+  Future<void> stopCamera([String code = 'left']) async {
+    await _request(
+      '/api/camera/stop',
+      method: 'POST',
+      body: {'code': code},
+    );
+  }
+
+  Future<void> gotoCameraZone(int zoneId) async {
+    await _request('/api/camera/zone/$zoneId', method: 'POST');
+  }
+
+  Future<Map<String, dynamic>> getCameraZones() async {
+    return Map<String, dynamic>.from(await _request('/api/camera/zones'));
+  }
   Future<Map<String, dynamic>> getFaceStatus() async =>
       Map<String, dynamic>.from(await _request('/api/faces/watch/status'));
   Future<void> setFaceWatch(bool enabled) async => _request(

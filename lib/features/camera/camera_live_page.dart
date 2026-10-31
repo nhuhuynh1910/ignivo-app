@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../core/services/fireeye_api_service.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
@@ -27,11 +29,16 @@ class CameraLivePage extends StatefulWidget {
 class _CameraLivePageState extends State<CameraLivePage> {
   Map<String, dynamic>? _camera;
   bool _isFullscreen = false;
+  int _selectedTab = 0; // 0: Điều khiển PTZ, 1: Thông số & Trạng thái
+  late final FireeyeApiService _eye;
+  String? _activePtzAction;
+  String? _ptzFeedback;
 
   @override
   void initState() {
     super.initState();
     _camera = widget.initialCamera;
+    _eye = FireeyeApiService(fireguard: widget.api);
     _loadCameraDetail();
   }
 
@@ -83,6 +90,79 @@ class _CameraLivePageState extends State<CameraLivePage> {
       ),
     );
     _loadCameraDetail();
+  }
+
+  Future<void> _handlePtzStart(String action) async {
+    final canConfig =
+        widget.sessionController?.isOwnerOrAdmin ?? widget.api.canConfigure;
+    if (!canConfig) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chỉ Owner hoặc Admin mới có quyền điều khiển PTZ.'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.selectionClick();
+    setState(() {
+      _activePtzAction = action;
+      _ptzFeedback = 'Đang di chuyển: ${_getPtzActionLabel(action)}';
+    });
+
+    try {
+      if (action.startsWith('zone-')) {
+        final zoneId = int.tryParse(action.replaceFirst('zone-', '')) ?? 1;
+        await _eye.gotoCameraZone(zoneId);
+      } else {
+        await _eye.moveCamera(action);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _ptzFeedback = 'Lỗi kết nối PTZ: $e');
+      }
+    }
+  }
+
+  Future<void> _handlePtzStop(String action) async {
+    final canConfig =
+        widget.sessionController?.isOwnerOrAdmin ?? widget.api.canConfigure;
+    if (!canConfig) return;
+
+    setState(() => _activePtzAction = null);
+
+    try {
+      await _eye.stopCamera(action);
+      if (mounted) {
+        setState(() => _ptzFeedback = 'Đã dừng quay camera');
+      }
+    } catch (_) {}
+  }
+
+  String _getPtzActionLabel(String action) {
+    switch (action) {
+      case 'up':
+        return 'Hướng lên';
+      case 'down':
+        return 'Hướng xuống';
+      case 'left':
+        return 'Xoay sang trái';
+      case 'right':
+        return 'Xoay sang phải';
+      case 'zoom-in':
+        return 'Phóng to (+ Zoom)';
+      case 'zoom-out':
+        return 'Thu nhỏ (- Zoom)';
+      case 'home':
+        return 'Vị trí Home';
+      default:
+        if (action.startsWith('zone-')) {
+          return 'Chuyển ${action.replaceFirst('zone-', 'Khu vực ')}';
+        }
+        return action;
+    }
   }
 
   @override
@@ -428,7 +508,7 @@ class _CameraLivePageState extends State<CameraLivePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
                 // 2. Quick Action Toolbar
                 Wrap(
@@ -455,277 +535,650 @@ class _CameraLivePageState extends State<CameraLivePage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-                // 3. Status Overview Card
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
-                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                    border: Border.all(
-                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                // 3. Segmented Navigation Tabs: [ Điều khiển PTZ ] | [ Thông số & Trạng thái ]
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 0,
+                      label: Text(
+                        'Điều khiển PTZ',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      icon: Icon(Icons.videogame_asset_outlined, size: 18),
                     ),
-                    boxShadow: BrandTokens.softShadow(isDark: isDark),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: (isOnline
-                                  ? BrandTokens.stitchSafe
-                                  : BrandTokens.stitchCritical)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isOnline
-                              ? Icons.videocam_rounded
-                              : Icons.videocam_off_rounded,
-                          color: isOnline
-                              ? BrandTokens.stitchSafe
-                              : BrandTokens.stitchCritical,
-                          size: 22,
-                        ),
+                    ButtonSegment(
+                      value: 1,
+                      label: Text(
+                        'Thông số & Trạng thái',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isOnline
-                                  ? 'Camera đang truyền phát'
-                                  : 'Camera mất tín hiệu',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: isDark
-                                    ? BrandTokens.darkTextPrimary
-                                    : BrandTokens.brandNavy,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              isOnline
-                                  ? 'Luồng MJPEG đang kết nối ổn định'
-                                  : 'Kiểm tra nguồn hoặc kết nối mạng camera',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? BrandTokens.darkTextTertiary
-                                    : BrandTokens.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isOnline
-                              ? (isDark
-                                  ? BrandTokens.stitchDarkOnlineBg
-                                  : BrandTokens.stitchOnlineBg)
-                              : (isDark
-                                  ? BrandTokens.stitchDarkCriticalBg
-                                  : BrandTokens.stitchCriticalBg),
-                          borderRadius:
-                              BorderRadius.circular(BrandTokens.badgeRadius),
-                          border: Border.all(
-                            color: isOnline
-                                ? BrandTokens.stitchSafe.withValues(alpha: 0.3)
-                                : BrandTokens.stitchCritical.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Text(
-                          isOnline ? 'ONLINE' : 'OFFLINE',
-                          style: TextStyle(
-                            color: isOnline
-                                ? (isDark
-                                    ? BrandTokens.stitchDarkOnlineFg
-                                    : BrandTokens.stitchOnlineFg)
-                                : (isDark
-                                    ? BrandTokens.stitchDarkCriticalFg
-                                    : BrandTokens.stitchCriticalFg),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 4. Metric 2x2 Grid
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            context: context,
-                            icon: Icons.place_outlined,
-                            iconColor: BrandTokens.brandAccent,
-                            label: 'Khu vực lắp đặt',
-                            value: area,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildMetricCard(
-                            context: context,
-                            icon: Icons.auto_awesome_rounded,
-                            iconColor: detectEnabled
-                                ? BrandTokens.stitchSafe
-                                : BrandTokens.stitchWarning,
-                            label: 'AI nhận diện cháy',
-                            value:
-                                detectEnabled ? 'Đang kích hoạt' : 'Đã tạm tắt',
-                            valueColor: detectEnabled
-                                ? BrandTokens.stitchSafe
-                                : BrandTokens.stitchWarning,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            context: context,
-                            icon: Icons.speed_rounded,
-                            iconColor: BrandTokens.brandSecondary,
-                            label: 'Tốc độ phân tích mục tiêu',
-                            value: '$fps FPS',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildMetricCard(
-                            context: context,
-                            icon: Icons.fingerprint_rounded,
-                            iconColor: isDark
-                                ? BrandTokens.darkTextSecondary
-                                : BrandTokens.textSecondary,
-                            label: 'Mã định danh camera',
-                            value: 'Camera #$id',
-                          ),
-                        ),
-                      ],
+                      icon: Icon(Icons.analytics_outlined, size: 18),
                     ),
                   ],
+                  selected: {_selectedTab},
+                  onSelectionChanged: (s) => setState(() => _selectedTab = s.first),
+                  style: ButtonStyle(
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-                // 5. Edge Box Telemetry / Hardware Card
-                // Container(
-                //   padding: const EdgeInsets.all(16),
-                //   decoration: BoxDecoration(
-                //     color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
-                //     borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
-                //     border: Border.all(
-                //       color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
-                //     ),
-                //     boxShadow: BrandTokens.softShadow(isDark: isDark),
-                //   ),
-                //   child: Row(
-                //     crossAxisAlignment: CrossAxisAlignment.start,
-                //     children: [
-                //       Container(
-                //         padding: const EdgeInsets.all(10),
-                //         decoration: BoxDecoration(
-                //           color: (isDark
-                //                   ? BrandTokens.darkPrimary
-                //                   : BrandTokens.brandPrimary)
-                //               .withValues(alpha: 0.12),
-                //           borderRadius: BorderRadius.circular(12),
-                //         ),
-                //         child: Icon(
-                //           Icons.memory_rounded,
-                //           size: 22,
-                //           color: isDark
-                //               ? BrandTokens.darkPrimary
-                //               : BrandTokens.brandPrimary,
-                //         ),
-                //       ),
-                //       const SizedBox(width: 14),
-                //       Expanded(
-                //         child: Column(
-                //           crossAxisAlignment: CrossAxisAlignment.start,
-                //           children: [
-                //             Row(
-                //               children: [
-                //                 Expanded(
-                //                   child: Text(
-                //                     'Bộ xử lý biên AI Edge NPU',
-                //                     style: TextStyle(
-                //                       fontSize: 14,
-                //                       fontWeight: FontWeight.bold,
-                //                       color: isDark
-                //                           ? BrandTokens.darkTextPrimary
-                //                           : BrandTokens.brandNavy,
-                //                     ),
-                //                   ),
-                //                 ),
-                //                 Container(
-                //                   padding: const EdgeInsets.symmetric(
-                //                     horizontal: 8,
-                //                     vertical: 3,
-                //                   ),
-                //                   decoration: BoxDecoration(
-                //                     color: BrandTokens.brandAccent
-                //                         .withValues(alpha: 0.15),
-                //                     borderRadius: BorderRadius.circular(6),
-                //                     border: Border.all(
-                //                       color: BrandTokens.brandAccent
-                //                           .withValues(alpha: 0.3),
-                //                     ),
-                //                   ),
-                //                   child: const Text(
-                //                     'Hailo-8L',
-                //                     style: TextStyle(
-                //                       fontSize: 10,
-                //                       fontWeight: FontWeight.bold,
-                //                       color: BrandTokens.brandAccent,
-                //                     ),
-                //                   ),
-                //                 ),
-                //               ],
-                //             ),
-                //             const SizedBox(height: 6),
-                //             Text(
-                //               'Luồng MJPEG được phân tích thị giác trực tiếp tại chỗ bằng bộ tăng tốc Hailo NPU. Mọi thay đổi vật lý hoặc đổi cổng RTSP cần cấu hình trực tiếp trên Edge Box.',
-                //               style: TextStyle(
-                //                 fontSize: 12,
-                //                 color: isDark
-                //                     ? BrandTokens.darkTextSecondary
-                //                     : BrandTokens.textSecondary,
-                //                 height: 1.4,
-                //               ),
-                //             ),
-                //           ],
-                //         ),
-                //       ),
-                //     ],
-                //   ),
-                // ),
+                // 4. Tab Content: PTZ Joypad (Tab 0) OR Status Cards (Tab 1)
+                if (_selectedTab == 0)
+                  _buildPtzPanel(
+                    context: context,
+                    isDark: isDark,
+                    canConfig: canConfig,
+                  )
+                else
+                  _buildStatusPanel(
+                    context: context,
+                    isDark: isDark,
+                    isOnline: isOnline,
+                    area: area,
+                    detectEnabled: detectEnabled,
+                    fps: fps,
+                    id: id,
+                  ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // --- TAB 0: PTZ CONTROLLER PANEL ---
+  Widget _buildPtzPanel({
+    required BuildContext context,
+    required bool isDark,
+    required bool canConfig,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!canConfig)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.lock_outline_rounded, color: Colors.amber, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tài khoản đang đăng nhập chỉ có quyền xem. Cần quyền OWNER/ADMIN để xoay camera.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Joypad & Zoom Container Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+            borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+            border: Border.all(
+              color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+            ),
+            boxShadow: BrandTokens.softShadow(isDark: isDark),
+          ),
+          child: Column(
+            children: [
+              if (_ptzFeedback != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _ptzFeedback!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Joypad 4-direction control
+                  _buildJoypad(context, isDark, canConfig),
+
+                  // Divider
+                  Container(
+                    height: 140,
+                    width: 1,
+                    color: (isDark ? BrandTokens.darkBorder : BrandTokens.border)
+                        .withValues(alpha: 0.7),
+                  ),
+
+                  // Zoom Controls Column
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'ZOOM',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: isDark
+                              ? BrandTokens.darkTextTertiary
+                              : BrandTokens.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildZoomButton(
+                        icon: Icons.zoom_in_rounded,
+                        label: 'Phóng to',
+                        action: 'zoom-in',
+                        isDark: isDark,
+                        enabled: canConfig,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildZoomButton(
+                        icon: Icons.zoom_out_rounded,
+                        label: 'Thu nhỏ',
+                        action: 'zoom-out',
+                        isDark: isDark,
+                        enabled: canConfig,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Preset Zones Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+            borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+            border: Border.all(
+              color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+            ),
+            boxShadow: BrandTokens.softShadow(isDark: isDark),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.bookmark_border_rounded,
+                    size: 18,
+                    color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Vị trí quan sát cài sẵn (Preset Zones)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? BrandTokens.darkTextPrimary : BrandTokens.brandNavy,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildZoneChip(1, 'Khu vực 1 (Bếp)', Icons.kitchen_rounded, isDark, canConfig),
+                  _buildZoneChip(2, 'Khu vực 2 (Cửa chính)', Icons.door_front_door_rounded, isDark, canConfig),
+                  _buildZoneChip(3, 'Khu vực 3 (Sân sau)', Icons.yard_rounded, isDark, canConfig),
+                  _buildZoneChip(4, 'Khu vực 4 (Phòng khách)', Icons.weekend_rounded, isDark, canConfig),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJoypad(BuildContext context, bool isDark, bool enabled) {
+    final padBg = isDark ? BrandTokens.darkSurfaceVariant : Colors.grey.shade100;
+    return Container(
+      width: 156,
+      height: 156,
+      decoration: BoxDecoration(
+        color: padBg,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+          width: 1.5,
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // UP
+          Positioned(
+            top: 4,
+            child: _buildDirectionArrow(
+              icon: Icons.keyboard_arrow_up_rounded,
+              action: 'up',
+              tooltip: 'Lên trên',
+              isDark: isDark,
+              enabled: enabled,
+            ),
+          ),
+          // DOWN
+          Positioned(
+            bottom: 4,
+            child: _buildDirectionArrow(
+              icon: Icons.keyboard_arrow_down_rounded,
+              action: 'down',
+              tooltip: 'Xuống dưới',
+              isDark: isDark,
+              enabled: enabled,
+            ),
+          ),
+          // LEFT
+          Positioned(
+            left: 4,
+            child: _buildDirectionArrow(
+              icon: Icons.keyboard_arrow_left_rounded,
+              action: 'left',
+              tooltip: 'Sang trái',
+              isDark: isDark,
+              enabled: enabled,
+            ),
+          ),
+          // RIGHT
+          Positioned(
+            right: 4,
+            child: _buildDirectionArrow(
+              icon: Icons.keyboard_arrow_right_rounded,
+              action: 'right',
+              tooltip: 'Sang phải',
+              isDark: isDark,
+              enabled: enabled,
+            ),
+          ),
+          // CENTER HOME BUTTON
+          GestureDetector(
+            onTap: enabled ? () => _handlePtzStart('home') : null,
+            child: Tooltip(
+              message: 'Về góc quan sát mặc định (Home)',
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _activePtzAction == 'home'
+                      ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+                      : (isDark ? BrandTokens.darkSurface : Colors.white),
+                  border: Border.all(
+                    color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.home_rounded,
+                  size: 22,
+                  color: _activePtzAction == 'home'
+                      ? Colors.white
+                      : (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDirectionArrow({
+    required IconData icon,
+    required String action,
+    required String tooltip,
+    required bool isDark,
+    required bool enabled,
+  }) {
+    final isActive = _activePtzAction == action;
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: enabled ? (_) => _handlePtzStart(action) : null,
+        onTapUp: enabled ? (_) => _handlePtzStop(action) : null,
+        onTapCancel: enabled ? () => _handlePtzStop(action) : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive
+                ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+                : Colors.transparent,
+          ),
+          child: Icon(
+            icon,
+            size: 32,
+            color: isActive
+                ? Colors.white
+                : (isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildZoomButton({
+    required IconData icon,
+    required String label,
+    required String action,
+    required bool isDark,
+    required bool enabled,
+  }) {
+    final isActive = _activePtzAction == action;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: enabled ? (_) => _handlePtzStart(action) : null,
+      onTapUp: enabled ? (_) => _handlePtzStop(action) : null,
+      onTapCancel: enabled ? () => _handlePtzStop(action) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: isActive
+              ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+              : (isDark ? BrandTokens.darkSurfaceVariant : Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+          border: Border.all(
+            color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isActive
+                  ? Colors.white
+                  : (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isActive
+                    ? Colors.white
+                    : (isDark ? BrandTokens.darkTextPrimary : BrandTokens.textPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildZoneChip(
+    int zoneId,
+    String label,
+    IconData icon,
+    bool isDark,
+    bool enabled,
+  ) {
+    return ActionChip(
+      avatar: Icon(
+        icon,
+        size: 16,
+        color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+      ),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+      onPressed: enabled ? () => _handlePtzStart('zone-$zoneId') : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+      ),
+      backgroundColor: isDark ? BrandTokens.darkSurfaceVariant : Colors.grey.shade50,
+      side: BorderSide(
+        color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+      ),
+    );
+  }
+
+  // --- TAB 1: STATUS & TELEMETRY CARDS ---
+  Widget _buildStatusPanel({
+    required BuildContext context,
+    required bool isDark,
+    required bool isOnline,
+    required String area,
+    required bool detectEnabled,
+    required int fps,
+    required int id,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Status Overview Card
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+            borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+            border: Border.all(
+              color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+            ),
+            boxShadow: BrandTokens.softShadow(isDark: isDark),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (isOnline
+                          ? BrandTokens.stitchSafe
+                          : BrandTokens.stitchCritical)
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isOnline
+                      ? Icons.videocam_rounded
+                      : Icons.videocam_off_rounded,
+                  color: isOnline
+                      ? BrandTokens.stitchSafe
+                      : BrandTokens.stitchCritical,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isOnline
+                          ? 'Camera đang truyền phát'
+                          : 'Camera mất tín hiệu',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isDark
+                            ? BrandTokens.darkTextPrimary
+                            : BrandTokens.brandNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isOnline
+                          ? 'Luồng MJPEG đang kết nối ổn định'
+                          : 'Kiểm tra nguồn hoặc kết nối mạng camera',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? BrandTokens.darkTextTertiary
+                            : BrandTokens.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: isOnline
+                      ? (isDark
+                          ? BrandTokens.stitchDarkOnlineBg
+                          : BrandTokens.stitchOnlineBg)
+                      : (isDark
+                          ? BrandTokens.stitchDarkCriticalBg
+                          : BrandTokens.stitchCriticalBg),
+                  borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+                  border: Border.all(
+                    color: isOnline
+                        ? BrandTokens.stitchSafe.withValues(alpha: 0.3)
+                        : BrandTokens.stitchCritical.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  isOnline ? 'ONLINE' : 'OFFLINE',
+                  style: TextStyle(
+                    color: isOnline
+                        ? (isDark
+                            ? BrandTokens.stitchDarkOnlineFg
+                            : BrandTokens.stitchOnlineFg)
+                        : (isDark
+                            ? BrandTokens.stitchDarkCriticalFg
+                            : BrandTokens.stitchCriticalFg),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Metric 2x2 Grid
+        Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    context: context,
+                    icon: Icons.place_outlined,
+                    iconColor: BrandTokens.brandAccent,
+                    label: 'Khu vực lắp đặt',
+                    value: area,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    context: context,
+                    icon: Icons.auto_awesome_rounded,
+                    iconColor: detectEnabled
+                        ? BrandTokens.stitchSafe
+                        : BrandTokens.stitchWarning,
+                    label: 'AI nhận diện cháy',
+                    value: detectEnabled ? 'Đang kích hoạt' : 'Đã tạm tắt',
+                    valueColor: detectEnabled
+                        ? BrandTokens.stitchSafe
+                        : BrandTokens.stitchWarning,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    context: context,
+                    icon: Icons.speed_rounded,
+                    iconColor: BrandTokens.brandSecondary,
+                    label: 'Tốc độ phân tích mục tiêu',
+                    value: '$fps FPS',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    context: context,
+                    icon: Icons.fingerprint_rounded,
+                    iconColor: isDark
+                        ? BrandTokens.darkTextSecondary
+                        : BrandTokens.textSecondary,
+                    label: 'Mã định danh camera',
+                    value: 'Camera #$id',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
     );
   }
 
