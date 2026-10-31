@@ -422,6 +422,8 @@ class FireeyeApiService {
     String name, {
     required bool consent,
     Uint8List? image,
+    String groupTag = 'FAMILY',
+    String angleType = 'FRONTAL',
   }) async {
     if (!consent) {
       throw const FireeyeException(
@@ -436,7 +438,12 @@ class FireeyeApiService {
             '$_baseUrl/api/faces/${image == null ? 'register-camera' : 'register'}',
           ),
         );
-        request.fields.addAll({'name': name.trim(), 'consent': '$consent'});
+        request.fields.addAll({
+          'name': name.trim(),
+          'consent': '$consent',
+          'group_tag': groupTag,
+          'angle_type': angleType,
+        });
         if (image != null) {
           request.files.add(
             http.MultipartFile.fromBytes(
@@ -449,6 +456,35 @@ class FireeyeApiService {
         return request;
       }),
     );
+  }
+
+  Future<void> addFaceSample(
+    int personId, {
+    required Uint8List image,
+    String angleType = 'OTHER',
+  }) async {
+    _decode(
+      await _exchange(() {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$_baseUrl/api/faces/people/$personId/samples'),
+        );
+        request.fields['angle_type'] = angleType;
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'image',
+            image,
+            filename: 'sample.jpg',
+          ),
+        );
+        return request;
+      }),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPersonSamples(int personId) async {
+    final res = await _request('/api/faces/people/$personId/samples');
+    return List<Map<String, dynamic>>.from(res['samples'] ?? []);
   }
 
   Future<List<Map<String, dynamic>>> getEvents({

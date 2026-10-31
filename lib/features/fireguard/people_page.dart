@@ -16,6 +16,7 @@ class _PeoplePageState extends State<PeoplePage> {
   Map<String, dynamic>? _status;
   Uint8List? _image;
   bool _loading = true, _busy = false, _consent = false, _fromPi = false;
+  String _groupTag = 'FAMILY';
   String? _error;
   @override
   void initState() {
@@ -107,6 +108,7 @@ class _PeoplePageState extends State<PeoplePage> {
         _name.text,
         consent: _consent,
         image: _fromPi ? null : _image,
+        groupTag: _groupTag,
       );
       if (!mounted) return;
       _name.clear();
@@ -114,9 +116,83 @@ class _PeoplePageState extends State<PeoplePage> {
         _image = null;
         _fromPi = false;
         _consent = false;
+        _groupTag = 'FAMILY';
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã đăng ký người tham gia.')),
+      );
+    });
+  }
+
+  Future<void> _addSample(Map<String, dynamic> person) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Chụp ảnh góc mới'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Chọn ảnh từ thư viện'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 90,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+
+    String angle = 'OTHER';
+    if (mounted) {
+      final chosenAngle = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Chọn góc chụp'),
+          children: [
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 'FRONTAL'),
+              child: const Text('Chính diện (góc khác)'),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 'LEFT_PROFILE'),
+              child: const Text('Nghiêng trái (15-30°)'),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 'RIGHT_PROFILE'),
+              child: const Text('Nghiêng phải (15-30°)'),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 'WITH_GLASSES'),
+              child: const Text('Đeo kính / Khẩu trang'),
+            ),
+          ],
+        ),
+      );
+      if (chosenAngle != null) angle = chosenAngle;
+    }
+
+    await _act(() async {
+      await widget.eye.addFaceSample(
+        person['id'] as int,
+        image: bytes,
+        angleType: angle,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đã bổ sung góc mặt cho ${person['name']}.')),
       );
     });
   }
@@ -266,6 +342,45 @@ class _PeoplePageState extends State<PeoplePage> {
                               ? null
                               : (v) => setState(() => _consent = v == true),
                         ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Wrap(
+                            spacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                'Nhóm:',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              ChoiceChip(
+                                visualDensity: VisualDensity.compact,
+                                label: const Text('Người nhà'),
+                                selected: _groupTag == 'FAMILY',
+                                onSelected: _busy
+                                    ? null
+                                    : (v) => setState(() => _groupTag = 'FAMILY'),
+                              ),
+                              ChoiceChip(
+                                visualDensity: VisualDensity.compact,
+                                label: const Text('Nhân viên'),
+                                selected: _groupTag == 'STAFF',
+                                onSelected: _busy
+                                    ? null
+                                    : (v) => setState(() => _groupTag = 'STAFF'),
+                              ),
+                              ChoiceChip(
+                                visualDensity: VisualDensity.compact,
+                                label: const Text('Khách'),
+                                selected: _groupTag == 'GUEST',
+                                onSelected: _busy
+                                    ? null
+                                    : (v) => setState(() => _groupTag = 'GUEST'),
+                              ),
+                            ],
+                          ),
+                        ),
                         FilledButton(
                           onPressed:
                               _busy ||
@@ -295,17 +410,77 @@ class _PeoplePageState extends State<PeoplePage> {
                 Card(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
-                    title: Text('${person['name']}'),
-                    subtitle: Text(
-                      person['consented_at'] == null
-                          ? 'Hồ sơ cũ chưa có đồng ý — không dùng đối chiếu. Xóa và đăng ký lại.'
-                          : 'Đã ghi nhận đồng ý: ${person['consented_at']}',
+                    title: Row(
+                      children: [
+                        Expanded(child: Text('${person['name']}')),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: person['group_tag'] == 'STAFF'
+                                ? Colors.blue.withAlpha(30)
+                                : (person['group_tag'] == 'GUEST'
+                                    ? Colors.orange.withAlpha(30)
+                                    : Colors.green.withAlpha(30)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            person['group_tag'] == 'STAFF'
+                                ? 'Nhân viên'
+                                : (person['group_tag'] == 'GUEST'
+                                    ? 'Khách'
+                                    : 'Người nhà'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: person['group_tag'] == 'STAFF'
+                                  ? Colors.blue.shade700
+                                  : (person['group_tag'] == 'GUEST'
+                                      ? Colors.orange.shade800
+                                      : Colors.green.shade800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          person['consented_at'] == null
+                              ? 'Hồ sơ cũ chưa có đồng ý — không dùng đối chiếu. Xóa và đăng ký lại.'
+                              : 'Đã ghi nhận đồng ý: ${person['consented_at']}',
+                        ),
+                        if (person['samples_count'] != null)
+                          Text(
+                            'Số mẫu góc mặt đã học: ${person['samples_count']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                      ],
                     ),
                     trailing: widget.eye.canConfigure
-                        ? IconButton(
-                            tooltip: 'Xóa hồ sơ và rút lại đồng ý',
-                            onPressed: _busy ? null : () => _delete(person),
-                            icon: const Icon(Icons.person_remove_outlined),
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Thêm góc mặt',
+                                onPressed: _busy
+                                    ? null
+                                    : () => _addSample(person),
+                                icon: const Icon(Icons.add_a_photo_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'Xóa hồ sơ và rút lại đồng ý',
+                                onPressed: _busy ? null : () => _delete(person),
+                                icon: const Icon(Icons.person_remove_outlined),
+                              ),
+                            ],
                           )
                         : null,
                   ),
