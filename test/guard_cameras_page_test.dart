@@ -240,5 +240,51 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
     });
+    testWidgets('CameraLivePage switches between PTZ and Status tabs without double cast error', (tester) async {
+      final cam = {
+        'id': 1,
+        'name': 'Camera Cổng Chính',
+        'area': 'Cổng',
+        'enabled': true,
+        'detect_enabled': true,
+        'ai_fps': 15.0,
+        'status': {'online': true, 'ai_fps': 15.0},
+      };
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/cameras')) return jsonResp([cam]);
+          return jsonResp({});
+        }),
+      );
+      await api.setAuthToken('test-token');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CameraLivePage(
+            cameraId: 1,
+            api: api,
+            initialCamera: cam,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Điều khiển PTZ'), findsOneWidget);
+      expect(find.text('Thông số & Trạng thái'), findsOneWidget);
+      expect(find.text('ZOOM'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Thông số & Trạng thái'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Thông số & Trạng thái'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('15 FPS'), findsWidgets);
+      expect(find.text('Khu vực lắp đặt'), findsOneWidget);
+      expect(find.text('ONLINE'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
   });
 }

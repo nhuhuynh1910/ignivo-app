@@ -173,9 +173,13 @@ class _CameraLivePageState extends State<CameraLivePage> {
     final id = widget.cameraId;
     final name = cam['name']?.toString() ?? 'Camera #$id';
     final area = cam['area']?.toString() ?? 'Chưa xác định khu vực';
-    final isOnline = (cam['status'] as Map?)?['online'] == true;
+    final statusMap = cam['status'] is Map ? (cam['status'] as Map) : null;
+    final isOnline = statusMap?['online'] == true;
     final detectEnabled = cam['detect_enabled'] != false;
-    final fps = cam['ai_fps'] ?? 8;
+    final fpsVal = statusMap?['ai_fps'] ?? cam['ai_fps'];
+    final dynamic fps = (fpsVal is num)
+        ? (fpsVal == fpsVal.roundToDouble() ? fpsVal.toInt() : fpsVal)
+        : (int.tryParse(fpsVal?.toString() ?? '') ?? 8);
     final streamUrl = widget.api.getMjpegStreamUrl(id);
     final canConfig =
         widget.sessionController?.isOwnerOrAdmin ?? widget.api.canConfigure;
@@ -1004,8 +1008,8 @@ class _CameraLivePageState extends State<CameraLivePage> {
     required bool isOnline,
     required String area,
     required bool detectEnabled,
-    required int fps,
-    required int id,
+    required dynamic fps,
+    required dynamic id,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
