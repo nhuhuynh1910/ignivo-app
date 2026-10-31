@@ -149,7 +149,7 @@ class _CameraLivePageState extends State<CameraLivePage> {
     try {
       await _eye.stopCamera(action);
       if (mounted) {
-        setState(() => _ptzFeedback = 'Đã dừng quay camera');
+        setState(() => _ptzFeedback = 'Đã dừng camera');
         _ptzFeedbackTimer?.cancel();
         _ptzFeedbackTimer = Timer(const Duration(milliseconds: 1500), () {
           if (mounted) setState(() => _ptzFeedback = null);
@@ -165,18 +165,18 @@ class _CameraLivePageState extends State<CameraLivePage> {
       case 'down':
         return 'Hướng xuống';
       case 'left':
-        return 'Xoay sang trái';
+        return 'Sang trái';
       case 'right':
-        return 'Xoay sang phải';
+        return 'Sang phải';
       case 'zoom-in':
-        return 'Phóng to (+ Zoom)';
+        return 'Phóng to';
       case 'zoom-out':
-        return 'Thu nhỏ (- Zoom)';
+        return 'Thu nhỏ';
       case 'home':
-        return 'Vị trí Home';
+        return 'Về Home';
       default:
         if (action.startsWith('zone-')) {
-          return 'Chuyển ${action.replaceFirst('zone-', 'Khu vực ')}';
+          return 'Khu vực ${action.replaceFirst('zone-', '')}';
         }
         return action;
     }
@@ -667,7 +667,7 @@ class _CameraLivePageState extends State<CameraLivePage> {
               Builder(
                 builder: (context) {
                   final isMoving = _activePtzAction != null;
-                  final text = _ptzFeedback ?? 'Sẵn sàng điều khiển PTZ';
+                  final text = _ptzFeedback ?? 'Sẵn sàng điều khiển';
                   final Color dotColor;
                   final Color bgColor;
                   final Color textColor;
@@ -712,7 +712,7 @@ class _CameraLivePageState extends State<CameraLivePage> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 14),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 10,
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
@@ -732,15 +732,19 @@ class _CameraLivePageState extends State<CameraLivePage> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 150),
-                          child: Text(
-                            text,
-                            key: ValueKey(text),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
+                        Flexible(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 150),
+                            child: Text(
+                              text,
+                              key: ValueKey(text),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: textColor,
+                              ),
                             ),
                           ),
                         ),
