@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/fireeye_api_service.dart';
@@ -33,6 +34,7 @@ class _CameraLivePageState extends State<CameraLivePage> {
   late final FireeyeApiService _eye;
   String? _activePtzAction;
   String? _ptzFeedback;
+  Timer? _ptzFeedbackTimer;
 
   @override
   void initState() {
@@ -40,6 +42,12 @@ class _CameraLivePageState extends State<CameraLivePage> {
     _camera = widget.initialCamera;
     _eye = FireeyeApiService(fireguard: widget.api);
     _loadCameraDetail();
+  }
+
+  @override
+  void dispose() {
+    _ptzFeedbackTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCameraDetail() async {
@@ -106,6 +114,7 @@ class _CameraLivePageState extends State<CameraLivePage> {
       return;
     }
 
+    _ptzFeedbackTimer?.cancel();
     HapticFeedback.selectionClick();
     setState(() {
       _activePtzAction = action;
@@ -122,6 +131,10 @@ class _CameraLivePageState extends State<CameraLivePage> {
     } catch (e) {
       if (mounted) {
         setState(() => _ptzFeedback = 'Lỗi kết nối PTZ: $e');
+        _ptzFeedbackTimer?.cancel();
+        _ptzFeedbackTimer = Timer(const Duration(milliseconds: 2500), () {
+          if (mounted) setState(() => _ptzFeedback = null);
+        });
       }
     }
   }
@@ -137,6 +150,10 @@ class _CameraLivePageState extends State<CameraLivePage> {
       await _eye.stopCamera(action);
       if (mounted) {
         setState(() => _ptzFeedback = 'Đã dừng quay camera');
+        _ptzFeedbackTimer?.cancel();
+        _ptzFeedbackTimer = Timer(const Duration(milliseconds: 1500), () {
+          if (mounted) setState(() => _ptzFeedback = null);
+        });
       }
     } catch (_) {}
   }
@@ -646,38 +663,92 @@ class _CameraLivePageState extends State<CameraLivePage> {
           ),
           child: Column(
             children: [
-              if (_ptzFeedback != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+              // Thanh trạng thái PTZ cố định (hiện sẵn trạng thái, tự biến mất/reset khi dừng thao tác)
+              Builder(
+                builder: (context) {
+                  final isMoving = _activePtzAction != null;
+                  final text = _ptzFeedback ?? 'Sẵn sàng điều khiển PTZ';
+                  final Color dotColor;
+                  final Color bgColor;
+                  final Color textColor;
+
+                  if (isMoving) {
+                    dotColor = isDark
+                        ? BrandTokens.darkPrimary
+                        : BrandTokens.brandPrimary;
+                    bgColor = (isDark
+                            ? BrandTokens.darkPrimary
+                            : BrandTokens.brandPrimary)
+                        .withValues(alpha: 0.12);
+                    textColor = isDark
+                        ? BrandTokens.darkPrimary
+                        : BrandTokens.brandPrimary;
+                  } else if (_ptzFeedback != null) {
+                    final isError = _ptzFeedback!.startsWith('Lỗi');
+                    dotColor = isError
+                        ? BrandTokens.stitchCritical
+                        : BrandTokens.stitchSafe;
+                    bgColor = (isError
+                            ? BrandTokens.stitchCritical
+                            : BrandTokens.stitchSafe)
+                        .withValues(alpha: 0.12);
+                    textColor = isError
+                        ? BrandTokens.stitchCritical
+                        : (isDark
+                            ? BrandTokens.darkTextPrimary
+                            : BrandTokens.textPrimary);
+                  } else {
+                    dotColor = isDark
+                        ? BrandTokens.darkTextTertiary
+                        : BrandTokens.textTertiary;
+                    bgColor = isDark
+                        ? BrandTokens.darkSurfaceVariant
+                        : Colors.grey.shade100;
+                    textColor = isDark
+                        ? BrandTokens.darkTextSecondary
+                        : BrandTokens.textSecondary;
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: dotColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _ptzFeedback!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                        const SizedBox(width: 6),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 150),
+                          child: Text(
+                            text,
+                            key: ValueKey(text),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  );
+                },
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
