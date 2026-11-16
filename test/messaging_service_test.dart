@@ -54,5 +54,55 @@ void main() {
       expect(ok, isTrue);
       expect(calls, ['DELETE /api/v1/emergency/notification-devices/$installId']);
     });
+
+    test('registerWithApi sends POST to /notification-devices with token and platform', () async {
+      final calls = <String>[];
+      final bodies = <Map<String, dynamic>>[];
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          calls.add('${r.method} ${r.url.path}');
+          if (r.body.isNotEmpty) {
+            bodies.add(jsonDecode(r.body) as Map<String, dynamic>);
+          }
+          return http.Response(jsonEncode({'success': true}), 200);
+        }),
+      );
+      await api.setAuthToken('valid_token_abc');
+
+      final service = MessagingService();
+      final ok = await service.registerWithApi(api, token: 'custom_fcm_token_999');
+
+      expect(ok, isTrue);
+      expect(calls, ['POST /api/v1/emergency/notification-devices']);
+      expect(bodies.first['token'], 'custom_fcm_token_999');
+    });
+
+    test('triggerTestPush sends POST to /test/push', () async {
+      final calls = <String>[];
+      final bodies = <Map<String, dynamic>>[];
+
+      final api = FireguardApiService(
+        client: MockClient((r) async {
+          calls.add('${r.method} ${r.url.path}');
+          if (r.body.isNotEmpty) {
+            bodies.add(jsonDecode(r.body) as Map<String, dynamic>);
+          }
+          return http.Response(
+            jsonEncode({'ok': true, 'success_count': 1, 'failure_count': 0}),
+            200,
+          );
+        }),
+      );
+      await api.setAuthToken('admin_token_xyz');
+
+      final result = await api.triggerTestPush(title: 'Test Title', body: 'Test Body');
+
+      expect(result, isNotNull);
+      expect(result!['ok'], isTrue);
+      expect(calls, ['POST /api/v1/emergency/test/push']);
+      expect(bodies.first['title'], 'Test Title');
+      expect(bodies.first['body'], 'Test Body');
+    });
   });
 }

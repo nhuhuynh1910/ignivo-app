@@ -20,6 +20,7 @@ class RecentIncidentTile extends StatelessWidget {
     this.status,
     this.isSimulation = false,
     this.imageBytes,
+    this.imageUrl,
     this.isImageLoading = false,
     this.triggerType,
     this.onTap,
@@ -33,6 +34,7 @@ class RecentIncidentTile extends StatelessWidget {
   final String? status;
   final bool isSimulation;
   final Uint8List? imageBytes;
+  final String? imageUrl;
   final bool isImageLoading;
   final String? triggerType;
   final VoidCallback? onTap;
@@ -63,8 +65,10 @@ class RecentIncidentTile extends StatelessWidget {
     bool isDark,
   ) {
     final triggerIcon = getTriggerIcon(triggerType);
+    final hasBytes = imageBytes != null && imageBytes!.isNotEmpty;
+    final hasUrl = imageUrl != null && imageUrl!.trim().isNotEmpty;
 
-    if (imageBytes != null && imageBytes!.isNotEmpty) {
+    if (hasBytes || hasUrl) {
       return SizedBox(
         width: 48,
         height: 48,
@@ -73,26 +77,47 @@ class RecentIncidentTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.memory(
-                imageBytes!,
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: statusStyle.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusStyle.border, width: 1),
-                  ),
-                  child: Icon(
-                    triggerIcon,
-                    color: statusStyle.foreground,
-                    size: 24,
-                  ),
-                ),
-              ),
+              child: hasBytes
+                  ? Image.memory(
+                      imageBytes!,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: statusStyle.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusStyle.border, width: 1),
+                        ),
+                        child: Icon(
+                          triggerIcon,
+                          color: statusStyle.foreground,
+                          size: 24,
+                        ),
+                      ),
+                    )
+                  : Image.network(
+                      imageUrl!.trim(),
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: statusStyle.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusStyle.border, width: 1),
+                        ),
+                        child: Icon(
+                          triggerIcon,
+                          color: statusStyle.foreground,
+                          size: 24,
+                        ),
+                      ),
+                    ),
             ),
             IgnorePointer(
               child: Container(

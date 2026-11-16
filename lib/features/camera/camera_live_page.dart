@@ -7,6 +7,8 @@ import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../fireguard/camera_editor_page.dart';
+import '../fireguard/people_page.dart';
+import 'face_scan_result_sheet.dart';
 import 'mjpeg_stream_view.dart';
 
 class CameraLivePage extends StatefulWidget {
@@ -30,6 +32,7 @@ class CameraLivePage extends StatefulWidget {
 class _CameraLivePageState extends State<CameraLivePage> {
   Map<String, dynamic>? _camera;
   bool _isFullscreen = false;
+  bool _isScanningFace = false;
   int _selectedTab = 0; // 0: Điều khiển PTZ, 1: Thông số & Trạng thái
   late final FireeyeApiService _eye;
   String? _activePtzAction;
@@ -75,6 +78,64 @@ class _CameraLivePageState extends State<CameraLivePage> {
     if (result == true) {
       _loadCameraDetail();
     }
+  }
+
+  Future<void> _handleFaceScan() async {
+    if (_isScanningFace) return;
+    setState(() => _isScanningFace = true);
+    HapticFeedback.selectionClick();
+
+    try {
+      final result = await _eye.matchCameraFace();
+      if (!mounted) return;
+      _showFaceScanResultModal(result);
+    } catch (e) {
+      if (!mounted) return;
+      final errorMsg = e is FireeyeException
+          ? e.message
+          : 'Không thể quét gương mặt: $e';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(errorMsg)),
+            ],
+          ),
+          backgroundColor: BrandTokens.stitchCritical,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isScanningFace = false);
+      }
+    }
+  }
+
+  void _showFaceScanResultModal(Map<String, dynamic> result) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => FaceScanResultSheet(
+        result: result,
+        eye: _eye,
+        onOpenPeoplePage: () {
+          Navigator.of(ctx).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PeoplePage(eye: _eye),
+            ),
+          );
+        },
+        onRescan: () {
+          Navigator.of(ctx).pop();
+          _handleFaceScan();
+        },
+      ),
+    );
   }
 
   void _handleSnapshot() {
@@ -536,6 +597,13 @@ class _CameraLivePageState extends State<CameraLivePage> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
+                    _buildToolbarButton(
+                      context: context,
+                      icon: Icons.face_retouching_natural_rounded,
+                      label: _isScanningFace ? 'Đang quét...' : 'Quét gương mặt',
+                      isLoading: _isScanningFace,
+                      onTap: _isScanningFace ? () {} : _handleFaceScan,
+                    ),
                     _buildToolbarButton(
                       context: context,
                       icon: Icons.camera_alt_outlined,
@@ -1266,13 +1334,14 @@ class _CameraLivePageState extends State<CameraLivePage> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool isLoading = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
       borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
       child: InkWell(
-        onTap: onTap,
+        onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -1286,12 +1355,26 @@ class _CameraLivePageState extends State<CameraLivePage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color:
-                    isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
-              ),
+              if (isLoading)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isDark
+                          ? BrandTokens.darkPrimary
+                          : BrandTokens.brandPrimary,
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  icon,
+                  size: 16,
+                  color:
+                      isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                ),
               const SizedBox(width: 6),
               Text(
                 label,

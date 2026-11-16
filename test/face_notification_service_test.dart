@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +11,6 @@ import 'package:ignivo_app/core/services/system_session_controller.dart';
 import 'package:ignivo_app/features/fireguard/monitoring_controller.dart';
 import 'package:ignivo_app/features/settings/guard_settings_page.dart';
 
-import 'alarm_coordinator_test.dart' show MockAlertFeedbackAdapter;
 import 'fireguard_page_test.dart' show TestRealtime;
 
 http.Response jsonResp(Object? data, [int code = 200]) =>

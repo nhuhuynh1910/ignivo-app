@@ -433,6 +433,17 @@ class FireeyeApiService {
   }
   Future<Map<String, dynamic>> getFaceStatus() async =>
       Map<String, dynamic>.from(await _request('/api/faces/watch/status'));
+  Future<Map<String, dynamic>> matchCameraFace() async =>
+      Map<String, dynamic>.from(await _request('/api/faces/match-camera'));
+
+  Future<Map<String, dynamic>> getAudioStatus() async =>
+      Map<String, dynamic>.from(await _request('/api/audio/status'));
+
+  Future<void> startEdgeAlarm({double duration = 10.0}) async =>
+      _request('/api/audio/alarm/start', method: 'POST', body: {'duration': duration});
+
+  Future<void> stopEdgeAlarm() async =>
+      _request('/api/audio/alarm/stop', method: 'POST');
   Future<void> setFaceWatch(bool enabled) async => _request(
     '/api/faces/watch/${enabled ? 'start' : 'stop'}',
     method: 'POST',

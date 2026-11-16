@@ -58,7 +58,11 @@ class AlertModel {
       severity: data['severity']?.toString() ?? 'ALERT',
       title: data['title']?.toString() ?? 'Cảnh báo IGNIVO',
       message: data['message']?.toString() ?? '',
-      snapshotUrl: data['snapshotUrl']?.toString() ?? '',
+      snapshotUrl: data['snapshotUrl']?.toString() ??
+          data['snapshot_url']?.toString() ??
+          data['imageUrl']?.toString() ??
+          data['image_url']?.toString() ??
+          '',
       eventId: data['eventId']?.toString() ?? '',
       incidentSummary: data['incidentSummary']?.toString() ?? data['message']?.toString() ?? '',
       acknowledged: data['acknowledged'] == true,

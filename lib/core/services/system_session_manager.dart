@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/system_record.dart';
 import 'fireguard_api_service.dart';
+import 'messaging_service.dart';
 import 'system_registry_repository.dart';
 import 'system_session_controller.dart';
 
@@ -61,8 +62,10 @@ class SystemSessionManager extends ChangeNotifier {
       }
       _controllers.clear();
 
+      final Map<String, String?> loadedTokens = {};
       for (final system in _systems) {
         final token = await registry.getSystemToken(uid, system.systemId);
+        loadedTokens[system.systemId] = token;
         final controller = _createController(system, savedToken: token);
         controller.addListener(_onChildControllerChanged);
         _controllers[system.systemId] = controller;
@@ -77,6 +80,15 @@ class SystemSessionManager extends ChangeNotifier {
         await registry.setActiveSystemId(uid, _activeSystemId!);
       } else {
         _activeSystemId = null;
+      }
+
+      if (_activeSystemId != null && _controllers.containsKey(_activeSystemId)) {
+        final activeCtrl = _controllers[_activeSystemId]!;
+        MessagingService.instance.setActiveApi(activeCtrl.api);
+        final activeToken = loadedTokens[_activeSystemId] ?? activeCtrl.api.authToken;
+        if (activeToken != null && activeToken.isNotEmpty && !activeCtrl.isAuthenticated) {
+          await activeCtrl.restoreTokenSession(activeToken);
+        }
       }
 
       _initialized = true;
@@ -207,6 +219,12 @@ class SystemSessionManager extends ChangeNotifier {
 
     _activeSystemId = systemId;
     await registry.setActiveSystemId(uid, systemId);
+
+    final controller = _controllers[systemId];
+    if (controller != null) {
+      MessagingService.instance.setActiveApi(controller.api);
+    }
+
     notifyListeners();
   }
 

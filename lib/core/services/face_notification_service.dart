@@ -51,6 +51,7 @@ class FaceNotificationService extends ChangeNotifier {
 
   bool get notifyKnown => _notifyKnown;
   bool get notifyUnknown => _notifyUnknown;
+  bool get isInitialized => _initialized;
 
   final StreamController<FaceNotificationEvent> _eventController =
       StreamController<FaceNotificationEvent>.broadcast();

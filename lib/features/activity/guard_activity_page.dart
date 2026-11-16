@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/recent_incident_tile.dart';
@@ -25,6 +26,64 @@ class GuardActivityPage extends StatefulWidget {
 class _GuardActivityPageState extends State<GuardActivityPage> {
   int _filterIndex =
       0; // 0: Tất cả, 1: Cần chú ý, 2: Đang xử lý, 3: Đã kết thúc, 4: Mô phỏng
+
+  final Map<int, Uint8List> _incidentSnapshots = {};
+  final Set<int> _loadingIncidentSnapshots = {};
+  final Set<int> _attemptedIncidentSnapshots = {};
+
+  void _loadSnapshotForIncident(int id, String imageName) {
+    if (_attemptedIncidentSnapshots.contains(id) ||
+        _loadingIncidentSnapshots.contains(id)) {
+      return;
+    }
+    _loadingIncidentSnapshots.add(id);
+    _attemptedIncidentSnapshots.add(id);
+
+    widget.monitoringController.api
+        .getIncidentImage(id, imageName)
+        .then((bytes) {
+      if (!mounted) return;
+      setState(() {
+        _loadingIncidentSnapshots.remove(id);
+        _incidentSnapshots[id] = bytes;
+      });
+    }).catchError((_) {
+      if (mounted) {
+        setState(() {
+          _loadingIncidentSnapshots.remove(id);
+        });
+      }
+    });
+  }
+
+  String? _extractIncidentImageName(Map<String, dynamic> item) {
+    final analysisUrl = item['analysis_image_url'] as String?;
+    if (analysisUrl != null && analysisUrl.isNotEmpty) {
+      final uri = Uri.tryParse(analysisUrl);
+      if (uri != null && uri.pathSegments.isNotEmpty) {
+        var last = uri.pathSegments.last;
+        if (RegExp(r'^\d+$').hasMatch(last)) {
+          last = '${last.padLeft(2, '0')}.jpg';
+        }
+        if (RegExp(r'^(\d{2}|analysis_\d+)\.jpg$').hasMatch(last)) {
+          return last;
+        }
+      }
+    }
+    final images = item['images'];
+    if (images is List && images.isNotEmpty) {
+      var first = images.first?.toString();
+      if (first != null && first.isNotEmpty) {
+        if (RegExp(r'^\d+$').hasMatch(first)) {
+          first = '${first.padLeft(2, '0')}.jpg';
+        }
+        if (RegExp(r'^(\d{2}|analysis_\d+)\.jpg$').hasMatch(first)) {
+          return first;
+        }
+      }
+    }
+    return null;
+  }
 
   void _navigateToDetail(BuildContext context, int incidentId) {
     if (widget.onOpenIncident != null) {
@@ -248,6 +307,33 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
                             final isSim = inc['is_simulation'] == true ||
                                 inc['trigger_type']?.toString().toLowerCase() ==
                                     'simulation';
+                            final triggerType = inc['trigger_type']?.toString();
+
+                            final directBytes = inc['image_bytes'] as Uint8List?;
+                            final imageBytes = directBytes ?? _incidentSnapshots[id];
+                            final imageName =
+                                directBytes == null ? _extractIncidentImageName(inc) : null;
+                            final analysisUrl = inc['analysis_image_url']?.toString();
+                            final snapshotUrl = inc['snapshot_url']?.toString();
+                            final imageUrl = (analysisUrl != null &&
+                                    (analysisUrl.startsWith('http://') ||
+                                        analysisUrl.startsWith('https://')))
+                                ? analysisUrl
+                                : (snapshotUrl != null &&
+                                        (snapshotUrl.startsWith('http://') ||
+                                            snapshotUrl.startsWith('https://')))
+                                    ? snapshotUrl
+                                    : null;
+
+                            if (directBytes == null &&
+                                imageUrl == null &&
+                                imageName != null &&
+                                !_attemptedIncidentSnapshots.contains(id) &&
+                                !_loadingIncidentSnapshots.contains(id)) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) _loadSnapshotForIncident(id, imageName);
+                              });
+                            }
 
                             return RecentIncidentTile(
                               id: id,
@@ -257,6 +343,10 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
                               severity: severity,
                               status: status,
                               isSimulation: isSim,
+                              imageBytes: imageBytes,
+                              imageUrl: imageUrl,
+                              isImageLoading: _loadingIncidentSnapshots.contains(id),
+                              triggerType: triggerType,
                               onTap: () => _navigateToDetail(context, id),
                             );
                           },

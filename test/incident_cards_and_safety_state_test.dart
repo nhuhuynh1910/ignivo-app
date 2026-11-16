@@ -147,6 +147,28 @@ void main() {
       expect(find.byIcon(Icons.cloud_outlined), findsOneWidget);
     });
 
+    testWidgets('renders thumbnail image and trigger overlay badge when imageUrl provided', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RecentIncidentTile(
+              id: 58,
+              title: 'Cảnh báo Lửa · Kho',
+              area: 'Kho',
+              timeStr: 'Vừa xong',
+              severity: 'critical',
+              status: 'active',
+              imageUrl: 'https://cdn.ignivo.vn/snapshots/inc_58.jpg',
+              triggerType: 'fire',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byIcon(Icons.local_fire_department_rounded), findsWidgets);
+    });
+
     testWidgets('renders shimmer loading when isImageLoading is true', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

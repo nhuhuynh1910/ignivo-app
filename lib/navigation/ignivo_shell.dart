@@ -22,6 +22,9 @@ import '../widgets/ignivo_sheet.dart';
 import '../../core/services/face_notification_service.dart';
 import '../../core/services/fireeye_api_service.dart';
 import '../features/fireguard/eye_events_page.dart';
+import '../core/models/push_notification_model.dart';
+import '../core/services/messaging_service.dart';
+import '../widgets/ignivo_floating_notification_banner.dart';
 
 class IgnivoShell extends StatefulWidget {
   const IgnivoShell({
@@ -49,6 +52,8 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   final Set<int> _snackBarAnnounced = {};
   StreamSubscription<CrossSystemIncidentAlert>? _crossAlertSub;
   StreamSubscription<FaceNotificationEvent>? _faceNotificationSub;
+  StreamSubscription<IgnivoPushNotification>? _pushReceivedSub;
+  StreamSubscription<IgnivoPushNotification>? _notificationOpenedSub;
   FireeyeApiService? _fireeyeApi;
 
   @override
@@ -64,73 +69,66 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
 
     _fireeyeApi = FireeyeApiService(fireguard: widget.sessionController.api);
     unawaited(FaceNotificationService.instance.initialize(eye: _fireeyeApi));
-    _faceNotificationSub = FaceNotificationService.instance.onFaceEvent.listen((event) {
+
+    // 1. Khởi tạo và lắng nghe thông báo đẩy FCM
+    MessagingService.instance.setActiveApi(widget.sessionController.api);
+    unawaited(MessagingService.instance.registerWithApi(widget.sessionController.api));
+    unawaited(MessagingService.instance.initialize());
+    _pushReceivedSub = MessagingService.instance.onPushReceived.listen((push) {
       if (!mounted) return;
-      HapticFeedback.lightImpact();
+      IgnivoFloatingNotificationBanner.show(
+        context,
+        notification: push,
+        onTap: () => _handlePushNotification(push),
+      );
+    });
+    _notificationOpenedSub =
+        MessagingService.instance.onNotificationOpened.listen((push) {
+      if (!mounted) return;
+      _handlePushNotification(push);
+    });
+
+    // 2. Lắng nghe sự kiện nhận diện khuôn mặt AI
+    _faceNotificationSub =
+        FaceNotificationService.instance.onFaceEvent.listen((event) {
+      if (!mounted) return;
       final isKnown = event.isKnownPerson;
       final title = isKnown
           ? (event.name != null && event.name!.isNotEmpty
-              ? 'Xác nhận: ${event.name} đã có mặt'
-              : 'Xác nhận: Người quen đã có mặt')
-          : 'Cảnh báo: Phát hiện người lạ!';
-      final bg = isKnown ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C);
-      final icon = isKnown ? Icons.check_circle_outline : Icons.warning_amber_rounded;
+              ? '🟢 Xác nhận: ${event.name} đã có mặt'
+              : '🟢 Xác nhận: Người quen đã có mặt')
+          : '🚨 Cảnh báo: Phát hiện người lạ!';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          backgroundColor: bg,
-          duration: const Duration(seconds: 8),
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                    if (event.message.isNotEmpty && event.message != title)
-                      Text(
-                        event.message,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                        ),
-                      ),
-                  ],
-                ),
+      final notif = IgnivoPushNotification(
+        id: 'face_${event.id}_${DateTime.now().millisecondsSinceEpoch}',
+        category: PushNotificationCategory.faceRecognition,
+        title: title,
+        body: event.message.isNotEmpty
+            ? event.message
+            : (isKnown
+                ? 'Đã nhận diện người quen an toàn trong vùng quan sát.'
+                : 'Phát hiện đối tượng chưa đăng ký trong danh bạ an ninh!'),
+        isKnownPerson: isKnown,
+        personName: event.name,
+        timestamp: DateTime.now(),
+      );
+
+      IgnivoFloatingNotificationBanner.show(
+        context,
+        notification: notif,
+        onTap: () {
+          if (_fireeyeApi != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => EyeEventsPage(eye: _fireeyeApi!),
               ),
-            ],
-          ),
-          action: SnackBarAction(
-            label: 'Xem',
-            textColor: Colors.yellow,
-            onPressed: () {
-              if (_fireeyeApi != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => EyeEventsPage(eye: _fireeyeApi!),
-                  ),
-                );
-              }
-            },
-          ),
-        ),
+            );
+          }
+        },
       );
     });
 
+    // 3. Lắng nghe cảnh báo cháy liên hệ thống (Cross-System)
     _crossAlertSub = widget.coordinator?.onCrossSystemAlert.listen((alert) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
@@ -153,6 +151,28 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
     });
   }
 
+  void _handlePushNotification(IgnivoPushNotification push) {
+    if (push.incidentId != null) {
+      _openIncident(push.incidentId!);
+    } else if (push.category == PushNotificationCategory.faceRecognition) {
+      if (_fireeyeApi != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => EyeEventsPage(eye: _fireeyeApi!)),
+        );
+      }
+    } else if (push.cameraId != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CameraLivePage(
+            cameraId: push.cameraId!,
+            api: widget.sessionController.api,
+            sessionController: widget.sessionController,
+          ),
+        ),
+      );
+    }
+  }
+
   void _onMonitoringChanged() {
     if (!mounted) return;
 
@@ -162,29 +182,61 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
       // Check for newly announced incidents for visual/haptic toast notification
       for (final id in _monitoring.announcedIncidentIds) {
         if (_snackBarAnnounced.add(id)) {
-          HapticFeedback.heavyImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('CẢNH BÁO: Phát hiện sự cố mới #$id'),
-              duration: const Duration(seconds: 15),
-              backgroundColor: Colors.red.shade900,
-              action: SnackBarAction(
-                label: 'Xem',
-                textColor: Colors.yellow,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => FireguardIncidentPage(
-                        incidentId: id,
-                        api: _monitoring.api,
-                        realtime: _monitoring.realtime,
-                        coordinator: _monitoring.coordinator,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+          // Lấy thông tin chi tiết sự cố thực tế từ monitoring
+          Map<String, dynamic>? incidentData;
+          if (_monitoring.activeIncident != null && _monitoring.activeIncident!['id'] == id) {
+            incidentData = _monitoring.activeIncident;
+          } else {
+            incidentData = _monitoring.incidents.where((i) => i['id'] == id).firstOrNull;
+          }
+
+          final triggerType = (incidentData?['trigger_type'] ?? 'FIRE').toString().toUpperCase();
+          final cameraName = incidentData?['camera_name']?.toString();
+          final area = incidentData?['area']?.toString();
+          final isSim = incidentData?['is_simulation'] == true;
+          final severity = (incidentData?['severity'] ?? incidentData?['risk_level'] ?? 'critical').toString().toLowerCase();
+
+          final String title;
+          if (isSim) {
+            title = '🧪 [MÔ PHỎNG] Báo động cháy thử nghiệm';
+          } else if (triggerType == 'SMOKE') {
+            title = cameraName != null ? '💨 CẢNH BÁO KHÓI BẤT THƯỜNG ($cameraName)' : '💨 CẢNH BÁO PHÁT HIỆN KHÓI';
+          } else {
+            title = cameraName != null ? '🔥 PHÁT HIỆN NGỌN LỬA ($cameraName)' : '🔥 BÁO ĐỘNG CHÁY CẤP BÁCH';
+          }
+
+          final locationName = area ?? cameraName ?? 'khu vực giám sát';
+          final body = 'AI thị giác phát hiện ngọn lửa hoặc khói khẩn cấp tại $locationName [#$id]. Nhấn để mở camera và xác minh ngay lập tức!';
+
+          String? imageUrl;
+          if (incidentData != null) {
+            final analysisImg = incidentData['analysis_image_url'] as String?;
+            if (analysisImg != null && analysisImg.isNotEmpty) {
+              imageUrl = analysisImg.startsWith('http')
+                  ? analysisImg
+                  : '${widget.sessionController.api.baseUrl}$analysisImg';
+            }
+          }
+
+          final notif = IgnivoPushNotification(
+            id: 'incident_$id',
+            category: PushNotificationCategory.fireEmergency,
+            triggerType: triggerType,
+            title: title,
+            body: body,
+            incidentId: id,
+            cameraName: cameraName,
+            area: area,
+            imageUrl: imageUrl,
+            severity: severity,
+            isSimulation: isSim,
+            timestamp: DateTime.now(),
+          );
+
+          IgnivoFloatingNotificationBanner.show(
+            context,
+            notification: notif,
+            onTap: () => _openIncident(id),
           );
         }
       }
@@ -212,6 +264,8 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _crossAlertSub?.cancel();
     _faceNotificationSub?.cancel();
+    _pushReceivedSub?.cancel();
+    _notificationOpenedSub?.cancel();
     FaceNotificationService.instance.stopListening();
     _monitoring.removeListener(_onMonitoringChanged);
     if (widget.monitoringController == null) {

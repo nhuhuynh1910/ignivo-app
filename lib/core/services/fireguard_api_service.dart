@@ -456,5 +456,25 @@ class FireguardApiService {
     'DELETE',
     '/notification-devices/${Uri.encodeComponent(installationId)}',
   );
+
+  /// Kích hoạt gửi thông báo kiểm thử (Test Push) từ backend FireGuard tới FCM
+  Future<Map<String, dynamic>?> triggerTestPush({String? title, String? body}) async {
+    try {
+      final res = _decode(await _request(
+        'POST',
+        '/test/push',
+        body: {
+          'title': ?title,
+          'body': ?body,
+        },
+      ));
+      if (res is Map<String, dynamic>) return res;
+      if (res is Map) return Map<String, dynamic>.from(res);
+      return {'ok': true};
+    } on FireguardException catch (e) {
+      lastError = e.message;
+      return null;
+    }
+  }
 }
 

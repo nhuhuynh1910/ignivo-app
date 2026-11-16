@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/pi_connection_profile.dart';
 import 'fireguard_api_service.dart';
+import 'messaging_service.dart';
 
 enum SessionStatus {
   unconfigured,
@@ -35,6 +37,22 @@ class SystemSessionController extends ChangeNotifier {
   String? _lastError;
   int _sessionRevision = 0;
   bool _rememberMe = true;
+
+  bool _disposed = false;
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
+  }
 
   PiConnectionProfile get profile => _profile;
   SessionStatus get status => _status;
@@ -113,6 +131,9 @@ class SystemSessionController extends ChangeNotifier {
             } catch (_) {}
           }
 
+          // Auto-register FCM push token with this Pi
+          unawaited(MessagingService.instance.registerWithApi(api));
+
           notifyListeners();
           return;
         } else {
@@ -154,6 +175,71 @@ class SystemSessionController extends ChangeNotifier {
 
     _status = SessionStatus.unauthenticated;
     notifyListeners();
+  }
+
+  /// Khôi phục phiên làm việc từ token đã lưu (dành cho multi-system & auto-login)
+  Future<bool> restoreTokenSession(String token, [SharedPreferences? prefs]) async {
+    final cleaned = token.trim();
+    if (cleaned.isEmpty) return false;
+    _lastError = null;
+    _status = SessionStatus.authenticating;
+    notifyListeners();
+
+    await api.setAuthToken(cleaned);
+    try {
+      final user = await api.getCurrentUser().timeout(
+            const Duration(seconds: 8),
+          );
+      if (user.isNotEmpty) {
+        _currentUser = user;
+        _sessionRevision++;
+        _status = SessionStatus.authenticated;
+        _rememberMe = true;
+
+        // Tự động đăng ký FCM token với Pi này
+        unawaited(MessagingService.instance.registerWithApi(api));
+
+        if (_profile.deviceId == null) {
+          try {
+            final info = await api.getSystemInfo();
+            final devId = info?['device_id']?.toString();
+            if (devId != null && devId.isNotEmpty) {
+              _profile = _profile.copyWith(deviceId: devId);
+              final sp = prefs ?? await SharedPreferences.getInstance();
+              await _profile.save(sp);
+            }
+          } catch (_) {}
+        }
+
+        notifyListeners();
+        return true;
+      } else {
+        await api.setAuthToken(null);
+        _currentUser = null;
+        _status = SessionStatus.unauthenticated;
+        _lastError = 'Thông tin người dùng không hợp lệ.';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      if (e is FireguardException && e.statusCode == 401) {
+        await api.setAuthToken(null);
+        _currentUser = null;
+        _status = SessionStatus.sessionExpired;
+        _lastError = 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.';
+        notifyListeners();
+        return false;
+      } else {
+        await api.setAuthToken(null);
+        _currentUser = null;
+        _status = SessionStatus.unauthenticated;
+        _lastError = e is FireguardException
+            ? e.message
+            : 'Không thể kết nối đến hệ thống FireGuard để xác thực phiên.';
+        notifyListeners();
+        return false;
+      }
+    }
   }
 
   Future<void> clearSavedSession([SharedPreferences? prefs]) async {
@@ -248,6 +334,9 @@ class SystemSessionController extends ChangeNotifier {
         } catch (_) {}
       }
 
+      // Auto-register FCM push token with this Pi
+      unawaited(MessagingService.instance.registerWithApi(api));
+
       notifyListeners();
       return true;
     } catch (e) {
@@ -260,6 +349,7 @@ class SystemSessionController extends ChangeNotifier {
 
   Future<void> logout([SharedPreferences? prefs]) async {
     _sessionRevision++;
+    unawaited(MessagingService.instance.unregisterWithApi(api));
     try {
       await api.logout();
     } catch (_) {}
@@ -274,6 +364,7 @@ class SystemSessionController extends ChangeNotifier {
 
   Future<void> disconnect([SharedPreferences? prefs]) async {
     _sessionRevision++;
+    unawaited(MessagingService.instance.unregisterWithApi(api));
     try {
       await api.logout();
     } catch (_) {}

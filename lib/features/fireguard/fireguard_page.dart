@@ -262,10 +262,7 @@ class _FireguardPageState extends State<FireguardPage>
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: Icon(
-          isSmoke ? Icons.cloud_outlined : Icons.local_fire_department_outlined,
-          color: isSmoke ? Colors.blueGrey : BrandTokens.stitchCriticalFg,
-        ),
+        leading: _buildIncidentThumbnail(incident, isSmoke),
         title: Text(
           title,
           style: const TextStyle(fontWeight: FontWeight.w700),
@@ -322,6 +319,62 @@ class _FireguardPageState extends State<FireguardPage>
         onTap: () => _openIncident(incident['id'] as int),
       ),
     );
+  }
+
+  Widget _buildIncidentThumbnail(Map<String, dynamic> incident, bool isSmoke) {
+    final fallbackIcon = Icon(
+      isSmoke ? Icons.cloud_outlined : Icons.local_fire_department_outlined,
+      color: isSmoke ? Colors.blueGrey : BrandTokens.stitchCriticalFg,
+    );
+
+    final directBytes = incident['image_bytes'] as Uint8List?;
+    final analysisUrl = incident['analysis_image_url']?.toString();
+    final snapshotUrl = incident['snapshot_url']?.toString();
+    final url = (analysisUrl != null &&
+            (analysisUrl.startsWith('http://') ||
+                analysisUrl.startsWith('https://')))
+        ? analysisUrl
+        : (snapshotUrl != null &&
+                (snapshotUrl.startsWith('http://') ||
+                    snapshotUrl.startsWith('https://')))
+            ? snapshotUrl
+            : null;
+
+    if (directBytes != null && directBytes.isNotEmpty) {
+      return SizedBox(
+        width: 48,
+        height: 48,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(
+            directBytes,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => fallbackIcon,
+          ),
+        ),
+      );
+    }
+
+    if (url != null && url.isNotEmpty) {
+      return SizedBox(
+        width: 48,
+        height: 48,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            url,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => fallbackIcon,
+          ),
+        ),
+      );
+    }
+
+    return fallbackIcon;
   }
 
   List<Widget> _live() {

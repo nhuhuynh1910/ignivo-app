@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/app_auth_controller.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/brand_tokens.dart';
@@ -25,6 +26,24 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _loading = false;
   bool _obscurePassword = true;
+  bool _rememberEmail = true;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      final savedEmail = prefs.getString('ignivo_saved_login_email');
+      final remember = prefs.getBool('ignivo_remember_login_email') ?? true;
+      if (mounted) {
+        setState(() {
+          _rememberEmail = remember;
+          if (savedEmail != null && savedEmail.isNotEmpty) {
+            _emailController.text = savedEmail;
+          }
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -82,6 +101,17 @@ class _LoginPageState extends State<LoginPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _persistEmailPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberEmail) {
+      await prefs.setString('ignivo_saved_login_email', _emailController.text.trim());
+      await prefs.setBool('ignivo_remember_login_email', true);
+    } else {
+      await prefs.remove('ignivo_saved_login_email');
+      await prefs.setBool('ignivo_remember_login_email', false);
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -97,7 +127,9 @@ class _LoginPageState extends State<LoginPage> {
           _emailController.text,
           _passwordController.text,
         );
-        if (!ok && mounted && widget.authController!.lastError != null) {
+        if (ok) {
+          await _persistEmailPreference();
+        } else if (mounted && widget.authController!.lastError != null) {
           _showMessage(widget.authController!.lastError!);
         }
         return;
@@ -107,6 +139,7 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+      await _persistEmailPreference();
     } on FirebaseAuthException catch (e) {
       _showMessage(_firebaseErrorMessage(e));
     } catch (_) {
@@ -221,14 +254,59 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _loading ? null : _forgotPassword,
-                        child: const Text('Quên mật khẩu?'),
-                      ),
-                    ),
                     const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _rememberEmail = !_rememberEmail;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: Checkbox(
+                                      value: _rememberEmail,
+                                      activeColor: BrandTokens.brandPrimary,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      visualDensity: VisualDensity.compact,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _rememberEmail = val ?? true;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Flexible(
+                                    child: Text(
+                                      'Ghi nhớ tài khoản',
+                                      style: TextStyle(fontSize: 13),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _loading ? null : _forgotPassword,
+                          child: const Text('Quên mật khẩu?'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     SizedBox(
                       height: 50,
                       child: ElevatedButton(
@@ -311,8 +389,9 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           'Chưa có tài khoản? ',

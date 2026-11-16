@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -41,25 +42,15 @@ class AlertCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ============================================================
-              // ALERT ICON
+              // EVIDENCE SNAPSHOT / THUMBNAIL
               // ============================================================
 
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: appearance.color.withValues(
-                    alpha: 0.10,
-                  ),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(
-                  appearance.icon,
-                  color: appearance.color,
-                ),
+              _AlertEvidenceThumbnail(
+                snapshotUrl: alert.snapshotUrl,
+                appearance: appearance,
               ),
 
-              const SizedBox(width: 13),
+              const SizedBox(width: 14),
 
               // ============================================================
               // ALERT CONTENT
@@ -193,6 +184,197 @@ class AlertCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ALERT EVIDENCE THUMBNAIL
+// ============================================================================
+
+class _AlertEvidenceThumbnail extends StatelessWidget {
+  const _AlertEvidenceThumbnail({
+    required this.snapshotUrl,
+    required this.appearance,
+  });
+
+  final String snapshotUrl;
+  final AlertAppearance appearance;
+
+  static const double _size = 54.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanUrl = snapshotUrl.trim();
+
+    if (cleanUrl.isEmpty) {
+      return _buildFallback();
+    }
+
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Evidence Image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(13),
+            child: Container(
+              width: _size,
+              height: _size,
+              color: appearance.color.withValues(alpha: 0.08),
+              child: _buildImage(cleanUrl),
+            ),
+          ),
+
+          // Border outline
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: appearance.color.withValues(alpha: 0.30),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Category type & severity indicator badge
+          Positioned(
+            bottom: -2,
+            right: -2,
+            child: Container(
+              width: 19,
+              height: 19,
+              decoration: BoxDecoration(
+                color: appearance.color,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(
+                  appearance.icon,
+                  size: 10,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImage(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return Image.network(
+        url,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  appearance.color.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => _buildFallback(),
+      );
+    }
+
+    if (url.startsWith('assets/')) {
+      return Image.asset(
+        url,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildFallback(),
+      );
+    }
+
+    if (url.startsWith('data:image')) {
+      try {
+        final commaIdx = url.indexOf(',');
+        final base64Str = commaIdx != -1 ? url.substring(commaIdx + 1) : url;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          width: _size,
+          height: _size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildFallback(),
+        );
+      } catch (_) {
+        return _buildFallback();
+      }
+    }
+
+    return Image.network(
+      url,
+      width: _size,
+      height: _size,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                appearance.color.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => _buildFallback(),
+    );
+  }
+
+  Widget _buildFallback() {
+    return Container(
+      width: _size,
+      height: _size,
+      decoration: BoxDecoration(
+        color: appearance.color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: appearance.color.withValues(alpha: 0.20),
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          appearance.icon,
+          color: appearance.color,
+          size: 24,
         ),
       ),
     );

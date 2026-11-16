@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/models/push_notification_model.dart';
+import '../../core/services/messaging_service.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/ignivo_sheet.dart';
 import '../../core/models/system_record.dart';
@@ -193,7 +195,11 @@ class GuardSettingsPage extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      await sessionController.logout();
+      if (sessionManager != null && sessionManager!.activeSystemId != null) {
+        await sessionManager!.logoutSystem(sessionManager!.activeSystemId!);
+      } else {
+        await sessionController.logout();
+      }
     }
   }
 
@@ -563,6 +569,79 @@ class GuardSettingsPage extends StatelessWidget {
                       ),
                       trailing: const Icon(Icons.tune_rounded, size: 20),
                       onTap: () => _showFaceNotificationSheet(context),
+                    ),
+                    const Divider(height: 1, indent: 68, endIndent: 16),
+                    ListTile(
+                      leading: _buildLeadingIcon(
+                        context,
+                        Icons.campaign_outlined,
+                        color: BrandTokens.stitchCritical,
+                        background: isDark
+                            ? Colors.red.shade900.withValues(alpha: 0.25)
+                            : Colors.red.shade50,
+                      ),
+                      title: const Text(
+                        'Kiểm tra thông báo cháy ngoài app',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Phát thử còi rung và thông báo Heads-Up khẩn cấp ra màn hình khóa',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(Icons.play_circle_outline_rounded, size: 22, color: BrandTokens.stitchCritical),
+                      onTap: () async {
+                        // 1. Đảm bảo token FCM của thiết bị đã được đăng ký với Pi
+                        final api = sessionController.api;
+                        final regOk = await MessagingService.instance.registerWithApi(api);
+
+                        // 2. Yêu cầu Pi backend bắn test push qua FCM
+                        final res = await api.triggerTestPush();
+                        final successCount = (res?['success_count'] as num?)?.toInt() ?? 0;
+
+                        if (res != null && res['ok'] == true && successCount > 0) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('🔥 Pi đã gửi thông báo FCM tới $successCount thiết bị!'),
+                                backgroundColor: BrandTokens.stitchSafe,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                        } else {
+                          // Nếu Pi chưa gửi được FCM thực tế, fallback sang local test
+                          MessagingService.instance.dispatchPushEvent(
+                            IgnivoPushNotification(
+                              id: 'test_fire_${DateTime.now().millisecondsSinceEpoch}',
+                              category: PushNotificationCategory.fireEmergency,
+                              title: '🔥 [TEST] PHÁT HIỆN NGỌN LỬA (Phòng khách)',
+                              body: 'AI thị giác phát hiện ngọn lửa bốc lên [#99] (Độ tin cậy: 98%). Nhấn để kiểm tra camera ngay lập tức!',
+                              incidentId: 99,
+                              triggerType: 'FIRE',
+                              severity: 'critical',
+                              area: 'Phòng khách',
+                              timestamp: DateTime.now(),
+                            ),
+                          );
+                          if (context.mounted) {
+                            final errMsg = (res?['errors'] as List?)?.join(', ');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  regOk
+                                      ? '🚨 Đã đăng ký thiết bị với Pi & phát thông báo thử nghiệm!${errMsg != null && errMsg.isNotEmpty ? ' ($errMsg)' : ''}'
+                                      : '🚨 Đang kết nối thiết bị với Pi. Đã phát thông báo thử nghiệm ra OS!',
+                                ),
+                                backgroundColor: BrandTokens.stitchCritical,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                        }
+                      },
                     ),
                   ],
                   const Divider(height: 1, indent: 68, endIndent: 16),

@@ -69,9 +69,89 @@ class _EyeEventsPageState extends State<EyeEventsPage> {
               Text('FireEye · #${event['id']} · ${event['created_at'] ?? ''}'),
               const SizedBox(height: 16),
               if (event['snapshot_path'] is String &&
-                  (event['snapshot_path'] as String).isNotEmpty)
-                FireeyeImage(eye: widget.eye, path: event['snapshot_path']),
-              const SizedBox(height: 16),
+                  (event['snapshot_path'] as String).isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: FireeyeImage(eye: widget.eye, path: event['snapshot_path']),
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (event['event_type'] == 'UNKNOWN_PERSON') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.red),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Phát hiện đối tượng chưa xác định danh tính',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                            label: const Text('Đăng ký vào hệ thống'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF152375),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PeoplePage(eye: widget.eye),
+                                ),
+                              );
+                            },
+                          ),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.campaign_rounded, size: 16, color: Colors.red),
+                            label: const Text('Hú còi loa Pi 5', style: TextStyle(color: Colors.red)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                            ),
+                            onPressed: () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              try {
+                                await widget.eye.startEdgeAlarm(duration: 10);
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Đã kích hoạt còi hú báo động trên loa Pi 5!'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              } catch (e) {
+                                messenger.showSnackBar(
+                                  SnackBar(content: Text('Không thể kích hoạt còi: $e')),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               const Text(
                 'Đây là sự kiện từ FireEye. Xử lý sự cố cháy và lịch sử gọi tại tab Sự cố của FireGuard.',
               ),

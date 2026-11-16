@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/app_auth_controller.dart';
 import '../systems/systems_page.dart';
 import '../../widgets/ignivo_page_header.dart';
@@ -45,6 +46,17 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
   void initState() {
     super.initState();
     _rememberMe = widget.sessionController.rememberMe;
+    _loadSavedPhone();
+  }
+
+  void _loadSavedPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPhone = prefs.getString('ignivo_saved_phone_number');
+    if (savedPhone != null && savedPhone.isNotEmpty && mounted) {
+      setState(() {
+        _phoneController.text = savedPhone;
+      });
+    }
   }
 
   @override
@@ -95,9 +107,15 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
     }
 
     if (success && mounted) {
-      if (widget.sessionManager != null &&
-          widget.sessionController.api.authToken != null) {
-        final token = widget.sessionController.api.authToken!;
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setString('ignivo_saved_phone_number', phoneInput);
+      } else {
+        await prefs.remove('ignivo_saved_phone_number');
+      }
+
+      if (widget.sessionManager != null) {
+        final token = widget.sessionController.api.authToken;
         final systems = widget.sessionManager!.systems;
         final currentSys = systems.firstWhere(
           (s) => s.guardUrl == widget.sessionController.guardUrl,
@@ -112,7 +130,7 @@ class _SystemLoginPageState extends State<SystemLoginPage> {
         await widget.sessionManager!.registry.setSystemToken(
           widget.sessionManager!.uid,
           currentSys.systemId,
-          token,
+          _rememberMe ? token : null,
         );
       }
 

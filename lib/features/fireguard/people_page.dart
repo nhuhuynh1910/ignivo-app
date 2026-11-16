@@ -5,6 +5,7 @@ import 'dart:async';
 import '../../core/services/face_notification_service.dart';
 import '../../core/services/fireeye_api_service.dart';
 import 'eye_events_page.dart';
+import 'person_detail_sheet.dart';
 
 class PeoplePage extends StatefulWidget {
   const PeoplePage({super.key, required this.eye});
@@ -425,6 +426,39 @@ class _PeoplePageState extends State<PeoplePage> {
                 Card(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
+                    onTap: () {
+                      showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => PersonDetailSheet(
+                          person: person,
+                          eye: widget.eye,
+                          onAddSample: () => _addSample(person),
+                          onDelete: () => _delete(person),
+                        ),
+                      );
+                    },
+                    leading: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer
+                            .withAlpha(60),
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: (person['avatar_path'] is String &&
+                                (person['avatar_path'] as String).isNotEmpty)
+                            ? FireeyeImage(
+                                eye: widget.eye,
+                                path: person['avatar_path'] as String,
+                              )
+                            : const Icon(Icons.person_rounded, size: 24),
+                      ),
+                    ),
                     title: Row(
                       children: [
                         Expanded(child: Text('${person['name']}')),
