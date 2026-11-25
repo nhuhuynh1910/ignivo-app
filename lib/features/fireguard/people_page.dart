@@ -1,51 +1,77 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:async';
 import '../../core/services/face_notification_service.dart';
-import '../../core/services/fireeye_api_service.dart';
+import '../../core/services/fireguard_api_service.dart';
+import '../../core/theme/brand_tokens.dart';
+import '../../widgets/ignivo_page_header.dart';
+import '../../widgets/interactive_card.dart';
 import 'eye_events_page.dart';
+import 'face_widgets.dart';
 import 'person_detail_sheet.dart';
 
 class PeoplePage extends StatefulWidget {
-  const PeoplePage({super.key, required this.eye});
-  final FireeyeApiService eye;
+  const PeoplePage({
+    super.key,
+    required this.api,
+    this.cameras = const [],
+  });
+
+  final FireguardApiService api;
+  final List<Map<String, dynamic>> cameras;
+
   @override
   State<PeoplePage> createState() => _PeoplePageState();
 }
 
 class _PeoplePageState extends State<PeoplePage> {
-  final _name = TextEditingController();
+  final _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _people = [];
+  List<Map<String, dynamic>> _cameras = [];
   Map<String, dynamic>? _status;
-  Uint8List? _image;
-  bool _loading = true, _busy = false, _consent = false, _fromPi = false;
-  String _groupTag = 'FAMILY';
+  String _selectedGroup = 'ALL';
+  String _searchQuery = '';
+  bool _loading = true, _busy = false;
   String? _error;
+
   @override
   void initState() {
     super.initState();
+    _cameras = widget.cameras;
     unawaited(FaceNotificationService.instance.initialize());
     _load();
   }
 
   @override
   void dispose() {
-    _name.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     try {
-      final people = await widget.eye.getPeople();
-      final status = await widget.eye.getFaceStatus();
-      if (mounted) {
-        setState(() {
-          _people = people;
-          _status = status;
-          _error = null;
-        });
-      }
+      final results = await Future.wait([
+        widget.api.getFacePeople(),
+        widget.api.getFaceWatchStatus().catchError(
+          (e) => <String, dynamic>{
+            'available': false,
+            'running': false,
+            'error': '$e',
+          },
+        ),
+        if (_cameras.isEmpty)
+          widget.api.getCameras().catchError((_) => <Map<String, dynamic>>[])
+        else
+          Future.value(_cameras),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _people = results[0] as List<Map<String, dynamic>>;
+        _status = results[1] as Map<String, dynamic>;
+        _cameras = results[2] as List<Map<String, dynamic>>;
+        _error = null;
+      });
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {
@@ -69,6 +95,764 @@ class _PeoplePageState extends State<PeoplePage> {
     }
   }
 
+  Future<void> _openRegisterSheet() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _FaceRegisterSheet(
+        api: widget.api,
+        cameras: _cameras,
+        isWatcherAvailable: _status?['available'] == true,
+      ),
+    );
+    if (created == true && mounted) {
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã đăng ký hồ sơ gương mặt thành công.')),
+      );
+    }
+  }
+
+  Future<void> _addSample(Map<String, dynamic> person) async {
+    final res = await showModalBottomSheet<({String angle, Uint8List? image, int? cameraId})>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AddFaceSampleSheet(
+        personName: person['name']?.toString() ?? 'Thành viên',
+        cameras: _cameras,
+      ),
+    );
+    if (res == null || !mounted) return;
+
+    await _act(() async {
+      await widget.api.addFaceSample(
+        person['id'] as int,
+        angleType: res.angle,
+        image: res.image,
+        cameraId: res.cameraId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Đã bổ sung mẫu ${faceAngleLabel(res.angle)} cho ${person['name']}.',
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _delete(Map<String, dynamic> person) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Xóa hồ sơ ${person['name']}?'),
+        content: const Text(
+          'Xóa dữ liệu gương mặt và ngừng đối chiếu người này. Lịch sử sự kiện cũ vẫn được giữ lại.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: BrandTokens.stitchCritical,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xóa và ngừng đối chiếu'),
+          ),
+        ],
+      ),
+    );
+    if (yes == true && mounted) {
+      await _act(() => widget.api.deleteFacePerson(person['id'] as int));
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredPeople {
+    final q = _searchQuery.trim().toLowerCase();
+    return _people.where((p) {
+      if (_selectedGroup != 'ALL' &&
+          (p['group_tag']?.toString().toUpperCase() ?? 'FAMILY') !=
+              _selectedGroup) {
+        return false;
+      }
+      if (q.isNotEmpty) {
+        final name = (p['name'] ?? '').toString().toLowerCase();
+        final role = (p['role'] ?? '').toString().toLowerCase();
+        if (!name.contains(q) && !role.contains(q)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final hasUser = widget.api.currentUser != null;
+    final accessDenied = hasUser && !widget.api.canAccessFaces;
+    final filtered = _filteredPeople;
+
+    return Scaffold(
+      appBar: ignivoDetailAppBar(
+        context,
+        title: 'Hồ sơ gương mặt',
+        actions: [
+          IconButton(
+            tooltip: 'Lịch sử nhận diện',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    FaceEventsPage(api: widget.api, cameras: _cameras),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Cài đặt thông báo nhận diện',
+            icon: const Icon(Icons.notifications_active_outlined),
+            onPressed: () => showFaceNotificationSettingsSheet(context),
+          ),
+          IconButton(
+            tooltip: 'Tải lại',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _busy ? null : _load,
+          ),
+        ],
+      ),
+      body: accessDenied
+          ? Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? BrandTokens.darkCriticalBg
+                          : BrandTokens.criticalBg,
+                      borderRadius:
+                          BorderRadius.circular(BrandTokens.cardRadius),
+                      border: Border.all(
+                        color: isDark
+                            ? BrandTokens.darkCriticalBorder
+                            : BrandTokens.criticalBorder,
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          color: BrandTokens.stitchCritical,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Tài khoản hiện tại không có quyền truy cập dữ liệu sinh trắc học gương mặt (BR-24).',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    children: [
+                      if (_error != null) _buildErrorBanner(isDark),
+                      _buildWatcherCard(isDark),
+                      const SizedBox(height: 16),
+                      _buildRegistryHeader(isDark),
+                      const SizedBox(height: 12),
+                      if (_people.isNotEmpty) ...[
+                        _buildSearchAndFilters(isDark),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_people.isEmpty)
+                        _buildEmptyRegistry(isDark)
+                      else if (filtered.isEmpty)
+                        _buildEmptySearch(isDark)
+                      else
+                        for (final person in filtered)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _buildPersonCard(person, isDark),
+                          ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildErrorBanner(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkCriticalBg : BrandTokens.criticalBg,
+        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+        border: Border.all(
+          color: isDark
+              ? BrandTokens.darkCriticalBorder
+              : BrandTokens.criticalBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: BrandTokens.stitchCritical,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _error!,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark
+                    ? BrandTokens.stitchDarkCriticalFg
+                    : BrandTokens.stitchCriticalFg,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWatcherCard(bool isDark) {
+    final available = _status?['available'] == true;
+    final running = _status?['running'] == true;
+    final monitoredCam = _status?['monitored_camera'] as Map?;
+    final camLabel = monitoredCam != null
+        ? '${monitoredCam['name'] ?? 'Camera #${monitoredCam['id']}'}'
+              '${monitoredCam['area'] != null ? ' (${monitoredCam['area']})' : ''}'
+        : 'Camera chính';
+    final interval = _status?['scan_interval'];
+    final statusSubtitle = available
+        ? '${running ? 'Đang bật' : 'Đang tắt'} · $camLabel'
+              '${interval != null ? ' · ${interval}s/lần' : ''}'
+        : (_status?['error']?.toString() ?? 'Chưa sẵn sàng');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+        border: Border.all(
+          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+        ),
+        boxShadow: BrandTokens.softShadow(isDark: isDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (running
+                          ? BrandTokens.stitchSafe
+                          : (isDark
+                                ? BrandTokens.darkPrimary
+                                : BrandTokens.brandPrimary))
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.face_retouching_natural_rounded,
+                  size: 20,
+                  color: running
+                      ? BrandTokens.stitchSafe
+                      : (isDark
+                            ? BrandTokens.darkPrimary
+                            : BrandTokens.brandPrimary),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Theo dõi gương mặt',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusSubtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: !available
+                            ? BrandTokens.stitchCriticalFg
+                            : (isDark
+                                  ? BrandTokens.darkTextSecondary
+                                  : BrandTokens.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: running,
+                onChanged: _busy || !widget.api.canConfigure || !available
+                    ? null
+                    : (v) => _act(() => widget.api.setFaceWatch(v)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Chỉ hỗ trợ xác minh danh tính, không kích hoạt còi báo cháy.',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: isDark
+                  ? BrandTokens.darkTextTertiary
+                  : BrandTokens.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegistryHeader(bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Text(
+                'Đã đăng ký (${_people.length})',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (!widget.api.canConfigure) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? BrandTokens.darkSurfaceVariant
+                        : BrandTokens.brandTint,
+                    borderRadius: BorderRadius.circular(BrandTokens.badgeRadius),
+                  ),
+                  child: Text(
+                    'Chỉ xem',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? BrandTokens.darkTextSecondary
+                          : BrandTokens.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (widget.api.canConfigure)
+          FilledButton.icon(
+            onPressed: _busy ? null : _openRegisterSheet,
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+            label: const Text('Đăng ký'),
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark
+                  ? BrandTokens.darkPrimary
+                  : BrandTokens.brandPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.buttonRadius),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSearchAndFilters(bool isDark) {
+    final counts = <String, int>{
+      'ALL': _people.length,
+      'FAMILY': _people
+          .where((p) => (p['group_tag'] ?? 'FAMILY') == 'FAMILY')
+          .length,
+      'STAFF': _people.where((p) => p['group_tag'] == 'STAFF').length,
+      'GUEST': _people.where((p) => p['group_tag'] == 'GUEST').length,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchCtrl,
+          onChanged: (v) => setState(() => _searchQuery = v),
+          decoration: InputDecoration(
+            hintText: 'Tìm theo tên hoặc vai trò...',
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear_rounded, size: 18),
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                : null,
+            isDense: true,
+            filled: true,
+            fillColor: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
+              borderSide: BorderSide(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
+              borderSide: BorderSide(
+                color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _groupFilterChip('ALL', 'Tất cả (${counts['ALL']})', isDark),
+              const SizedBox(width: 8),
+              for (final g in kFaceGroupOptions) ...[
+                _groupFilterChip(
+                  g.code,
+                  '${g.label} (${counts[g.code] ?? 0})',
+                  isDark,
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _groupFilterChip(String code, String label, bool isDark) {
+    final selected = _selectedGroup == code;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: (_) => setState(() => _selectedGroup = code),
+      selectedColor: (isDark
+              ? BrandTokens.darkPrimary
+              : BrandTokens.brandPrimary)
+          .withValues(alpha: 0.14),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected
+            ? (isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary)
+            : (isDark
+                  ? BrandTokens.darkTextSecondary
+                  : BrandTokens.textSecondary),
+      ),
+    );
+  }
+
+  Widget _buildPersonCard(Map<String, dynamic> person, bool isDark) {
+    final avatarPath = person['avatar_path']?.toString();
+    final groupTag = person['group_tag']?.toString() ?? 'FAMILY';
+    final role = person['role']?.toString().trim();
+    final showRole = role != null &&
+        role.isNotEmpty &&
+        role.toLowerCase() != groupTag.toLowerCase() &&
+        role.toLowerCase() != faceGroupLabel(groupTag).toLowerCase();
+    final consentedAt = person['consented_at']?.toString();
+    final samplesCount = person['samples_count'];
+
+    return InteractiveCard(
+      borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+      padding: const EdgeInsets.all(14),
+      onTap: () {
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => PersonDetailSheet(
+            person: person,
+            api: widget.api,
+            onAddSample: () => _addSample(person),
+            onDelete: () => _delete(person),
+          ),
+        );
+      },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (isDark
+                      ? BrandTokens.darkPrimary
+                      : BrandTokens.brandPrimary)
+                  .withValues(alpha: 0.1),
+              border: Border.all(
+                color: faceGroupStyle(groupTag, isDark: isDark)
+                    .fg
+                    .withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+            ),
+            child: ClipOval(
+              child: (avatarPath != null && avatarPath.isNotEmpty)
+                  ? GuardFaceImage(
+                      api: widget.api,
+                      path: avatarPath,
+                      width: 52,
+                      height: 52,
+                    )
+                  : Icon(
+                      Icons.person_rounded,
+                      size: 26,
+                      color: isDark
+                          ? BrandTokens.darkPrimary
+                          : BrandTokens.brandPrimary,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      '${person['name'] ?? 'Thành viên'}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    buildFaceGroupBadge(groupTag, isDark: isDark),
+                    if (showRole)
+                      Text(
+                        '· $role',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? BrandTokens.darkTextSecondary
+                              : BrandTokens.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+                if (samplesCount != null || consentedAt == null) ...[
+                  const SizedBox(height: 4),
+                  if (samplesCount != null)
+                    Text(
+                      '$samplesCount góc mặt',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? BrandTokens.darkPrimary
+                            : BrandTokens.brandPrimary,
+                      ),
+                    ),
+                  if (consentedAt == null)
+                    const Text(
+                      'Thiếu đồng thuận — cần đăng ký lại',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: BrandTokens.stitchWarningFg,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+          if (widget.api.canConfigure)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Thêm góc mặt',
+                  onPressed: _busy ? null : () => _addSample(person),
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 20),
+                ),
+                IconButton(
+                  tooltip: 'Xóa hồ sơ và rút lại đồng ý',
+                  onPressed: _busy ? null : () => _delete(person),
+                  icon: const Icon(
+                    Icons.person_remove_outlined,
+                    size: 20,
+                    color: BrandTokens.stitchCritical,
+                  ),
+                ),
+              ],
+            )
+          else
+            Icon(
+              Icons.chevron_right_rounded,
+              color: isDark
+                  ? BrandTokens.darkTextTertiary
+                  : BrandTokens.textTertiary,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyRegistry(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+        border: Border.all(
+          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.people_outline_rounded,
+            size: 48,
+            color: isDark
+                ? BrandTokens.darkTextTertiary
+                : BrandTokens.textTertiary,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Chưa có hồ sơ gương mặt',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Thêm thành viên để camera nhận diện khi xuất hiện.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: isDark
+                  ? BrandTokens.darkTextSecondary
+                  : BrandTokens.textSecondary,
+            ),
+          ),
+          if (widget.api.canConfigure) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _busy ? null : _openRegisterSheet,
+              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+              label: const Text('Đăng ký ngay'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptySearch(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+        border: Border.all(
+          color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+        ),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.search_off_rounded, size: 40, color: Colors.grey),
+          const SizedBox(height: 8),
+          const Text(
+            'Không tìm thấy hồ sơ phù hợp',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          TextButton(
+            onPressed: () {
+              _searchCtrl.clear();
+              setState(() {
+                _selectedGroup = 'ALL';
+                _searchQuery = '';
+              });
+            },
+            child: const Text('Xóa bộ lọc'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FaceRegisterSheet extends StatefulWidget {
+  const _FaceRegisterSheet({
+    required this.api,
+    required this.cameras,
+    required this.isWatcherAvailable,
+  });
+
+  final FireguardApiService api;
+  final List<Map<String, dynamic>> cameras;
+  final bool isWatcherAvailable;
+
+  @override
+  State<_FaceRegisterSheet> createState() => _FaceRegisterSheetState();
+}
+
+class _FaceRegisterSheetState extends State<_FaceRegisterSheet> {
+  final _nameCtrl = TextEditingController();
+  bool _fromPi = false;
+  int? _selectedCameraId;
+  Uint8List? _image;
+  String _role = 'Family';
+  String _groupTag = 'FAMILY';
+  String _angleType = 'FRONTAL';
+  bool _consent = false;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _pick(ImageSource source) async {
     try {
       final file = await ImagePicker().pickImage(
@@ -80,565 +864,498 @@ class _PeoplePageState extends State<PeoplePage> {
       if (file == null) return;
       final bytes = await file.readAsBytes();
       if (bytes.length > 8 * 1024 * 1024) {
-        throw const FireeyeException('Ảnh tối đa 8 MB.');
+        setState(() => _error = 'Ảnh tối đa 8 MB.');
+        return;
       }
-      if (mounted) {
-        setState(() {
-          _image = bytes;
-          _fromPi = false;
-          _consent = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _image = bytes;
+        _fromPi = false;
+        _error = null;
+      });
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _error =
-              'Không mở được ảnh/camera. Kiểm tra quyền truy cập hoặc chọn ảnh khác.',
-        );
+        setState(() {
+          _error = 'Không mở được ảnh/camera. Kiểm tra quyền truy cập.';
+        });
       }
     }
   }
 
-  Future<void> _register() async {
-    if (!_consent ||
-        _name.text.trim().isEmpty ||
-        (!_fromPi && _image == null)) {
-      setState(
-        () => _error = 'Nhập tên, chọn nguồn ảnh và xác nhận sự đồng ý.',
-      );
+  Future<void> _submit() async {
+    if (_nameCtrl.text.trim().isEmpty || (!_fromPi && _image == null) || !_consent) {
+      setState(() {
+        _error = 'Vui lòng nhập họ tên, chọn nguồn ảnh và xác nhận đồng thuận.';
+      });
       return;
     }
-    await _act(() async {
-      await widget.eye.registerFace(
-        _name.text,
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.api.registerFace(
+        name: _nameCtrl.text,
+        role: _role,
+        groupTag: _groupTag,
+        angleType: _angleType,
         consent: _consent,
         image: _fromPi ? null : _image,
-        groupTag: _groupTag,
+        cameraId: _fromPi ? _selectedCameraId : null,
       );
-      if (!mounted) return;
-      _name.clear();
-      setState(() {
-        _image = null;
-        _fromPi = false;
-        _consent = false;
-        _groupTag = 'FAMILY';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã đăng ký người tham gia.')),
-      );
-    });
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _submitting = false;
+        });
+      }
+    }
   }
 
-  Future<void> _addSample(Map<String, dynamic> person) async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Chụp ảnh góc mới'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Chọn ảnh từ thư viện'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      margin: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 24),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Đăng ký hồ sơ gương mặt',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: _submitting ? null : () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              if (!widget.isWatcherAvailable)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Dịch vụ nhận diện đang tắt, sẽ kiểm tra lại khi gửi.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: BrandTokens.stitchWarningFg,
+                    ),
+                  ),
+                ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              TextField(
+                key: const Key('person-name'),
+                controller: _nameCtrl,
+                enabled: !_submitting,
+                maxLength: 100,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Họ và tên',
+                  hintText: 'Ví dụ: Nguyễn Văn A',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.inputRadius),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _role,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Vai trò',
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(BrandTokens.inputRadius),
+                        ),
+                      ),
+                      items: kFaceRoleOptions
+                          .map((r) => DropdownMenuItem(
+                                value: r,
+                                child: Text(r, overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: _submitting
+                          ? null
+                          : (v) => setState(() => _role = v ?? 'Family'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _angleType,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Góc mặt ban đầu',
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(BrandTokens.inputRadius),
+                        ),
+                      ),
+                      items: kFaceAngleOptions
+                          .map(
+                            (a) => DropdownMenuItem(
+                              value: a.code,
+                              child: Text(
+                                a.label,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _submitting
+                          ? null
+                          : (v) => setState(() => _angleType = v ?? 'FRONTAL'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text(
+                    'Nhóm:',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  for (final g in kFaceGroupOptions)
+                    ChoiceChip(
+                      label: Text(g.label),
+                      selected: _groupTag == g.code,
+                      onSelected: _submitting
+                          ? null
+                          : (_) => setState(() => _groupTag = g.code),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    label: Text(
+                      'Từ điện thoại',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    icon: Icon(Icons.photo_camera_outlined, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(
+                      'Chụp từ Camera Pi',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    icon: Icon(Icons.videocam_outlined, size: 18),
+                  ),
+                ],
+                selected: {_fromPi},
+                onSelectionChanged: _submitting
+                    ? null
+                    : (s) => setState(() => _fromPi = s.first),
+              ),
+              const SizedBox(height: 12),
+              if (_fromPi) ...[
+                DropdownButtonFormField<int?>(
+                  initialValue: _selectedCameraId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'Camera chụp trên Pi',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(BrandTokens.inputRadius),
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Camera chính'),
+                    ),
+                    for (final c in widget.cameras)
+                      DropdownMenuItem<int?>(
+                        value: c['id'] as int?,
+                        child: Text(
+                          '#${c['id']} ${c['name']}${c['area'] != null ? ' · ${c['area']}' : ''}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: _submitting
+                      ? null
+                      : (v) => setState(() => _selectedCameraId = v),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Đứng một mình, nhìn thẳng vào camera khi bấm đăng ký.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? BrandTokens.darkTextSecondary
+                        : BrandTokens.textSecondary,
+                  ),
+                ),
+              ] else ...[
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _submitting
+                          ? null
+                          : () => _pick(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: const Text('Chọn ảnh'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _submitting
+                          ? null
+                          : () => _pick(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                      label: const Text('Chụp ảnh'),
+                    ),
+                  ],
+                ),
+                if (_image != null) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                    child: Image.memory(
+                      _image!,
+                      height: 170,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 10),
+              CheckboxListTile(
+                key: const Key('face-consent'),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text(
+                  'Xác nhận chủ thể đồng ý lưu dữ liệu gương mặt trên thiết bị để nhận diện.',
+                  style: TextStyle(fontSize: 12.5),
+                ),
+                value: _consent,
+                onChanged: _submitting
+                    ? null
+                    : (v) => setState(() => _consent = v == true),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: _submitting ||
+                        !_consent ||
+                        _nameCtrl.text.trim().isEmpty ||
+                        (!_fromPi && _image == null)
+                    ? null
+                    : _submit,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(BrandTokens.buttonRadius),
+                  ),
+                ),
+                child: Text(
+                  _submitting ? 'Đang xử lý…' : 'Đăng ký khuôn mặt',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-    if (source == null) return;
+  }
+}
 
+class _AddFaceSampleSheet extends StatefulWidget {
+  const _AddFaceSampleSheet({
+    required this.personName,
+    required this.cameras,
+  });
+
+  final String personName;
+  final List<Map<String, dynamic>> cameras;
+
+  @override
+  State<_AddFaceSampleSheet> createState() => _AddFaceSampleSheetState();
+}
+
+class _AddFaceSampleSheetState extends State<_AddFaceSampleSheet> {
+  String _angle = 'LEFT_PROFILE';
+  int? _cameraId;
+
+  Future<void> _pickAndPop(ImageSource source) async {
     final file = await ImagePicker().pickImage(
       source: source,
       maxWidth: 1600,
       maxHeight: 1600,
       imageQuality: 90,
     );
-    if (file == null) return;
+    if (file == null || !mounted) return;
     final bytes = await file.readAsBytes();
-
-    String angle = 'OTHER';
-    if (mounted) {
-      final chosenAngle = await showDialog<String>(
-        context: context,
-        builder: (ctx) => SimpleDialog(
-          title: const Text('Chọn góc chụp'),
-          children: [
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, 'FRONTAL'),
-              child: const Text('Chính diện (góc khác)'),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, 'LEFT_PROFILE'),
-              child: const Text('Nghiêng trái (15-30°)'),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, 'RIGHT_PROFILE'),
-              child: const Text('Nghiêng phải (15-30°)'),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, 'WITH_GLASSES'),
-              child: const Text('Đeo kính / Khẩu trang'),
-            ),
-          ],
-        ),
-      );
-      if (chosenAngle != null) angle = chosenAngle;
-    }
-
-    await _act(() async {
-      await widget.eye.addFaceSample(
-        person['id'] as int,
-        image: bytes,
-        angleType: angle,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã bổ sung góc mặt cho ${person['name']}.')),
-      );
-    });
-  }
-
-  Future<void> _delete(Map<String, dynamic> person) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Xóa hồ sơ ${person['name']}?'),
-        content: const Text(
-          'Xóa ảnh đăng ký và dữ liệu đối chiếu trên Pi; người này sẽ không còn được nhận diện bằng hồ sơ này. Bằng chứng sự kiện cũ vẫn theo thời gian lưu lịch sử.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xóa và ngừng đối chiếu'),
-          ),
-        ],
-      ),
-    );
-    if (yes == true && mounted) {
-      await _act(() => widget.eye.deletePerson(person['id'] as int));
-    }
+    if (!mounted) return;
+    Navigator.of(context).pop((angle: _angle, image: bytes, cameraId: null));
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Người tham gia'),
-      actions: [
-        IconButton(
-          tooltip: 'Lịch sử nhận diện',
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EyeEventsPage(eye: widget.eye),
-            ),
-          ),
-          icon: const Icon(Icons.history_rounded),
-        ),
-        IconButton(
-          tooltip: 'Tải lại',
-          onPressed: _busy ? null : _load,
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
-    ),
-    body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : ListView(
-            padding: const EdgeInsets.all(16),
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.darkSurface : BrandTokens.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Ảnh và dữ liệu đối chiếu được lưu trên Pi. Chỉ đăng ký khi người trong ảnh đã đồng ý; có thể xóa hồ sơ để ngừng đối chiếu.',
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              if (_status != null)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Đối chiếu khuôn mặt trên Pi'),
-                  subtitle: Text(
-                    _status!['available'] == true
-                        ? 'Kiểm tra định kỳ từ camera Dahua của FireEye'
-                        : 'Bộ nhận diện chưa sẵn sàng',
-                  ),
-                  value: _status!['running'] == true,
-                  onChanged:
-                      _busy ||
-                          !widget.eye.canConfigure ||
-                          _status!['available'] != true
-                      ? null
-                      : (v) => _act(() => widget.eye.setFaceWatch(v)),
-                ),
-
-              const SizedBox(height: 12),
-              if (widget.eye.canConfigure)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Đăng ký người tham gia',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          key: const Key('person-name'),
-                          controller: _name,
-                          enabled: !_busy,
-                          maxLength: 100,
-                          decoration: const InputDecoration(
-                            labelText: 'Tên người tham gia',
-                          ),
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: _busy
-                                  ? null
-                                  : () => _pick(ImageSource.gallery),
-                              icon: const Icon(Icons.photo_library_outlined),
-                              label: const Text('Chọn ảnh'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: _busy
-                                  ? null
-                                  : () => _pick(ImageSource.camera),
-                              icon: const Icon(Icons.camera_alt_outlined),
-                              label: const Text('Chụp ảnh'),
-                            ),
-                          ],
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Chụp từ camera trên Pi'),
-                          subtitle: const Text(
-                            'Đứng một mình trước camera Dahua khi bấm đăng ký.',
-                          ),
-                          value: _fromPi,
-                          onChanged: _busy
-                              ? null
-                              : (v) => setState(() {
-                                  _fromPi = v;
-                                  _consent = false;
-                                }),
-                        ),
-                        if (_image != null && !_fromPi)
-                          Image.memory(
-                            _image!,
-                            height: 180,
-                            fit: BoxFit.contain,
-                          ),
-                        CheckboxListTile(
-                          key: const Key('face-consent'),
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: const Text(
-                            'Người tham gia đã đồng ý lưu ảnh và dữ liệu khuôn mặt trên Pi để đối chiếu trong hệ thống này.',
-                          ),
-                          value: _consent,
-                          onChanged: _busy
-                              ? null
-                              : (v) => setState(() => _consent = v == true),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Wrap(
-                            spacing: 6,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Text(
-                                'Nhóm:',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              ChoiceChip(
-                                visualDensity: VisualDensity.compact,
-                                label: const Text('Người nhà'),
-                                selected: _groupTag == 'FAMILY',
-                                onSelected: _busy
-                                    ? null
-                                    : (v) => setState(() => _groupTag = 'FAMILY'),
-                              ),
-                              ChoiceChip(
-                                visualDensity: VisualDensity.compact,
-                                label: const Text('Nhân viên'),
-                                selected: _groupTag == 'STAFF',
-                                onSelected: _busy
-                                    ? null
-                                    : (v) => setState(() => _groupTag = 'STAFF'),
-                              ),
-                              ChoiceChip(
-                                visualDensity: VisualDensity.compact,
-                                label: const Text('Khách'),
-                                selected: _groupTag == 'GUEST',
-                                onSelected: _busy
-                                    ? null
-                                    : (v) => setState(() => _groupTag = 'GUEST'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        FilledButton(
-                          onPressed:
-                              _busy ||
-                                  !_consent ||
-                                  _status?['available'] != true
-                              ? null
-                              : _register,
-                          child: Text(
-                            _busy ? 'Đang xử lý…' : 'Đăng ký khuôn mặt',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
               Text(
-                'Đã đăng ký (${_people.length})',
-                style: Theme.of(context).textTheme.titleLarge,
+                'Thêm mẫu góc mặt · ${widget.personName}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              if (_people.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Chưa có người tham gia.'),
-                ),
-              for (final person in _people)
-                Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    onTap: () {
-                      showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (ctx) => PersonDetailSheet(
-                          person: person,
-                          eye: widget.eye,
-                          onAddSample: () => _addSample(person),
-                          onDelete: () => _delete(person),
-                        ),
-                      );
-                    },
-                    leading: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withAlpha(60),
-                        shape: BoxShape.circle,
-                      ),
-                      child: ClipOval(
-                        child: (person['avatar_path'] is String &&
-                                (person['avatar_path'] as String).isNotEmpty)
-                            ? FireeyeImage(
-                                eye: widget.eye,
-                                path: person['avatar_path'] as String,
-                              )
-                            : const Icon(Icons.person_rounded, size: 24),
-                      ),
-                    ),
-                    title: Row(
-                      children: [
-                        Expanded(child: Text('${person['name']}')),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: person['group_tag'] == 'STAFF'
-                                ? Colors.blue.withAlpha(30)
-                                : (person['group_tag'] == 'GUEST'
-                                    ? Colors.orange.withAlpha(30)
-                                    : Colors.green.withAlpha(30)),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            person['group_tag'] == 'STAFF'
-                                ? 'Nhân viên'
-                                : (person['group_tag'] == 'GUEST'
-                                    ? 'Khách'
-                                    : 'Người nhà'),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: person['group_tag'] == 'STAFF'
-                                  ? Colors.blue.shade700
-                                  : (person['group_tag'] == 'GUEST'
-                                      ? Colors.orange.shade800
-                                      : Colors.green.shade800),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          person['consented_at'] == null
-                              ? 'Hồ sơ cũ chưa có đồng ý — không dùng đối chiếu. Xóa và đăng ký lại.'
-                              : 'Đã ghi nhận đồng ý: ${person['consented_at']}',
-                        ),
-                        if (person['samples_count'] != null)
-                          Text(
-                            'Số mẫu góc mặt đã học: ${person['samples_count']}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                      ],
-                    ),
-                    trailing: widget.eye.canConfigure
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: 'Thêm góc mặt',
-                                onPressed: _busy
-                                    ? null
-                                    : () => _addSample(person),
-                                icon: const Icon(Icons.add_a_photo_outlined),
-                              ),
-                              IconButton(
-                                tooltip: 'Xóa hồ sơ và rút lại đồng ý',
-                                onPressed: _busy ? null : () => _delete(person),
-                                icon: const Icon(Icons.person_remove_outlined),
-                              ),
-                            ],
-                          )
-                        : null,
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _angle,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Góc mặt / Trạng thái',
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(BrandTokens.inputRadius),
                   ),
                 ),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(80),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: Theme.of(context).dividerColor.withAlpha(40),
+                items: kFaceAngleOptions
+                    .map(
+                      (a) => DropdownMenuItem(
+                        value: a.code,
+                        child: Text(a.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _angle = v ?? 'OTHER'),
+              ),
+              const SizedBox(height: 12),
+              if (widget.cameras.isNotEmpty) ...[
+                DropdownButtonFormField<int?>(
+                  initialValue: _cameraId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'Camera Pi',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(BrandTokens.inputRadius),
+                    ),
                   ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Camera chính'),
+                    ),
+                    for (final c in widget.cameras)
+                      DropdownMenuItem<int?>(
+                        value: c['id'] as int?,
+                        child: Text('#${c['id']} ${c['name']}'),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _cameraId = v),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.notifications_active_outlined,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tùy chọn thông báo nhận diện',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Báo khi thấy người quen'),
-                        subtitle: const Text('Hiện thông báo nổi khi nhận diện người đã lưu'),
-                        trailing: Switch(
-                          value: FaceNotificationService.instance.notifyKnown,
-                          onChanged: (v) async {
-                            await FaceNotificationService.instance.setNotifyKnown(v);
-                            setState(() {});
-                          },
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Cảnh báo khi thấy người lạ'),
-                        subtitle: const Text('Thông báo cảnh giác khi có người chưa đăng ký'),
-                        trailing: Switch(
-                          value: FaceNotificationService.instance.notifyUnknown,
-                          onChanged: (v) async {
-                            await FaceNotificationService.instance.setNotifyUnknown(v);
-                            setState(() {});
-                          },
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 12),
+              ],
+              FilledButton.icon(
+                icon: const Icon(Icons.videocam_outlined, size: 18),
+                label: const Text('Chụp từ Camera Pi'),
+                onPressed: () => Navigator.of(context).pop(
+                  (angle: _angle, image: null, cameraId: _cameraId),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                      label: const Text('Chụp điện thoại'),
+                      onPressed: () => _pickAndPop(ImageSource.camera),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: const Text('Thư viện ảnh'),
+                      onPressed: () => _pickAndPop(ImageSource.gallery),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-  );
-}
-
-class FireeyeImage extends StatefulWidget {
-  const FireeyeImage({super.key, required this.eye, required this.path});
-  final FireeyeApiService eye;
-  final String path;
-  @override
-  State<FireeyeImage> createState() => _FireeyeImageState();
-}
-
-class _FireeyeImageState extends State<FireeyeImage> {
-  late Future<Uint8List> _data = widget.eye.getImage(widget.path);
-  @override
-  Widget build(BuildContext context) => FutureBuilder<Uint8List>(
-    future: _data,
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        return Column(
-          children: [
-            Text('Không tải được ảnh: ${snapshot.error}'),
-            TextButton(
-              onPressed: () =>
-                  setState(() => _data = widget.eye.getImage(widget.path)),
-              child: const Text('Thử lại'),
-            ),
-          ],
-        );
-      }
-      if (!snapshot.hasData) {
-        return const SizedBox(
-          height: 80,
-          child: Center(child: CircularProgressIndicator()),
-        );
-      }
-      return Image.memory(
-        snapshot.data!,
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const Text('Ảnh không hợp lệ.'),
-      );
-    },
-  );
+        ),
+      ),
+    );
+  }
 }

@@ -4,7 +4,9 @@ import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/recent_incident_tile.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
+import '../fireguard/eye_events_page.dart';
 import '../fireguard/incident_page.dart';
+import '../fireguard/monitor_widgets.dart';
 import '../fireguard/monitoring_controller.dart';
 
 class GuardActivityPage extends StatefulWidget {
@@ -24,12 +26,20 @@ class GuardActivityPage extends StatefulWidget {
 }
 
 class _GuardActivityPageState extends State<GuardActivityPage> {
+  int _mode = 0; // 0: Sự cố cháy, 1: Nhận diện gương mặt
   int _filterIndex =
       0; // 0: Tất cả, 1: Cần chú ý, 2: Đang xử lý, 3: Đã kết thúc, 4: Mô phỏng
+  final ValueNotifier<int> _faceRefresh = ValueNotifier<int>(0);
 
   final Map<int, Uint8List> _incidentSnapshots = {};
   final Set<int> _loadingIncidentSnapshots = {};
   final Set<int> _attemptedIncidentSnapshots = {};
+
+  @override
+  void dispose() {
+    _faceRefresh.dispose();
+    super.dispose();
+  }
 
   void _loadSnapshotForIncident(int id, String imageName) {
     if (_attemptedIncidentSnapshots.contains(id) ||
@@ -131,6 +141,10 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final canAccessFaces = (widget.sessionController?.canAccessFaces ?? false) ||
+        widget.monitoringController.api.canAccessFaces;
+    final activeMode = canAccessFaces ? _mode : 0;
 
     return ListenableBuilder(
       listenable: widget.monitoringController,
@@ -151,7 +165,9 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
         return IgnivoPageBody(
           header: IgnivoPageHeader(
             title: 'Cảnh báo',
-            subtitle: 'Nhật ký sự cố và phát hiện cháy',
+            subtitle: canAccessFaces
+                ? 'Nhật ký sự cố cháy & nhận diện gương mặt'
+                : 'Nhật ký sự cố và phát hiện cháy',
             systemName: widget.sessionController?.systemName ?? 'IGNIVO',
             avatarInitials: initials.isNotEmpty ? initials : 'MA',
             showSync: true,
@@ -160,204 +176,290 @@ class _GuardActivityPageState extends State<GuardActivityPage> {
             action: IgnivoHeaderAction(
               icon: Icons.refresh,
               tooltip: 'Làm mới hoạt động',
-              onPressed: widget.monitoringController.refresh,
+              onPressed: () {
+                if (activeMode == 1) {
+                  _faceRefresh.value++;
+                } else {
+                  widget.monitoringController.refresh();
+                }
+              },
             ),
           ),
-          child: RefreshIndicator(
-            onRefresh: widget.monitoringController.refresh,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 960),
-                child: Column(
-                  children: [
-                    // Sticky Filter Bar
-                Container(
-                  color: theme.scaffoldBackgroundColor,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip(0, 'Tất cả (${allIncidents.length})'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          1,
-                          'Cần chú ý',
-                          count: allIncidents
-                              .where(
-                                (i) => [
-                                  'analyzing',
-                                  'notifying',
-                                  'notified',
-                                  'ai_dismissed',
-                                ].contains(i['status']),
-                              )
-                              .length,
-                          highlight: true,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          2,
-                          'Đang xử lý',
-                          count: allIncidents
-                              .where((i) => i['status'] == 'acknowledged')
-                              .length,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          3,
-                          'Đã kết thúc',
-                          count: allIncidents
-                              .where(
-                                (i) => [
-                                  'resolved',
-                                  'false_alarm',
-                                ].contains(i['status']),
-                              )
-                              .length,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          4,
-                          'Mô phỏng',
-                          count: allIncidents
-                              .where(
-                                (i) =>
-                                    i['is_simulation'] == true ||
-                                    i['trigger_type']
-                                            ?.toString()
-                                            .toLowerCase() ==
-                                        'simulation',
-                              )
-                              .length,
-                        ),
-                      ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (canAccessFaces)
+                    Container(
+                      color: isDark
+                          ? BrandTokens.darkSurface
+                          : BrandTokens.surface,
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      child: SegmentedButton<int>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment<int>(
+                            value: 0,
+                            icon: const Icon(
+                              Icons.local_fire_department_outlined,
+                              size: 17,
+                            ),
+                            label: Text(
+                              'Sự cố cháy',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const ButtonSegment<int>(
+                            value: 1,
+                            icon: Icon(
+                              Icons.face_retouching_natural_rounded,
+                              size: 17,
+                            ),
+                            label: Text(
+                              'Nhận diện gương mặt',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                        selected: {activeMode},
+                        onSelectionChanged: (s) =>
+                            setState(() => _mode = s.first),
+                      ),
                     ),
-                  ),
-                ),
-                const Divider(height: 1),
-
-                // Incident List
-                Expanded(
-                  child: filtered.isEmpty
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(32),
+                  if (activeMode == 1)
+                    Expanded(
+                      child: FaceEventsView(
+                        api: widget.monitoringController.api,
+                        cameras: widget.monitoringController.cameras,
+                        showPeopleButton: true,
+                        refreshListenable: _faceRefresh,
+                      ),
+                    )
+                  else ...[
+                    // Sticky Filter Bar nằm sát ngay trên danh sách sự cố
+                    Container(
+                      color: theme.scaffoldBackgroundColor,
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(28),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: theme.cardColor,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: theme.dividerColor.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                ),
-                              ),
-                              child: Column(
+                            _buildFilterChip(
+                              0,
+                              'Tất cả (${allIncidents.length})',
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              1,
+                              'Cần chú ý',
+                              count: allIncidents
+                                  .where(
+                                    (i) => [
+                                      'analyzing',
+                                      'notifying',
+                                      'notified',
+                                      'ai_dismissed',
+                                    ].contains(i['status']),
+                                  )
+                                  .length,
+                              highlight: true,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              2,
+                              'Đang xử lý',
+                              count: allIncidents
+                                  .where((i) => i['status'] == 'acknowledged')
+                                  .length,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              3,
+                              'Đã kết thúc',
+                              count: allIncidents
+                                  .where(
+                                    (i) => [
+                                      'resolved',
+                                      'false_alarm',
+                                    ].contains(i['status']),
+                                  )
+                                  .length,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              4,
+                              'Mô phỏng',
+                              count: allIncidents
+                                  .where(
+                                    (i) =>
+                                        i['is_simulation'] == true ||
+                                        i['trigger_type']
+                                                ?.toString()
+                                                .toLowerCase() ==
+                                            'simulation',
+                                  )
+                                  .length,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+
+                    // Incident List
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: widget.monitoringController.refresh,
+                        child: filtered.isEmpty
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(32),
                                 children: [
-                                  Icon(
-                                    Icons.history_outlined,
-                                    size: 48,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(
-                                    allIncidents.isEmpty
-                                        ? 'Chưa ghi nhận sự cố nào'
-                                        : 'Không có sự cố nào trong bộ lọc này',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
+                                  Container(
+                                    padding: const EdgeInsets.all(28),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: theme.cardColor,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: theme.dividerColor.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    allIncidents.isEmpty
-                                        ? 'Hệ thống FireGuard ghi nhận tối đa 50 sự cố gần nhất.'
-                                        : 'Hãy chọn bộ lọc khác để xem các sự cố liên quan.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: theme.textTheme.bodySmall?.color,
-                                      fontSize: 12,
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.history_outlined,
+                                          size: 48,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                        const SizedBox(height: 14),
+                                        Text(
+                                          allIncidents.isEmpty
+                                              ? 'Chưa ghi nhận sự cố nào'
+                                              : 'Không có sự cố nào trong bộ lọc này',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          allIncidents.isEmpty
+                                              ? 'Hệ thống FireGuard ghi nhận tối đa 50 sự cố gần nhất.'
+                                              : 'Hãy chọn bộ lọc khác để xem các sự cố liên quan.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: theme
+                                                .textTheme.bodySmall?.color,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
+                              )
+                            : ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(16),
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  final inc = filtered[index];
+                                  final id = inc['id'] as int? ?? 0;
+                                  final area =
+                                      inc['area']?.toString() ?? 'Chưa xác định';
+                                  final status = inc['status']?.toString();
+                                  final severity = inc['severity']?.toString();
+                                  final createdAt =
+                                      inc['created_at']?.toString() ?? '';
+                                  final formattedTime =
+                                      IncidentPresentationHelper.formatTimestamp(
+                                    createdAt,
+                                  );
+                                  final isSim = inc['is_simulation'] == true ||
+                                      inc['trigger_type']
+                                              ?.toString()
+                                              .toLowerCase() ==
+                                          'simulation';
+                                  final triggerType =
+                                      inc['trigger_type']?.toString();
+
+                                  final directBytes =
+                                      inc['image_bytes'] as Uint8List?;
+                                  final imageBytes =
+                                      directBytes ?? _incidentSnapshots[id];
+                                  final imageName = directBytes == null
+                                      ? _extractIncidentImageName(inc)
+                                      : null;
+                                  final analysisUrl =
+                                      inc['analysis_image_url']?.toString();
+                                  final snapshotUrl =
+                                      inc['snapshot_url']?.toString();
+                                  final imageUrl = (analysisUrl != null &&
+                                          (analysisUrl.startsWith('http://') ||
+                                              analysisUrl
+                                                  .startsWith('https://')))
+                                      ? analysisUrl
+                                      : (snapshotUrl != null &&
+                                              (snapshotUrl
+                                                      .startsWith('http://') ||
+                                                  snapshotUrl
+                                                      .startsWith('https://')))
+                                          ? snapshotUrl
+                                          : null;
+
+                                  if (directBytes == null &&
+                                      imageUrl == null &&
+                                      imageName != null &&
+                                      !_attemptedIncidentSnapshots
+                                          .contains(id) &&
+                                      !_loadingIncidentSnapshots.contains(id)) {
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                      if (mounted) {
+                                        _loadSnapshotForIncident(
+                                          id,
+                                          imageName,
+                                        );
+                                      }
+                                    });
+                                  }
+
+                                  return RecentIncidentTile(
+                                    id: id,
+                                    title: 'Sự cố #$id — $area',
+                                    area: area,
+                                    timeStr: formattedTime.isNotEmpty
+                                        ? formattedTime
+                                        : 'Vừa xong',
+                                    severity: severity,
+                                    status: status,
+                                    isSimulation: isSim,
+                                    imageBytes: imageBytes,
+                                    imageUrl: imageUrl,
+                                    isImageLoading:
+                                        _loadingIncidentSnapshots.contains(id),
+                                    triggerType: triggerType,
+                                    onTap: () => _navigateToDetail(context, id),
+                                  );
+                                },
                               ),
-                            ),
-                          ],
-                        )
-                      : ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final inc = filtered[index];
-                            final id = inc['id'] as int? ?? 0;
-                            final area =
-                                inc['area']?.toString() ?? 'Chưa xác định';
-                            final status = inc['status']?.toString();
-                            final severity = inc['severity']?.toString();
-                            final createdAt =
-                                inc['created_at']?.toString() ?? '';
-                            final isSim = inc['is_simulation'] == true ||
-                                inc['trigger_type']?.toString().toLowerCase() ==
-                                    'simulation';
-                            final triggerType = inc['trigger_type']?.toString();
-
-                            final directBytes = inc['image_bytes'] as Uint8List?;
-                            final imageBytes = directBytes ?? _incidentSnapshots[id];
-                            final imageName =
-                                directBytes == null ? _extractIncidentImageName(inc) : null;
-                            final analysisUrl = inc['analysis_image_url']?.toString();
-                            final snapshotUrl = inc['snapshot_url']?.toString();
-                            final imageUrl = (analysisUrl != null &&
-                                    (analysisUrl.startsWith('http://') ||
-                                        analysisUrl.startsWith('https://')))
-                                ? analysisUrl
-                                : (snapshotUrl != null &&
-                                        (snapshotUrl.startsWith('http://') ||
-                                            snapshotUrl.startsWith('https://')))
-                                    ? snapshotUrl
-                                    : null;
-
-                            if (directBytes == null &&
-                                imageUrl == null &&
-                                imageName != null &&
-                                !_attemptedIncidentSnapshots.contains(id) &&
-                                !_loadingIncidentSnapshots.contains(id)) {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (mounted) _loadSnapshotForIncident(id, imageName);
-                              });
-                            }
-
-                            return RecentIncidentTile(
-                              id: id,
-                              title: 'Sự cố #$id — $area',
-                              area: area,
-                              timeStr: createdAt.isNotEmpty ? createdAt : 'Vừa xong',
-                              severity: severity,
-                              status: status,
-                              isSimulation: isSim,
-                              imageBytes: imageBytes,
-                              imageUrl: imageUrl,
-                              isImageLoading: _loadingIncidentSnapshots.contains(id),
-                              triggerType: triggerType,
-                              onTap: () => _navigateToDetail(context, id),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        );
       },
     );
   }

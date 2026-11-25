@@ -54,7 +54,9 @@ class CameraPreviewCard extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      child: Center(
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: 1.0,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: InteractiveCard(
@@ -62,6 +64,7 @@ class CameraPreviewCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(BrandTokens.stitchCardRadius),
             onTap: onTap,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
               // 1. Khung hình tỷ lệ 16:8.7 (theo CSS demo)
@@ -107,6 +110,7 @@ class CameraPreviewCard extends StatelessWidget {
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               minimumSize: const Size(0, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: const Icon(Icons.edit_outlined, size: 14),
                             label: const Text('Sửa', style: TextStyle(fontSize: 12)),
@@ -202,6 +206,7 @@ class CameraPreviewCard extends StatelessWidget {
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                           onPressed: onTap,
                           icon: const Icon(Icons.play_circle_outline, size: 16),

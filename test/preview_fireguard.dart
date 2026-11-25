@@ -202,8 +202,8 @@ void main() {
       });
     }
     final pages = <String, Widget>{
-      'people': PeoplePage(eye: eye),
-      'eye-events': EyeEventsPage(eye: eye),
+      'people': PeoplePage(api: api),
+      'eye-events': EyeEventsPage(api: api),
       'ptz': PiCameraPage(
         eye: eye,
         guard: api,

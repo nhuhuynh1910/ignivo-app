@@ -86,6 +86,11 @@ class SystemSessionController extends ChangeNotifier {
   bool get canOperate =>
       isAuthenticated && role != 'VIEWER';
 
+  /// Only OWNER, ADMIN and OPERATOR can access biometric face registry & logs (BR-24).
+  bool get canAccessFaces =>
+      isAuthenticated &&
+      const {'OWNER', 'ADMIN', 'OPERATOR'}.contains(role?.toUpperCase());
+
   /// Only VIEWER is forbidden from handling emergency incidents (ACK, Resolve, False Alarm, Escalate).
   bool get canHandleIncidents => canOperate;
 

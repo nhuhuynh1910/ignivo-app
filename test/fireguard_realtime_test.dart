@@ -92,9 +92,18 @@ void main() {
           'data': {'incident_id': 42, 'status': 'answered'},
         }),
       );
-      await until(() => events.length == 2);
-      expect(events.map((e) => e.incidentId), [42, 42]);
-      expect(events.last.data['status'], 'answered');
+      peers.single.add(
+        jsonEncode({
+          'event': 'face.unknown',
+          'data': {'id': 7, 'event_type': 'UNKNOWN_PERSON', 'area': 'Cổng'},
+        }),
+      );
+      await until(() => events.length == 3);
+      expect(events.take(2).map((e) => e.incidentId), [42, 42]);
+      expect(events[1].data['status'], 'answered');
+      expect(events.last.isFaceEvent, isTrue);
+      expect(events.last.incidentId, isNull);
+      expect(events.last.faceEventId, 7);
       await subscription.cancel();
     },
   );

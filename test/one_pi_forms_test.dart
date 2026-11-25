@@ -16,6 +16,24 @@ http.Response json(Object data, [int status = 200]) => http.Response(
   status,
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
+
+Future<FireguardApiService> guardFor(
+  Future<http.Response> Function(http.Request) handler, {
+  String role = 'OWNER',
+}) async {
+  final api = FireguardApiService(
+    client: MockClient(
+      (r) async => r.url.path == '/api/v1/emergency/auth/me'
+          ? json({'role': role})
+          : handler(r),
+    ),
+  );
+  await api.setBaseUrl('http://127.0.0.1:8080');
+  await api.setAuthToken('test');
+  await api.getCurrentUser();
+  return api;
+}
+
 Future<FireeyeApiService> eyeFor(
   Future<http.Response> Function(http.Request) handler, {
   String role = 'OWNER',
@@ -33,54 +51,77 @@ Future<FireeyeApiService> eyeFor(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets(
-    'face registration requires consent; withdrawal needs confirmation and removes person',
+    'face registration sheet requires consent; withdrawal needs confirmation and removes person',
     (tester) async {
+      tester.view.physicalSize = const Size(600, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       final people = <Map<String, dynamic>>[];
       var posts = 0, deletes = 0;
-      final eye = await eyeFor((r) async {
-        if (r.url.path == '/api/faces/watch/status') {
+      final api = await guardFor((r) async {
+        if (r.url.path == '/api/v1/emergency/faces/watch/status') {
           return json({'available': true, 'running': false});
         }
-        if (r.url.path == '/api/faces/people') return json({'data': people});
-        if (r.url.path == '/api/faces/register-camera') {
+        if (r.url.path == '/api/v1/emergency/faces/people') {
+          return json({'success': true, 'data': people});
+        }
+        if (r.url.path == '/api/v1/emergency/cameras') {
+          return json([]);
+        }
+        if (r.url.path == '/api/v1/emergency/faces/register-camera') {
           posts++;
           expect(r.body, contains('name="consent"'));
           expect(r.body, contains('true'));
-          people.add({'id': 1, 'name': 'Lan', 'consented_at': '2026-10-15'});
+          people.add({
+            'id': 1,
+            'name': 'Lan',
+            'role': 'Family',
+            'group_tag': 'FAMILY',
+            'consented_at': '2026-10-15',
+          });
           return json({'success': true}, 201);
         }
-        if (r.method == 'DELETE') {
+        if (r.method == 'DELETE' &&
+            r.url.path == '/api/v1/emergency/faces/people/1') {
           deletes++;
           people.clear();
           return json({'success': true});
         }
         fail('Unexpected ${r.method} ${r.url.path}');
       });
-      await tester.pumpWidget(MaterialApp(home: PeoplePage(eye: eye)));
+
+      await tester.pumpWidget(MaterialApp(home: PeoplePage(api: api)));
       await tester.pumpAndSettle();
+
+      // Open registration bottom sheet
+      await tester.tap(find.widgetWithText(FilledButton, 'Đăng ký'));
+      await tester.pumpAndSettle();
+
       final register = find.widgetWithText(FilledButton, 'Đăng ký khuôn mặt');
       expect(tester.widget<FilledButton>(register).onPressed, isNull);
+
       await tester.enterText(find.byKey(const Key('person-name')), 'Lan');
-      await tester.ensureVisible(find.text('Chụp từ camera trên Pi'));
-      await tester.tap(find.text('Chụp từ camera trên Pi'));
+      await tester.tap(find.text('Chụp từ Camera Pi'));
+      await tester.pumpAndSettle();
+
       await tester.ensureVisible(find.byKey(const Key('face-consent')));
       await tester.tap(find.byKey(const Key('face-consent')));
       await tester.pumpAndSettle();
+
       await tester.ensureVisible(register);
       await tester.tap(register);
       await tester.pumpAndSettle();
       expect(posts, 1);
-      await tester.pump(const Duration(seconds: 5));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byTooltip('Xóa hồ sơ và rút lại đồng ý'),
-        180,
-        scrollable: find.byType(Scrollable).first,
-      );
+
+      expect(find.text('Lan'), findsOneWidget);
       await tester.tap(find.byTooltip('Xóa hồ sơ và rút lại đồng ý'));
       await tester.pumpAndSettle();
       expect(deletes, 0);
+
       await tester.tap(find.text('Xóa và ngừng đối chiếu'));
       await tester.pumpAndSettle();
       expect(deletes, 1);
@@ -88,52 +129,68 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets('read-only user sees people without mutation controls', (
+
+  testWidgets('OPERATOR sees people in read-only mode without mutation controls', (
     tester,
   ) async {
-    final eye = await eyeFor(
-      (r) async => r.url.path.endsWith('/people')
-          ? json({'data': []})
-          : json({'available': true, 'running': false}),
-      role: 'STAFF',
-    );
-    await tester.pumpWidget(MaterialApp(home: PeoplePage(eye: eye)));
+    final api = await guardFor((r) async {
+      if (r.url.path.endsWith('/faces/people')) {
+        return json({'success': true, 'data': []});
+      }
+      if (r.url.path.endsWith('/cameras')) return json([]);
+      return json({'available': true, 'running': false});
+    }, role: 'OPERATOR');
+
+    await tester.pumpWidget(MaterialApp(home: PeoplePage(api: api)));
     await tester.pumpAndSettle();
-    expect(find.text('Đăng ký khuôn mặt'), findsNothing);
+    expect(find.text('Đăng ký'), findsNothing);
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+      tester.widget<Switch>(find.byType(Switch)).onChanged,
       isNull,
     );
   });
-  testWidgets('FireEye history opens event detail and marks this event read', (
+
+  testWidgets('USER role is blocked by BR-24 access notice', (tester) async {
+    final api = await guardFor((_) async => json({}), role: 'USER');
+    await tester.pumpWidget(MaterialApp(home: PeoplePage(api: api)));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('không có quyền truy cập dữ liệu sinh trắc học'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('FaceEventsPage loads FireGuard face events and opens detail', (
     tester,
   ) async {
-    final reads = <String>[];
-    final eye = await eyeFor((r) async {
-      if (r.method == 'POST') {
-        reads.add(r.url.path);
-        return json({'success': true});
-      }
-      return json({
-        'data': [
+    final api = await guardFor((r) async {
+      if (r.url.path == '/api/v1/emergency/faces/events') {
+        return json([
           {
             'id': 9,
             'event_type': 'KNOWN_PERSON',
-            'message': 'Lan đã có mặt',
-            'created_at': '2026-10-15',
+            'area': 'Cổng chính',
+            'person_name': 'Lan',
+            'confidence': 0.91,
+            'message': 'Nhận diện khuôn mặt đã đăng ký: Lan',
+            'created_at': '2026-10-15T08:00:00',
           },
-        ],
-      });
+        ]);
+      }
+      return json({});
     });
-    await tester.pumpWidget(MaterialApp(home: EyeEventsPage(eye: eye)));
+
+    await tester.pumpWidget(MaterialApp(home: FaceEventsPage(api: api)));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(ListTile));
+    await tester.tap(find.text('Nhận diện khuôn mặt đã đăng ký: Lan'));
     await tester.pumpAndSettle();
-    expect(find.text('Lan đã có mặt'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    expect(reads, ['/api/notifications/9/read']);
+    expect(find.text('Lan'), findsOneWidget);
+    expect(
+      find.textContaining('chỉ phục vụ xác minh'),
+      findsOneWidget,
+    );
   });
+
   testWidgets(
     'PTZ release is queued after start, including a slow start response',
     (tester) async {

@@ -190,7 +190,7 @@ class IgnivoPushNotification {
         case PushNotificationCategory.fireEmergency:
           return triggerType == 'SMOKE' ? '💨 $trimmed' : '🔥 $trimmed';
         case PushNotificationCategory.faceRecognition:
-          return (isKnownPerson ?? false) ? '🟢 $trimmed' : '🚨 $trimmed';
+          return (isKnownPerson ?? false) ? '🟢 $trimmed' : '🟠 $trimmed';
         case PushNotificationCategory.systemNotice:
           return '⚙️ $trimmed';
         case PushNotificationCategory.general:
@@ -225,7 +225,7 @@ class IgnivoPushNotification {
               ? '🟢 Người quen: $personName'
               : '🟢 Nhận diện người quen';
         } else {
-          return '🚨 Cảnh báo: Phát hiện người lạ!';
+          return '🟠 Khuôn mặt chưa khớp (Cần xác minh)';
         }
 
       case PushNotificationCategory.systemNotice:
@@ -276,7 +276,7 @@ class IgnivoPushNotification {
           final name = personName ?? 'Người quen';
           return 'Đã xác nhận sự có mặt của $name $loc an toàn.';
         } else {
-          return 'Phát hiện đối tượng chưa được đăng ký trong danh bạ $loc. Vui lòng xác minh.';
+          return 'Khuôn mặt chưa khớp danh sách đăng ký $loc. Chỉ hỗ trợ xác minh.';
         }
 
       case PushNotificationCategory.systemNotice:

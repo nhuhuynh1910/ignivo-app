@@ -3,17 +3,15 @@ import '../../core/models/push_notification_model.dart';
 import '../../core/services/messaging_service.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../../widgets/ignivo_sheet.dart';
-import '../../core/models/system_record.dart';
-import '../../core/services/fireeye_api_service.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
+import '../fireguard/face_widgets.dart';
 import '../fireguard/monitoring_controller.dart';
 import '../fireguard/people_page.dart';
 import '../../core/services/face_notification_service.dart';
 import '../../core/services/app_auth_controller.dart';
 import '../../core/services/multi_system_monitoring_coordinator.dart';
 import '../../core/services/system_session_manager.dart';
-import '../systems/system_members_page.dart';
 import '../systems/systems_page.dart';
 import 'diagnostics_page.dart';
 import 'emergency_contacts_page.dart';
@@ -21,103 +19,6 @@ import 'emergency_location_page.dart';
 import 'ignivo_about_page.dart';
 
 class GuardSettingsPage extends StatelessWidget {
-  void _showFaceNotificationSheet(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final svc = FaceNotificationService.instance;
-            return SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade400,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.notifications_active_rounded,
-                          color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandNavy,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Cài đặt thông báo nhận diện',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tùy chỉnh thông báo nổi trên màn hình khi hệ thống AI nhận diện gương mặt qua camera Dahua.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Thông báo người quen'),
-                      subtitle: const Text('Hiện thông báo xác nhận khi AI thấy người đã đăng ký'),
-                      trailing: Switch(
-                        value: svc.notifyKnown,
-                        onChanged: (v) async {
-                          await svc.setNotifyKnown(v);
-                          setModalState(() {});
-                        },
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Cảnh báo người lạ'),
-                      subtitle: const Text('Hiện thông báo cảnh báo khi phát hiện người chưa đăng ký'),
-                      trailing: Switch(
-                        value: svc.notifyUnknown,
-                        onChanged: (v) async {
-                          await svc.setNotifyUnknown(v);
-                          setModalState(() {});
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Xong'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-
   const GuardSettingsPage({
     super.key,
     required this.sessionController,
@@ -504,7 +405,7 @@ class GuardSettingsPage extends StatelessWidget {
                       );
                     },
                   ),
-                  if (isOwnerOrAdmin) ...[
+                  if (sessionController.canAccessFaces) ...[
                     const Divider(height: 1, indent: 68, endIndent: 16),
                     ListTile(
                       leading: _buildLeadingIcon(
@@ -516,24 +417,25 @@ class GuardSettingsPage extends StatelessWidget {
                             : Colors.purple.shade50,
                       ),
                       title: const Text(
-                        'Nhận diện khuôn mặt người quen',
+                        'Hồ sơ & Nhận diện gương mặt',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
-                      subtitle: const Text(
-                        'Đăng ký khuôn mặt người thân / nhân viên để tránh báo nhầm',
-                        style: TextStyle(fontSize: 12),
+                      subtitle: Text(
+                        isOwnerOrAdmin
+                            ? 'Đăng ký hồ sơ, mẫu góc mặt và theo dõi xác minh'
+                            : 'Xem hồ sơ gương mặt và lịch sử đối chiếu (BR-24)',
+                        style: const TextStyle(fontSize: 12),
                       ),
                       trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => PeoplePage(
-                              eye: FireeyeApiService(
-                                fireguard: sessionController.api,
-                              ),
+                              api: sessionController.api,
+                              cameras: monitoringController.cameras,
                             ),
                           ),
                         );
@@ -562,14 +464,16 @@ class GuardSettingsPage extends StatelessWidget {
                           final k = FaceNotificationService.instance.notifyKnown ? 'Bật' : 'Tắt';
                           final u = FaceNotificationService.instance.notifyUnknown ? 'Bật' : 'Tắt';
                           return Text(
-                            'Người quen: $k · Người lạ: $u',
+                            'Người quen: $k · Chưa khớp: $u',
                             style: const TextStyle(fontSize: 12),
                           );
                         },
                       ),
                       trailing: const Icon(Icons.tune_rounded, size: 20),
-                      onTap: () => _showFaceNotificationSheet(context),
+                      onTap: () => showFaceNotificationSettingsSheet(context),
                     ),
+                  ],
+                  if (isOwnerOrAdmin) ...[
                     const Divider(height: 1, indent: 68, endIndent: 16),
                     ListTile(
                       leading: _buildLeadingIcon(
@@ -811,6 +715,7 @@ class GuardSettingsPage extends StatelessWidget {
                     ),
                     const Divider(height: 1, indent: 68, endIndent: 16),
                     ListTile(
+                      key: const Key('settings-members-tile'),
                       leading: _buildLeadingIcon(
                         context,
                         Icons.people_alt_rounded,
@@ -826,35 +731,12 @@ class GuardSettingsPage extends StatelessWidget {
                           fontSize: 14,
                         ),
                       ),
-                      subtitle: Text(
-                        isOwnerOrAdmin
-                            ? 'Mời qua email và quản trị quyền RBAC'
-                            : 'Xem danh sách thành viên trong hệ thống',
-                        style: const TextStyle(fontSize: 12),
+                      subtitle: const Text(
+                        'Tính năng chưa triển khai',
+                        style: TextStyle(fontSize: 12),
                       ),
                       trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                      onTap: () {
-                        final currentSystem = sessionManager!.systems.firstWhere(
-                          (s) =>
-                              s.systemId == (sessionManager!.activeSystemId ?? ''),
-                          orElse: () => sessionManager!.systems.isNotEmpty
-                              ? sessionManager!.systems.first
-                              : SystemRecord.fromPiConnectionProfile(
-                                  sessionController.profile,
-                                  systemId: sessionManager!.activeSystemId ??
-                                      sessionController.deviceId,
-                                ).copyWith(
-                                  role: sessionController.role ?? 'OPERATOR',
-                                ),
-                        );
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => SystemMembersPage(
-                              system: currentSystem,
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: () => showFeatureNotImplementedDialog(context),
                     ),
                     const Divider(height: 1, indent: 68, endIndent: 16),
                   ],

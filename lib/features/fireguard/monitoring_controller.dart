@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../../core/services/face_notification_service.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../../core/services/fireguard_realtime_service.dart';
 import '../../core/services/incident_alert_coordinator.dart';
@@ -130,6 +131,12 @@ class MonitoringController extends ChangeNotifier {
 
   void _onEvent(FireguardEvent event) {
     if (!_foreground) return;
+    if (event.isFaceEvent) {
+      FaceNotificationService.instance.dispatchEvent(
+        FaceNotificationEvent.fromJson(event.data),
+      );
+      return;
+    }
     _eventRevision++;
 
     if (event.name == 'incident.created' && event.incidentId != null) {

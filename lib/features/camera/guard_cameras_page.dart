@@ -7,6 +7,7 @@ import '../../widgets/camera_preview_card.dart';
 import '../../widgets/camera_status_filters.dart';
 import '../../widgets/ignivo_page_header.dart';
 import '../fireguard/camera_editor_page.dart';
+import '../fireguard/face_widgets.dart';
 import '../fireguard/monitoring_controller.dart';
 import 'camera_live_page.dart';
 
@@ -273,6 +274,22 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
               cacheExtent: 2000,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
+                if (widget.sessionController.canAccessFaces ||
+                    widget.monitoringController.api.canAccessFaces)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        MediaQuery.of(context).size.width >= 900 ? 24 : 16,
+                        14,
+                        MediaQuery.of(context).size.width >= 900 ? 24 : 16,
+                        0,
+                      ),
+                      child: FaceQuickAccessCard(
+                        api: widget.monitoringController.api,
+                        cameras: cameras,
+                      ),
+                    ),
+                  ),
                 // 1. Thanh chip lọc trạng thái Stitch
                 if (cameras.isNotEmpty)
                   SliverToBoxAdapter(
@@ -379,9 +396,15 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                         maxCrossAxisExtent: 480,
-                        mainAxisExtent: 390,
+                        mainAxisExtent: 412.0 +
+                            (MediaQuery.textScalerOf(context).scale(1.0) > 1.0
+                                ? 150.0 *
+                                    (MediaQuery.textScalerOf(context)
+                                            .scale(1.0) -
+                                        1.0)
+                                : 0.0),
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
                       ),
@@ -390,6 +413,7 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
                           context,
                           filteredCameras[index],
                           canConfig,
+                          cardMargin: EdgeInsets.zero,
                         ),
                         childCount: filteredCameras.length,
                       ),
@@ -434,8 +458,9 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
   Widget _buildCameraCard(
     BuildContext context,
     Map<String, dynamic> cam,
-    bool canConfig,
-  ) {
+    bool canConfig, {
+    EdgeInsetsGeometry? cardMargin,
+  }) {
     final id = cam['id'] as int? ?? 0;
     final name = cam['name']?.toString() ?? 'Camera #$id';
     final area = cam['area']?.toString() ?? 'Chưa xác định';
@@ -481,6 +506,7 @@ class _GuardCamerasPageState extends State<GuardCamerasPage> {
       isSnapshotLoading: _loadingSnapshots.contains(id),
       snapshotTime: _snapshots[id] != null ? 'Vừa xong' : null,
       canConfigure: canConfig,
+      margin: cardMargin,
       onTap: () => _navigateToLive(context, cam),
       onEdit: () => _openEditor(context, cam),
     );

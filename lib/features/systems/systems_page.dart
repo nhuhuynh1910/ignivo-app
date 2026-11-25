@@ -6,9 +6,9 @@ import '../../core/services/system_session_manager.dart';
 import '../../core/services/system_session_controller.dart';
 import '../../core/theme/brand_tokens.dart';
 import '../../navigation/ignivo_shell.dart';
+import '../../widgets/ignivo_sheet.dart';
 import '../auth/system_login_page.dart';
 import '../settings/connection_setup_page.dart';
-import 'system_members_page.dart';
 import 'invitations_page.dart';
 
 class SystemsPage extends StatefulWidget {
@@ -527,11 +527,9 @@ class _SystemsPageState extends State<SystemsPage> {
                   PopupMenuButton<String>(
                     onSelected: (val) {
                       if (val == 'members') {
-                        Navigator.push(
+                        showFeatureNotImplementedDialog(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => SystemMembersPage(system: system),
-                          ),
+                          title: 'Thành viên & Phân quyền',
                         );
                       } else if (val == 'remove') {
                         _confirmRemoveSystem(system);

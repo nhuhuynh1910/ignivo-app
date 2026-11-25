@@ -13,8 +13,10 @@ import '../../widgets/recent_incident_tile.dart';
 import '../../widgets/pulsing_status_dot.dart';
 import '../../widgets/interactive_card.dart';
 import '../systems/systems_page.dart';
+import 'face_widgets.dart';
 import 'monitoring_controller.dart';
 import 'monitor_widgets.dart';
+import 'people_page.dart';
 
 class GuardHomePage extends StatefulWidget {
   const GuardHomePage({
@@ -385,6 +387,15 @@ class _GuardHomePageState extends State<GuardHomePage> {
 
                                 // 4. Hoạt động gần đây (Recent Incidents)
                                 _buildRecentActivitySection(context, incidents),
+                                if (widget.sessionController.canAccessFaces ||
+                                    widget.monitoringController.api
+                                        .canAccessFaces) ...[
+                                  const SizedBox(height: 16),
+                                  FaceQuickAccessCard(
+                                    api: widget.monitoringController.api,
+                                    cameras: cameras,
+                                  ),
+                                ],
                                 const SizedBox(height: 24),
                               ],
                             ),
@@ -768,6 +779,25 @@ class _GuardHomePageState extends State<GuardHomePage> {
             label: 'Kiểm tra phần cứng & NPU',
             onTap: widget.onOpenDiagnostics,
           ),
+          if (widget.sessionController.canAccessFaces ||
+              widget.monitoringController.api.canAccessFaces) ...[
+            const SizedBox(height: 8),
+            _buildQuickActionBtn(
+              context,
+              icon: Icons.face_retouching_natural_rounded,
+              label: 'Hồ sơ & Lịch sử gương mặt',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PeoplePage(
+                      api: widget.monitoringController.api,
+                      cameras: widget.monitoringController.cameras,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ],
       ),
     );

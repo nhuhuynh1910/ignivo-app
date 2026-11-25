@@ -1,38 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../core/services/fireeye_api_service.dart';
+import '../../core/services/fireguard_api_service.dart';
 import '../../core/theme/brand_tokens.dart';
-import 'people_page.dart' show FireeyeImage;
+import 'face_widgets.dart';
 
-String getAngleTypeLabel(String? angle) {
-  switch (angle) {
-    case 'FRONTAL':
-      return 'Chính diện';
-    case 'LEFT_PROFILE':
-      return 'Nghiêng trái';
-    case 'RIGHT_PROFILE':
-      return 'Nghiêng phải';
-    case 'WITH_GLASSES':
-      return 'Đeo kính';
-    case 'UPWARD':
-      return 'Ngẩng đầu';
-    case 'DOWNWARD':
-      return 'Cúi đầu';
-    default:
-      return 'Góc bổ sung';
-  }
-}
+String getAngleTypeLabel(String? angle) => faceAngleLabel(angle);
 
 class PersonDetailSheet extends StatefulWidget {
   const PersonDetailSheet({
     super.key,
     required this.person,
-    required this.eye,
+    required this.api,
     required this.onAddSample,
     required this.onDelete,
   });
 
   final Map<String, dynamic> person;
-  final FireeyeApiService eye;
+  final FireguardApiService api;
   final Future<void> Function() onAddSample;
   final Future<void> Function() onDelete;
 
@@ -51,7 +34,12 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
   }
 
   void _loadSamples() {
-    _samplesFuture = widget.eye.getPersonSamples(widget.person['id'] as int);
+    _samplesFuture = widget.api
+        .getPersonSamples(widget.person['id'] as int)
+        .then((res) {
+          final list = res['samples'] as List? ?? const [];
+          return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        });
   }
 
   @override
@@ -59,6 +47,7 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final person = widget.person;
     final name = person['name']?.toString() ?? 'Thành viên';
+    final role = person['role']?.toString();
     final groupTag = person['group_tag']?.toString() ?? 'FAMILY';
     final consentedAt = person['consented_at']?.toString();
     final avatarPath = person['avatar_path']?.toString();
@@ -137,7 +126,6 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                 ),
                 child: Row(
                   children: [
-                    // Avatar / Photo
                     Container(
                       width: 60,
                       height: 60,
@@ -156,9 +144,11 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                       ),
                       child: ClipOval(
                         child: (avatarPath != null && avatarPath.isNotEmpty)
-                            ? FireeyeImage(
-                                eye: widget.eye,
+                            ? GuardFaceImage(
+                                api: widget.api,
                                 path: avatarPath,
+                                width: 60,
+                                height: 60,
                               )
                             : Icon(
                                 Icons.person_rounded,
@@ -174,28 +164,48 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              Flexible(
-                                child: Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color: textPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              _buildGroupChip(groupTag, isDark),
+                              buildFaceGroupBadge(groupTag, isDark: isDark),
+                              if (role != null && role.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : Colors.black.withValues(alpha: 0.06),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    role,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Text(
                             consentedAt != null
-                                ? 'Đã xác nhận đồng thuận: $consentedAt'
-                                : 'Chưa có cờ đồng thuận hợp lệ',
+                                ? 'Đồng thuận: ${consentedAt.split('T').first}'
+                                : 'Chưa có đồng thuận',
                             style: TextStyle(
                               fontSize: 12,
                               color: textSecondary,
@@ -214,14 +224,14 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Bộ sưu tập góc mặt đã học',
+                    'Các góc mặt đã lưu',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
                     ),
                   ),
-                  if (widget.eye.canConfigure)
+                  if (widget.api.canConfigure)
                     TextButton.icon(
                       icon: const Icon(Icons.add_a_photo_outlined, size: 16),
                       label: const Text('Thêm góc'),
@@ -257,7 +267,9 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                       padding: const EdgeInsets.all(12),
                       child: Text(
                         'Không thể tải danh sách mẫu: ${snapshot.error}',
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     );
                   }
@@ -274,28 +286,28 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                             BorderRadius.circular(BrandTokens.cardRadius),
                       ),
                       child: Text(
-                        'Chưa có mẫu góc bổ sung. Bấm "Thêm góc" để cải thiện độ chính xác khi camera quan sát từ góc chéo.',
+                        'Chưa có ảnh bổ sung. Thêm góc nghiêng, đeo kính hoặc khẩu trang để nhận diện chuẩn hơn.',
                         style: TextStyle(fontSize: 12, color: textSecondary),
                       ),
                     );
                   }
 
                   return SizedBox(
-                    height: 140,
+                    height: 146,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: samples.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 10),
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
                       itemBuilder: (context, index) {
                         final s = samples[index];
                         final imgPath = s['image_path']?.toString() ?? '';
                         final angle = s['angle_type']?.toString();
-                        final score = (s['quality_score'] as num?)?.toDouble() ?? 1.0;
+                        final score =
+                            (s['quality_score'] as num?)?.toDouble() ?? 1.0;
                         final scorePercent = (score * 100).toStringAsFixed(0);
 
                         return Container(
-                          width: 110,
+                          width: 112,
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isDark
@@ -316,9 +328,11 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
                                   child: imgPath.isNotEmpty
-                                      ? FireeyeImage(
-                                          eye: widget.eye,
+                                      ? GuardFaceImage(
+                                          api: widget.api,
                                           path: imgPath,
+                                          width: 96,
+                                          fit: BoxFit.cover,
                                         )
                                       : const Icon(Icons.face, size: 40),
                                 ),
@@ -352,11 +366,13 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
               ),
               const SizedBox(height: 24),
 
-              // 5. Actions Footer
-              if (widget.eye.canConfigure) ...[
+              // 5. Actions Footer (OWNER/ADMIN only)
+              if (widget.api.canConfigure)
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.person_remove_outlined,
-                      color: BrandTokens.stitchCritical),
+                  icon: const Icon(
+                    Icons.person_remove_outlined,
+                    color: BrandTokens.stitchCritical,
+                  ),
                   label: const Text(
                     'Xóa hồ sơ & Rút lại sự đồng thuận',
                     style: TextStyle(color: BrandTokens.stitchCritical),
@@ -378,45 +394,9 @@ class _PersonDetailSheetState extends State<PersonDetailSheet> {
                           await widget.onDelete();
                         },
                 ),
-              ],
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGroupChip(String tag, bool isDark) {
-    Color bg;
-    Color fg;
-    String label;
-
-    switch (tag) {
-      case 'STAFF':
-        bg = Colors.blue.withValues(alpha: 0.2);
-        fg = Colors.blue.shade600;
-        label = 'Nhân viên';
-        break;
-      case 'GUEST':
-        bg = Colors.orange.withValues(alpha: 0.2);
-        fg = Colors.orange.shade800;
-        label = 'Khách';
-        break;
-      default:
-        bg = BrandTokens.stitchSafe.withValues(alpha: 0.2);
-        fg = BrandTokens.stitchSafe;
-        label = 'Gia đình';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg),
       ),
     );
   }

@@ -16,8 +16,11 @@ class FireguardEvent {
   const FireguardEvent(this.name, this.data);
   final String name;
   final Map<String, dynamic> data;
-  int? get incidentId =>
-      (name == 'call.updated' ? data['incident_id'] : data['id']) as int?;
+  bool get isFaceEvent => name == 'face.detected' || name == 'face.unknown';
+  int? get incidentId => isFaceEvent
+      ? null
+      : (name == 'call.updated' ? data['incident_id'] : data['id']) as int?;
+  int? get faceEventId => isFaceEvent ? (data['id'] as int?) : null;
 }
 
 /// One foreground connection, shared by the dashboard and incident details.
@@ -107,6 +110,8 @@ class FireguardRealtimeService extends ChangeNotifier {
               'incident.analyzed',
               'incident.closed',
               'call.updated',
+              'face.detected',
+              'face.unknown',
             ].contains(name)) {
               return;
             }
@@ -114,7 +119,9 @@ class FireguardRealtimeService extends ChangeNotifier {
               name as String,
               value['data'] as Map<String, dynamic>,
             );
-            if (event.incidentId != null) _events.add(event);
+            if (event.isFaceEvent || event.incidentId != null) {
+              _events.add(event);
+            }
           } catch (_) {
             // Ignore malformed/unknown frames without dropping valid later events.
           }

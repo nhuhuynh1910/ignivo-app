@@ -20,7 +20,6 @@ import '../widgets/desktop_top_bar.dart';
 import '../widgets/ignivo_page_header.dart';
 import '../widgets/ignivo_sheet.dart';
 import '../../core/services/face_notification_service.dart';
-import '../../core/services/fireeye_api_service.dart';
 import '../features/fireguard/eye_events_page.dart';
 import '../core/models/push_notification_model.dart';
 import '../core/services/messaging_service.dart';
@@ -54,7 +53,6 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   StreamSubscription<FaceNotificationEvent>? _faceNotificationSub;
   StreamSubscription<IgnivoPushNotification>? _pushReceivedSub;
   StreamSubscription<IgnivoPushNotification>? _notificationOpenedSub;
-  FireeyeApiService? _fireeyeApi;
 
   @override
   void initState() {
@@ -67,8 +65,7 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
     _monitoring.addListener(_onMonitoringChanged);
     _monitoring.start();
 
-    _fireeyeApi = FireeyeApiService(fireguard: widget.sessionController.api);
-    unawaited(FaceNotificationService.instance.initialize(eye: _fireeyeApi));
+    unawaited(FaceNotificationService.instance.initialize());
 
     // 1. Khởi tạo và lắng nghe thông báo đẩy FCM
     MessagingService.instance.setActiveApi(widget.sessionController.api);
@@ -88,16 +85,19 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
       _handlePushNotification(push);
     });
 
-    // 2. Lắng nghe sự kiện nhận diện khuôn mặt AI
+    // 2. Lắng nghe sự kiện nhận diện khuôn mặt AI từ WebSocket FireGuard
     _faceNotificationSub =
         FaceNotificationService.instance.onFaceEvent.listen((event) {
       if (!mounted) return;
       final isKnown = event.isKnownPerson;
+      final areaText = event.area != null && event.area!.isNotEmpty
+          ? ' tại ${event.area}'
+          : '';
       final title = isKnown
           ? (event.name != null && event.name!.isNotEmpty
-              ? '🟢 Xác nhận: ${event.name} đã có mặt'
-              : '🟢 Xác nhận: Người quen đã có mặt')
-          : '🚨 Cảnh báo: Phát hiện người lạ!';
+              ? '🟢 Đã khớp: ${event.name}'
+              : '🟢 Đã khớp thành viên')
+          : '🟠 Khuôn mặt chưa khớp (Cần xác minh)';
 
       final notif = IgnivoPushNotification(
         id: 'face_${event.id}_${DateTime.now().millisecondsSinceEpoch}',
@@ -106,10 +106,13 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         body: event.message.isNotEmpty
             ? event.message
             : (isKnown
-                ? 'Đã nhận diện người quen an toàn trong vùng quan sát.'
-                : 'Phát hiện đối tượng chưa đăng ký trong danh bạ an ninh!'),
+                ? 'Đã đối chiếu thành viên an toàn$areaText.'
+                : 'Khuôn mặt chưa khớp danh sách đăng ký$areaText. Chỉ hỗ trợ xác minh.'),
         isKnownPerson: isKnown,
         personName: event.name,
+        area: event.area,
+        cameraId: event.cameraId,
+        confidence: event.confidence,
         timestamp: DateTime.now(),
       );
 
@@ -117,13 +120,14 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
         context,
         notification: notif,
         onTap: () {
-          if (_fireeyeApi != null) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => EyeEventsPage(eye: _fireeyeApi!),
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => FaceEventsPage(
+                api: _monitoring.api,
+                cameras: _monitoring.cameras,
               ),
-            );
-          }
+            ),
+          );
         },
       );
     });
@@ -155,11 +159,14 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
     if (push.incidentId != null) {
       _openIncident(push.incidentId!);
     } else if (push.category == PushNotificationCategory.faceRecognition) {
-      if (_fireeyeApi != null) {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => EyeEventsPage(eye: _fireeyeApi!)),
-        );
-      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => FaceEventsPage(
+            api: _monitoring.api,
+            cameras: _monitoring.cameras,
+          ),
+        ),
+      );
     } else if (push.cameraId != null) {
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -249,13 +256,9 @@ class _IgnivoShellState extends State<IgnivoShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _monitoring.resume();
-      if (_fireeyeApi != null) {
-        FaceNotificationService.instance.startListening(_fireeyeApi!);
-      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _monitoring.pause();
-      FaceNotificationService.instance.stopListening();
     }
   }
 

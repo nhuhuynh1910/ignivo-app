@@ -1,31 +1,70 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../../core/services/fireeye_api_service.dart';
+import '../../core/services/fireguard_api_service.dart';
 import '../../core/theme/brand_tokens.dart';
+import '../fireguard/face_widgets.dart';
 
 class FaceScanResultSheet extends StatelessWidget {
   const FaceScanResultSheet({
     super.key,
     required this.result,
-    required this.eye,
+    required this.api,
     this.onOpenPeoplePage,
     this.onRescan,
   });
 
   final Map<String, dynamic> result;
-  final FireeyeApiService eye;
+  final FireguardApiService api;
   final VoidCallback? onOpenPeoplePage;
   final VoidCallback? onRescan;
+
+  Uint8List? _decodeAnnotatedImage() {
+    final raw = result['annotated_image']?.toString();
+    if (raw == null || raw.isEmpty) return null;
+    final idx = raw.indexOf('base64,');
+    final b64 = idx >= 0 ? raw.substring(idx + 7) : raw;
+    try {
+      return base64Decode(b64);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _openZoomImage(BuildContext context, Uint8List bytes) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            title: const Text('Ảnh đối chiếu gương mặt'),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 5.0,
+              child: Image.memory(bytes, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final facesDetected = result['faces_detected'] as int? ?? 0;
+    final facesDetected = (result['faces_detected'] as num?)?.toInt() ?? 0;
     final rawResults = (result['results'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList() ??
         [];
     final snapshotPath = result['snapshot']?.toString();
+    final annotatedBytes = _decodeAnnotatedImage();
+    final verificationNote = result['verification_note']?.toString() ??
+        'Chỉ hỗ trợ xác minh danh tính, không tự kết luận xâm nhập (BR-06).';
 
     final bgColor = isDark ? BrandTokens.darkSurface : BrandTokens.surface;
     final textPrimary =
@@ -52,7 +91,6 @@ class FaceScanResultSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Drag Handle
               Center(
                 child: Container(
                   width: 44,
@@ -65,7 +103,6 @@ class FaceScanResultSheet extends StatelessWidget {
                 ),
               ),
 
-              // 2. Header
               Row(
                 children: [
                   Container(
@@ -91,7 +128,7 @@ class FaceScanResultSheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Kết quả quét gương mặt AI',
+                          'Kết quả đối chiếu gương mặt',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
@@ -118,100 +155,114 @@ class FaceScanResultSheet extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // 3. Snapshot Image Preview (nếu có từ Dahua)
-              if (snapshotPath != null && snapshotPath.isNotEmpty) ...[
-                FutureBuilder<Uint8List>(
-                  future: eye.getImage(snapshotPath),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Container(
-                        height: 170,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? BrandTokens.darkSurfaceVariant
-                              : Colors.grey.shade100,
-                          borderRadius:
-                              BorderRadius.circular(BrandTokens.cardRadius),
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      );
-                    }
-                    if (snapshot.hasData && snapshot.data != null) {
-                      return Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius:
-                                BorderRadius.circular(BrandTokens.cardRadius),
-                            child: Image.memory(
-                              snapshot.data!,
-                              height: 180,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.photo_camera_rounded,
-                                    color: Colors.white,
-                                    size: 13,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Khung hình Dahua AI',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
+              // BR-06 Verification Notice
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
                 ),
-                const SizedBox(height: 16),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? BrandTokens.darkSurfaceVariant
+                      : BrandTokens.brandTint.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: isDark
+                          ? BrandTokens.darkPrimary
+                          : BrandTokens.brandPrimary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        verificationNote,
+                        style: TextStyle(fontSize: 11.5, color: textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Annotated image (preferred) or snapshot fallback
+              if (annotatedBytes != null) ...[
+                GestureDetector(
+                  onTap: () => _openZoomImage(context, annotatedBytes),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(BrandTokens.cardRadius),
+                        child: Image.memory(
+                          annotatedBytes,
+                          height: 190,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.zoom_in, color: Colors.white, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Phóng to',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ] else if (snapshotPath != null && snapshotPath.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
+                  child: GuardFaceImage(
+                    api: api,
+                    path: snapshotPath,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholderIcon: Icons.photo_camera_outlined,
+                  ),
+                ),
+                const SizedBox(height: 14),
               ],
 
-              // 4. Details / Face Matching Results
               if (facesDetected == 0) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF2A2010)
+                        ? BrandTokens.stitchDarkWarningBg
                         : BrandTokens.stitchWarningBg,
                     borderRadius: BorderRadius.circular(BrandTokens.cardRadius),
                     border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF7A5210)
-                          : BrandTokens.stitchWarning.withValues(alpha: 0.4),
+                      color: BrandTokens.stitchWarning.withValues(alpha: 0.4),
                     ),
                   ),
                   child: Row(
@@ -233,18 +284,19 @@ class FaceScanResultSheet extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
                                 color: isDark
-                                    ? Colors.amber.shade200
+                                    ? BrandTokens.stitchDarkWarningFg
                                     : BrandTokens.stitchWarningFg,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Không phát hiện khuôn mặt rõ nét trong khung hình lúc này. Hãy hướng camera về phía đối tượng hoặc điều chỉnh khoảng cách/ánh sáng.',
+                              'Không phát hiện khuôn mặt rõ nét trong khung hình lúc này. Hãy kiểm tra góc nhìn hoặc ánh sáng trước camera.',
                               style: TextStyle(
                                 fontSize: 12,
                                 height: 1.4,
                                 color: isDark
-                                    ? Colors.amber.shade100.withValues(alpha: 0.8)
+                                    ? BrandTokens.stitchDarkWarningFg
+                                        .withValues(alpha: 0.85)
                                     : BrandTokens.stitchWarningFg,
                               ),
                             ),
@@ -259,12 +311,13 @@ class FaceScanResultSheet extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: rawResults.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final face = rawResults[index];
                     final isMatched = face['matched'] == true;
-                    final name = face['name']?.toString() ??
-                        (isMatched ? 'Người quen' : 'Người lạ');
+                    final name = isMatched
+                        ? (face['name']?.toString() ?? 'Đã đăng ký')
+                        : 'Chưa khớp danh sách đăng ký';
                     final role = face['role']?.toString();
                     final groupTag = face['group_tag']?.toString();
                     final confidence =
@@ -272,26 +325,32 @@ class FaceScanResultSheet extends StatelessWidget {
                     final confidencePercent =
                         (confidence * 100).toStringAsFixed(1);
 
+                    final cardColor = isMatched
+                        ? (isDark
+                              ? BrandTokens.stitchDarkOnlineBg
+                              : BrandTokens.stitchOnlineBg)
+                        : (isDark
+                              ? BrandTokens.stitchDarkWarningBg
+                              : BrandTokens.stitchWarningBg);
+                    final accentColor = isMatched
+                        ? BrandTokens.stitchSafe
+                        : BrandTokens.stitchWarning;
+                    final fgColor = isMatched
+                        ? (isDark
+                              ? BrandTokens.stitchDarkOnlineFg
+                              : BrandTokens.stitchOnlineFg)
+                        : (isDark
+                              ? BrandTokens.stitchDarkWarningFg
+                              : BrandTokens.stitchWarningFg);
+
                     return Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isMatched
-                            ? (isDark
-                                ? const Color(0xFF0F2B1D)
-                                : BrandTokens.stitchOnlineBg)
-                            : (isDark
-                                ? const Color(0xFF331A1A)
-                                : BrandTokens.stitchCriticalBg),
+                        color: cardColor,
                         borderRadius:
                             BorderRadius.circular(BrandTokens.cardRadius),
                         border: Border.all(
-                          color: isMatched
-                              ? (isDark
-                                  ? const Color(0xFF1F6B43)
-                                  : BrandTokens.stitchSafe.withValues(alpha: 0.4))
-                              : (isDark
-                                  ? const Color(0xFF7A2424)
-                                  : BrandTokens.stitchCriticalBorder),
+                          color: accentColor.withValues(alpha: 0.45),
                           width: 1.2,
                         ),
                       ),
@@ -303,10 +362,8 @@ class FaceScanResultSheet extends StatelessWidget {
                               Icon(
                                 isMatched
                                     ? Icons.verified_user_rounded
-                                    : Icons.warning_amber_rounded,
-                                color: isMatched
-                                    ? BrandTokens.stitchSafe
-                                    : BrandTokens.stitchCritical,
+                                    : Icons.person_search_rounded,
+                                color: accentColor,
                                 size: 22,
                               ),
                               const SizedBox(width: 8),
@@ -314,15 +371,9 @@ class FaceScanResultSheet extends StatelessWidget {
                                 child: Text(
                                   name,
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 15.5,
                                     fontWeight: FontWeight.w700,
-                                    color: isMatched
-                                        ? (isDark
-                                            ? Colors.green.shade200
-                                            : BrandTokens.stitchOnlineFg)
-                                        : (isDark
-                                            ? Colors.red.shade200
-                                            : BrandTokens.stitchCriticalFg),
+                                    color: fgColor,
                                   ),
                                 ),
                               ),
@@ -332,20 +383,15 @@ class FaceScanResultSheet extends StatelessWidget {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: (isMatched
-                                          ? BrandTokens.stitchSafe
-                                          : BrandTokens.stitchCritical)
-                                      .withValues(alpha: 0.15),
+                                  color: accentColor.withValues(alpha: 0.16),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  isMatched ? 'Người quen' : 'Người lạ',
+                                  isMatched ? 'Đã khớp' : 'Cần xác minh',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: isMatched
-                                        ? BrandTokens.stitchSafe
-                                        : BrandTokens.stitchCritical,
+                                    color: fgColor,
                                   ),
                                 ),
                               ),
@@ -367,17 +413,13 @@ class FaceScanResultSheet extends StatelessWidget {
                                       isDark,
                                     ),
                                   if (groupTag != null && groupTag.isNotEmpty)
-                                    _buildTag(
-                                      groupTag == 'FAMILY'
-                                          ? 'Gia đình'
-                                          : groupTag,
-                                      Colors.indigo,
-                                      isDark,
+                                    buildFaceGroupBadge(
+                                      groupTag,
+                                      isDark: isDark,
                                     ),
                                 ],
                               ),
                             ),
-                          // Confidence Progress
                           Row(
                             children: [
                               Expanded(
@@ -390,9 +432,7 @@ class FaceScanResultSheet extends StatelessWidget {
                                         ? Colors.white12
                                         : Colors.black.withValues(alpha: 0.08),
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      isMatched
-                                          ? BrandTokens.stitchSafe
-                                          : BrandTokens.stitchWarning,
+                                      accentColor,
                                     ),
                                   ),
                                 ),
@@ -408,19 +448,23 @@ class FaceScanResultSheet extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (!isMatched && onOpenPeoplePage != null) ...[
+                          if (!isMatched &&
+                              api.canConfigure &&
+                              onOpenPeoplePage != null) ...[
                             const SizedBox(height: 10),
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
-                                icon: const Icon(Icons.person_add_alt_1_rounded,
-                                    size: 16),
+                                icon: const Icon(
+                                  Icons.person_add_alt_1_rounded,
+                                  size: 16,
+                                ),
                                 label: const Text('Đăng ký vào hệ thống'),
                                 style: OutlinedButton.styleFrom(
                                   visualDensity: VisualDensity.compact,
-                                  foregroundColor: BrandTokens.stitchCriticalFg,
+                                  foregroundColor: fgColor,
                                   side: BorderSide(
-                                    color: BrandTokens.stitchCriticalBorder,
+                                    color: accentColor.withValues(alpha: 0.5),
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
@@ -440,7 +484,6 @@ class FaceScanResultSheet extends StatelessWidget {
               ],
               const SizedBox(height: 20),
 
-              // 5. Bottom Action Buttons
               Row(
                 children: [
                   if (onRescan != null) ...[
@@ -458,26 +501,27 @@ class FaceScanResultSheet extends StatelessWidget {
                         onPressed: onRescan,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    if (onOpenPeoplePage != null) const SizedBox(width: 10),
                   ],
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.people_alt_outlined, size: 18),
-                      label: const Text('Hồ sơ khuôn mặt'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark
-                            ? BrandTokens.darkPrimary
-                            : BrandTokens.brandPrimary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(BrandTokens.buttonRadius),
+                  if (onOpenPeoplePage != null)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.people_alt_outlined, size: 18),
+                        label: const Text('Hồ sơ gương mặt'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? BrandTokens.darkPrimary
+                              : BrandTokens.brandPrimary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(BrandTokens.buttonRadius),
+                          ),
                         ),
+                        onPressed: onOpenPeoplePage,
                       ),
-                      onPressed: onOpenPeoplePage,
                     ),
-                  ),
                 ],
               ),
             ],

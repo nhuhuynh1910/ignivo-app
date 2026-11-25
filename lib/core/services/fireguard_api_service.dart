@@ -40,6 +40,8 @@ class FireguardApiService {
   String? get authToken => _authToken;
   String get apiPrefix => '$_baseUrl/api/v1/emergency';
   bool get canConfigure => ['OWNER', 'ADMIN'].contains(currentUser?['role']);
+  bool get canAccessFaces =>
+      ['OWNER', 'ADMIN', 'OPERATOR'].contains(currentUser?['role']?.toString().toUpperCase());
   Map<String, String> get _headers => {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -114,6 +116,47 @@ class FireguardApiService {
     Object? body,
     Map<String, String>? query,
     bool retried = false,
+  }) => _sendAuthorized(
+    () {
+      final request = http.Request(
+        method,
+        Uri.parse('$apiPrefix$path').replace(queryParameters: query),
+      );
+      request.headers['Content-Type'] = 'application/json';
+      if (body != null) request.body = jsonEncode(body);
+      return request;
+    },
+    path: path,
+    retried: retried,
+  );
+
+  Future<http.Response> _multipart(
+    String method,
+    String path, {
+    Map<String, String>? fields,
+    Map<String, String>? query,
+    List<http.MultipartFile> files = const [],
+    bool retried = false,
+  }) => _sendAuthorized(
+    () {
+      final request = http.MultipartRequest(
+        method,
+        Uri.parse('$apiPrefix$path').replace(queryParameters: query),
+      );
+      if (fields != null) request.fields.addAll(fields);
+      request.files.addAll(files);
+      return request;
+    },
+    path: path,
+    timeout: const Duration(seconds: 20),
+    retried: retried,
+  );
+
+  Future<http.Response> _sendAuthorized(
+    http.BaseRequest Function() createRequest, {
+    required String path,
+    Duration timeout = const Duration(seconds: 12),
+    bool retried = false,
   }) async {
     await init();
     try {
@@ -127,16 +170,15 @@ class FireguardApiService {
     final origin = _baseUrl;
     final revision = _sessionRevision;
     try {
-      final request = http.Request(
-        method,
-        Uri.parse('$apiPrefix$path').replace(queryParameters: query),
-      );
+      final request = createRequest();
       request.followRedirects = false;
-      request.headers.addAll(_headers);
-      if (body != null) request.body = jsonEncode(body);
+      request.headers['Accept'] = 'application/json';
+      if (_authToken != null) {
+        request.headers['Authorization'] = 'Bearer $_authToken';
+      }
       final response = await (() async => http.Response.fromStream(
         await _client.send(request),
-      ))().timeout(const Duration(seconds: 12));
+      ))().timeout(timeout);
       if (_baseUrl != origin || _sessionRevision != revision) {
         throw const FireguardException(
           'Kết nối đã thay đổi. Vui lòng tải lại.',
@@ -145,7 +187,8 @@ class FireguardApiService {
       if (response.statusCode < 200 || response.statusCode >= 300) {
         String message = 'FireGuard trả về HTTP ${response.statusCode}';
         try {
-          final detail = jsonDecode(utf8.decode(response.bodyBytes))['detail'];
+          final parsed = jsonDecode(utf8.decode(response.bodyBytes));
+          final detail = parsed['detail'] ?? parsed['message'];
           if (detail is String) message = detail;
           if (detail is List) message = detail.map((e) => e['msg']).join('; ');
         } catch (_) {
@@ -156,11 +199,10 @@ class FireguardApiService {
             if (!retried &&
                 (_authToken != token ||
                     await (renewSession?.call() ?? Future.value(false)))) {
-              return _request(
-                method,
-                path,
-                body: body,
-                query: query,
+              return _sendAuthorized(
+                createRequest,
+                path: path,
+                timeout: timeout,
                 retried: true,
               );
             }
@@ -475,6 +517,192 @@ class FireguardApiService {
       lastError = e.message;
       return null;
     }
+  }
+
+  // ---------- Gương mặt trên FireGuard (/api/v1/emergency/faces/*) ----------
+
+  Future<Map<String, dynamic>> getFaceWatchStatus() =>
+      _map('/faces/watch/status');
+
+  Future<Map<String, dynamic>> setFaceWatch(bool enabled) async {
+    final res = _decode(
+      await _request('POST', '/faces/watch/${enabled ? 'start' : 'stop'}'),
+    );
+    if (res is Map && res['success'] == false) {
+      throw FireguardException(
+        res['message']?.toString() ?? 'Không thể điều khiển trình theo dõi.',
+      );
+    }
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> getFacePeople() async {
+    final res = await _map('/faces/people');
+    final list = res['data'] as List? ?? const [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> getPersonSamples(int personId) =>
+      _map('/faces/people/$personId/samples');
+
+  Future<Map<String, dynamic>> registerFace({
+    required String name,
+    String role = 'Operator',
+    String groupTag = 'FAMILY',
+    String angleType = 'FRONTAL',
+    required bool consent,
+    Uint8List? image,
+    int? cameraId,
+  }) async {
+    if (!consent) {
+      throw const FireguardException(
+        'Bắt buộc xác nhận đồng ý trước khi đăng ký dữ liệu sinh trắc học.',
+        400,
+      );
+    }
+    final fields = <String, String>{
+      'name': name.trim(),
+      'role': role,
+      'group_tag': groupTag,
+      'angle_type': angleType,
+      'consent': 'true',
+      if (image == null && cameraId != null) 'camera_id': '$cameraId',
+    };
+    final files = image != null
+        ? [
+            http.MultipartFile.fromBytes(
+              'image',
+              image,
+              filename: 'face_register.jpg',
+            ),
+          ]
+        : const <http.MultipartFile>[];
+    final res = _decode(
+      await _multipart(
+        'POST',
+        image == null ? '/faces/register-camera' : '/faces/register',
+        fields: fields,
+        files: files,
+      ),
+    );
+    if (res is Map && res['success'] == false) {
+      throw FireguardException(
+        res['message']?.toString() ?? 'Không thể đăng ký gương mặt.',
+      );
+    }
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<Map<String, dynamic>> addFaceSample(
+    int personId, {
+    String angleType = 'OTHER',
+    Uint8List? image,
+    int? cameraId,
+  }) async {
+    final fields = <String, String>{
+      'angle_type': angleType,
+      if (image == null && cameraId != null) 'camera_id': '$cameraId',
+    };
+    final files = image != null
+        ? [
+            http.MultipartFile.fromBytes(
+              'image',
+              image,
+              filename: 'face_sample.jpg',
+            ),
+          ]
+        : const <http.MultipartFile>[];
+    final res = _decode(
+      await _multipart(
+        'POST',
+        '/faces/people/$personId/samples',
+        fields: fields,
+        files: files,
+      ),
+    );
+    if (res is Map && res['success'] == false) {
+      throw FireguardException(
+        res['message']?.toString() ?? 'Không thể bổ sung mẫu góc mặt.',
+      );
+    }
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<void> deleteFacePerson(int personId) async {
+    await _request('DELETE', '/faces/people/$personId');
+  }
+
+  Future<Map<String, dynamic>> matchCameraFace({
+    int? cameraId,
+    Uint8List? image,
+  }) async {
+    final res = _decode(
+      await _multipart(
+        'POST',
+        image != null ? '/faces/match' : '/faces/match-camera',
+        fields: {
+          if (image == null && cameraId != null) 'camera_id': '$cameraId',
+        },
+        query: image == null && cameraId != null
+            ? {'camera_id': '$cameraId'}
+            : null,
+        files: image != null
+            ? [
+                http.MultipartFile.fromBytes(
+                  'image',
+                  image,
+                  filename: 'face_match.jpg',
+                ),
+              ]
+            : const [],
+      ),
+    );
+    if (res is Map && res['success'] == false) {
+      throw FireguardException(
+        res['message']?.toString() ?? 'Không thể đối chiếu gương mặt.',
+      );
+    }
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> getFaceEvents({
+    String? eventType,
+    int? cameraId,
+    int limit = 50,
+  }) => _list(
+    '/faces/events',
+    query: {
+      'limit': '${limit.clamp(1, 200)}',
+      'event_type': ?eventType,
+      if (cameraId != null) 'camera_id': '$cameraId',
+    },
+  );
+
+  Future<Uint8List> getFaceMedia(String pathOrUrl) async {
+    var path = pathOrUrl.trim();
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      final parsed = Uri.tryParse(path);
+      if (parsed == null) {
+        throw const FireguardException('Đường dẫn ảnh gương mặt không hợp lệ.');
+      }
+      path = parsed.path;
+    }
+    if (path.startsWith('/api/v1/emergency/')) {
+      path = path.substring('/api/v1/emergency'.length);
+    } else if (path.startsWith('/static/faces/')) {
+      path = '/faces/media/faces/${path.substring('/static/faces/'.length)}';
+    } else if (path.startsWith('/static/snapshots/')) {
+      path =
+          '/faces/media/snapshots/${path.substring('/static/snapshots/'.length)}';
+    }
+    if (path.contains('..') ||
+        !RegExp(
+          r'^/faces/media/(faces|snapshots)/[A-Za-z0-9_.-]+\.(jpg|jpeg|png|webp)$',
+          caseSensitive: false,
+        ).hasMatch(path)) {
+      throw const FireguardException('Đường dẫn ảnh gương mặt không hợp lệ.');
+    }
+    return (await _request('GET', path)).bodyBytes;
   }
 }
 

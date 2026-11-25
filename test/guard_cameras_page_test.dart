@@ -286,5 +286,111 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
     });
+
+    testWidgets(
+      'GuardCamerasPage desktop grid does not overflow with edit button, metadata, and scaled text',
+      (tester) async {
+        final api = FireguardApiService(
+          client: MockClient((r) async {
+            if (r.url.path.endsWith('/auth/login')) {
+              return jsonResp({
+                'token': 'test-token',
+                'user': {'role': 'OWNER', 'full_name': 'System Admin'},
+              });
+            }
+            if (r.url.path.endsWith('/auth/me')) {
+              return jsonResp({'role': 'OWNER', 'full_name': 'System Admin'});
+            }
+            if (r.url.path.endsWith('/system/info')) {
+              return jsonResp({'hostname': 'pi'});
+            }
+            if (r.url.path.endsWith('/cameras')) {
+              return jsonResp([
+                {
+                  'id': 1,
+                  'name': 'Camera dahua',
+                  'area': 'Front Yard',
+                  'model': 'DH-IPC-HFW',
+                  'enabled': true,
+                  'detect_enabled': true,
+                  'status': {'online': true, 'ai_fps': 8},
+                },
+              ]);
+            }
+            if (r.url.path.endsWith('/status')) {
+              return jsonResp({
+                'vision': {'backend': 'hailo', 'running': true},
+                'cameras': [
+                  {'id': 1, 'online': true},
+                ],
+              });
+            }
+            if (r.url.path.endsWith('/incidents/active')) return jsonResp(null);
+            if (r.url.path.endsWith('/incidents')) return jsonResp([]);
+            return jsonResp({});
+          }),
+        );
+
+        final session = SystemSessionController(
+          api: api,
+          initialProfile: PiConnectionProfile.fromGuardUrl('http://pi:8080'),
+        );
+        await session.login(
+          phoneNumber: '0901234567',
+          secretKey: 'secret',
+          systemSecretKey: 'sys',
+        );
+
+        final realtime = TestRealtime(api);
+        final coordinator = IncidentAlertCoordinator(
+          api: api,
+          realtime: realtime,
+          feedbackAdapter: MockAlertFeedbackAdapter(),
+        );
+        final monitoring = MonitoringController(
+          api: api,
+          realtime: realtime,
+          coordinator: coordinator,
+        );
+
+        tester.view.physicalSize = const Size(1280, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await monitoring.refresh();
+        monitoring.start();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (ctx) => MediaQuery(
+                  data: MediaQuery.of(ctx).copyWith(
+                    textScaler: const TextScaler.linear(1.2),
+                  ),
+                  child: GuardCamerasPage(
+                    monitoringController: monitoring,
+                    sessionController: session,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Camera dahua'), findsOneWidget);
+        expect(find.text('Sửa'), findsOneWidget);
+        expect(find.text('Xem trực tiếp (Live View)'), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        monitoring.stop();
+        coordinator.dispose();
+        monitoring.dispose();
+      },
+    );
   });
 }

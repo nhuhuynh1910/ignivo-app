@@ -155,7 +155,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Thông báo nhận diện gương mặt'), findsOneWidget);
-      expect(find.text('Người quen: Bật · Người lạ: Bật'), findsOneWidget);
+      expect(find.text('Người quen: Bật · Chưa khớp: Bật'), findsOneWidget);
 
       // Open bottom sheet
       await tester.tap(find.text('Thông báo nhận diện gương mặt'));
@@ -163,7 +163,7 @@ void main() {
 
       expect(find.text('Cài đặt thông báo nhận diện'), findsOneWidget);
       expect(find.text('Thông báo người quen'), findsOneWidget);
-      expect(find.text('Cảnh báo người lạ'), findsOneWidget);
+      expect(find.text('Thông báo khuôn mặt chưa khớp'), findsOneWidget);
 
       // Toggle off 'Thông báo người quen'
       final switches = find.byType(Switch);
@@ -179,7 +179,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verified summary in settings updated
-      expect(find.text('Người quen: Tắt · Người lạ: Bật'), findsOneWidget);
+      expect(find.text('Người quen: Tắt · Chưa khớp: Bật'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       monitoring.dispose();

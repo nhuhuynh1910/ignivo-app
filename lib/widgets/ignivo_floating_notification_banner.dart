@@ -127,7 +127,7 @@ class _IgnivoFloatingNotificationBannerState
         HapticFeedback.heavyImpact();
       });
     } else if (widget.notification.isKnownPerson == false) {
-      HapticFeedback.heavyImpact();
+      HapticFeedback.mediumImpact();
     } else {
       HapticFeedback.lightImpact();
     }
@@ -169,9 +169,9 @@ class _IgnivoFloatingNotificationBannerState
       switch (widget.notification.category) {
         case PushNotificationCategory.faceRecognition:
           final isKnown = widget.notification.isKnownPerson ?? false;
-          accentColor = isKnown ? BrandTokens.stitchSafe : BrandTokens.criticalFg;
+          accentColor = isKnown ? BrandTokens.stitchSafe : BrandTokens.stitchWarning;
           iconData = isKnown ? Icons.verified_user_rounded : Icons.person_search_rounded;
-          tagLabel = isKnown ? 'NGƯỜI QUEN' : 'CẢNH BÁO';
+          tagLabel = isKnown ? 'NGƯỜI QUEN' : 'CẦN XÁC MINH';
           break;
         case PushNotificationCategory.systemNotice:
           accentColor = isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary;

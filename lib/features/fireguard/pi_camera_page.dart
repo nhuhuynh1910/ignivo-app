@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../core/services/fireeye_api_service.dart';
 import '../../core/services/fireguard_api_service.dart';
 import '../camera/mjpeg_stream_view.dart';
-import 'people_page.dart';
 
 class PiCameraPage extends StatefulWidget {
   const PiCameraPage({
@@ -462,5 +461,46 @@ class _PiCameraPageState extends State<PiCameraPage>
           const Text('Chỉ chủ sở hữu hoặc quản trị viên được điều khiển PTZ.'),
       ],
     ),
+  );
+}
+
+class FireeyeImage extends StatefulWidget {
+  const FireeyeImage({super.key, required this.eye, required this.path});
+  final FireeyeApiService eye;
+  final String path;
+  @override
+  State<FireeyeImage> createState() => _FireeyeImageState();
+}
+
+class _FireeyeImageState extends State<FireeyeImage> {
+  late Future<Uint8List> _data = widget.eye.getImage(widget.path);
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Uint8List>(
+    future: _data,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Column(
+          children: [
+            Text('Không tải được ảnh: ${snapshot.error}'),
+            TextButton(
+              onPressed: () =>
+                  setState(() => _data = widget.eye.getImage(widget.path)),
+              child: const Text('Thử lại'),
+            ),
+          ],
+        );
+      }
+      if (!snapshot.hasData) {
+        return const SizedBox(
+          height: 80,
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+      return Image.memory(
+        snapshot.data!,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const Text('Ảnh không hợp lệ.'),
+      );
+    },
   );
 }

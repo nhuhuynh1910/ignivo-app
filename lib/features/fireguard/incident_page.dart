@@ -815,6 +815,7 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
   Widget _buildAiAnalysisCard(BuildContext context, Map<String, dynamic> incident, Map? analysis) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final flammableObjects = (analysis?['flammable_objects'] as List? ?? []);
+    final identifiedPeople = (analysis?['identified_people'] as List? ?? []);
     final recommendedActions = (analysis?['recommended_actions'] as List? ?? []);
 
     return Container(
@@ -963,6 +964,73 @@ class _FireguardIncidentPageState extends State<FireguardIncidentPage>
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                ),
+            ],
+            if (identifiedPeople.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(
+                    Icons.face_retouching_natural_rounded,
+                    size: 18,
+                    color: isDark ? BrandTokens.darkPrimary : BrandTokens.brandPrimary,
+                  ),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      'Gợi ý người có mặt trong vùng sự cố (Cần xác minh)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              for (final person in identifiedPeople)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? BrandTokens.darkSurfaceVariant
+                        : BrandTokens.brandTint.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? BrandTokens.darkBorder : BrandTokens.border,
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.verified_user_outlined,
+                        size: 16,
+                        color: BrandTokens.stitchSafe,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${person['name'] ?? 'Thành viên'}${person['role'] != null ? ' · ${person['role']}' : ''}',
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ),
+                      if (person['confidence'] is num)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: BrandTokens.stitchSafe.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${((person['confidence'] as num).toDouble() * 100).round()}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: BrandTokens.stitchSafe,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

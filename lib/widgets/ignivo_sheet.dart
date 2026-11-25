@@ -666,3 +666,31 @@ Future<void> showIgnivoQuickSystemSwitcherSheet({
     ),
   );
 }
+
+/// Hiển thị thông báo cho tính năng chưa triển khai.
+Future<void> showFeatureNotImplementedDialog(
+  BuildContext context, {
+  String title = 'Thành viên & Phân quyền',
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: const Icon(
+        Icons.info_outline_rounded,
+        color: BrandTokens.brandPrimary,
+        size: 28,
+      ),
+      title: Text(title),
+      content: const Text(
+        'Tính năng chưa triển khai',
+        textAlign: TextAlign.center,
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Đóng'),
+        ),
+      ],
+    ),
+  );
+}

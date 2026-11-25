@@ -6,7 +6,9 @@ import 'package:http/testing.dart';
 import 'package:ignivo_app/core/models/pi_connection_profile.dart';
 import 'package:ignivo_app/core/services/fireguard_api_service.dart';
 import 'package:ignivo_app/core/services/incident_alert_coordinator.dart';
+import 'package:ignivo_app/core/services/system_registry_repository.dart';
 import 'package:ignivo_app/core/services/system_session_controller.dart';
+import 'package:ignivo_app/core/services/system_session_manager.dart';
 import 'package:ignivo_app/core/theme/app_theme.dart';
 import 'package:ignivo_app/features/fireguard/guard_home_page.dart';
 import 'package:ignivo_app/features/fireguard/monitoring_controller.dart';
@@ -245,5 +247,79 @@ void main() {
       coordinator.dispose();
       monitoring.dispose();
     });
+
+    testWidgets(
+      'GuardSettingsPage shows unimplemented notice when tapping Thành viên & Phân quyền',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final registry = SystemRegistryRepository(prefs: prefs);
+        final manager = SystemSessionManager(registry: registry, uid: 'test-user');
+        await manager.initialize();
+
+        final api = FireguardApiService(
+          client: MockClient((r) async {
+            if (r.url.path.endsWith('/auth/login')) {
+              return _jsonResp({
+                'token': 'valid-test-token',
+                'user': {'role': 'OWNER', 'full_name': 'Minh Anh', 'phone_number': '0901234567'},
+              });
+            }
+            if (r.url.path.endsWith('/auth/me')) {
+              return _jsonResp({'role': 'OWNER', 'full_name': 'Minh Anh', 'phone_number': '0901234567'});
+            }
+            return _jsonResp({});
+          }),
+        );
+
+        final session = SystemSessionController(
+          api: api,
+          initialProfile: PiConnectionProfile.fromGuardUrl('http://pi:8080', systemName: 'Nhà Minh Anh'),
+        );
+        await session.login(phoneNumber: '0901234567', secretKey: 'k', systemSecretKey: 's');
+
+        final realtime = TestRealtime(api);
+        final coordinator = IncidentAlertCoordinator(
+          api: api,
+          realtime: realtime,
+          feedbackAdapter: MockAlertFeedbackAdapter(),
+        );
+        final monitoring = MonitoringController(
+          api: api,
+          realtime: realtime,
+          coordinator: coordinator,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: GuardSettingsPage(
+              sessionController: session,
+              monitoringController: monitoring,
+              sessionManager: manager,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final membersTile = find.byKey(const Key('settings-members-tile'));
+        await tester.scrollUntilVisible(membersTile, 100);
+        await tester.pumpAndSettle();
+        await tester.tap(membersTile);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Tính năng chưa triển khai')), findsOneWidget);
+
+        await tester.tap(find.text('Đóng'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        monitoring.stop();
+        coordinator.dispose();
+        monitoring.dispose();
+        manager.dispose();
+      },
+    );
   });
 }

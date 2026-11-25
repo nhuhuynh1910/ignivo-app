@@ -97,7 +97,7 @@ void main() {
       expect(notif.body, contains('Đã xác nhận sự có mặt của Nguyễn Văn A'));
     });
 
-    test('Parses unknown person detection into faceRecognition with 🚨 badge', () {
+    test('Parses unknown person detection into faceRecognition with neutral verification badge', () {
       final message = RemoteMessage(
         messageId: 'face_msg_303',
         data: {
@@ -110,8 +110,8 @@ void main() {
 
       expect(notif.category, PushNotificationCategory.faceRecognition);
       expect(notif.isKnownPerson, isFalse);
-      expect(notif.title, '🚨 Cảnh báo: Phát hiện người lạ!');
-      expect(notif.body, contains('Phát hiện đối tượng chưa được đăng ký trong danh bạ'));
+      expect(notif.title, '🟠 Khuôn mặt chưa khớp (Cần xác minh)');
+      expect(notif.body, contains('Khuôn mặt chưa khớp danh sách đăng ký'));
     });
 
     test('Parses system notice and adds ⚙️ prefix', () {

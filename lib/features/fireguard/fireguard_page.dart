@@ -595,11 +595,11 @@ class _FireguardPageState extends State<FireguardPage>
       };
     }).toList();
     return [
-      if (widget.eye != null)
+      if (widget.eye != null || _api.canAccessFaces)
         OutlinedButton.icon(
-          onPressed: () => _open(EyeEventsPage(eye: widget.eye!)),
+          onPressed: () => _open(EyeEventsPage(api: _api, cameras: _cameras)),
           icon: const Icon(Icons.history),
-          label: const Text('Lịch sử khuôn mặt và sự kiện FireEye'),
+          label: const Text('Lịch sử nhận diện gương mặt'),
         ),
       _heading(
         'Lịch sử nhận diện',
@@ -787,16 +787,16 @@ class _FireguardPageState extends State<FireguardPage>
         'Cài đặt',
         '${_api.currentUser?['full_name'] ?? _api.currentUser?['username'] ?? 'Tài khoản'} · ${_api.currentUser?['role'] ?? ''}',
       ),
-      if (widget.eye != null)
+      if (widget.eye != null || _api.canAccessFaces)
         GuardPanel(
           child: ListTile(
             leading: const Icon(Icons.people_outline),
-            title: const Text('Người tham gia'),
+            title: const Text('Hồ sơ gương mặt'),
             subtitle: const Text(
               'Đăng ký, đồng ý và quản lý đối chiếu khuôn mặt',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _open(PeoplePage(eye: widget.eye!)),
+            onTap: () => _open(PeoplePage(api: _api, cameras: _cameras)),
           ),
         ),
       if (!_api.canConfigure)

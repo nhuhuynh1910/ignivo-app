@@ -86,12 +86,12 @@ class _CameraLivePageState extends State<CameraLivePage> {
     HapticFeedback.selectionClick();
 
     try {
-      final result = await _eye.matchCameraFace();
+      final result = await widget.api.matchCameraFace(cameraId: widget.cameraId);
       if (!mounted) return;
       _showFaceScanResultModal(result);
     } catch (e) {
       if (!mounted) return;
-      final errorMsg = e is FireeyeException
+      final errorMsg = e is FireguardException
           ? e.message
           : 'Không thể quét gương mặt: $e';
       ScaffoldMessenger.of(context).showSnackBar(
@@ -121,12 +121,15 @@ class _CameraLivePageState extends State<CameraLivePage> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => FaceScanResultSheet(
         result: result,
-        eye: _eye,
+        api: widget.api,
         onOpenPeoplePage: () {
           Navigator.of(ctx).pop();
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => PeoplePage(eye: _eye),
+              builder: (_) => PeoplePage(
+                api: widget.api,
+                cameras: _camera != null ? [_camera!] : const [],
+              ),
             ),
           );
         },
